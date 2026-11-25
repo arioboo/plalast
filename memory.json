@@ -232,6 +232,20 @@
         "commit": "1c45670",
         "kind": "commit",
         "descr": "Brain moved to memory.json + params.yaml, deduplicated and cleaned up."
+      },
+      {
+        "date": "2026-11-25",
+        "branch": "main",
+        "commit": "31ef9f3",
+        "kind": "commit",
+        "descr": "Added tmux.conf for the plalast session: agent, build and git windows plus a green status bar, scoped to the session."
+      },
+      {
+        "date": "2026-11-25",
+        "branch": "main",
+        "commit": "75e8f40",
+        "kind": "commit",
+        "descr": "tmux start command made path-independent: it runs from the repo root and expands $PWD instead of a fixed folder."
       }
     ],
     "index": {},
