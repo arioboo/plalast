@@ -1,7 +1,7 @@
 //! End-to-end wiring: runs the four compiled tools against the real config.json of this repo.
 //! If a memory key, a generated file or a tool drifts apart, one of these fails.
 
-use plalast::{load, primary, MODULE_KINDS, PRIMARY_KEYS};
+use plalast::{load, primary, CONFIG_KEYS, MODULE_KINDS, PRIMARY_KEYS};
 use std::path::Path;
 use std::process::{Command, Output};
 
@@ -65,6 +65,19 @@ fn memory_keys_match_the_tools_registry() {
 }
 
 #[test]
+fn config_keys_match_the_tools_registry() {
+    let cfg = load(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
+    let present: Vec<&str> = cfg["config"]
+        .as_object()
+        .unwrap()
+        .keys()
+        .map(String::as_str)
+        .collect();
+    let known: Vec<&str> = CONFIG_KEYS.iter().map(|(k, _)| *k).collect();
+    assert_eq!(present, known, "config keys vs CONFIG_KEYS in src/lib.rs");
+}
+
+#[test]
 fn recall_shows_every_part_of_the_memory() {
     let o = run(RECALL, &[]);
     assert!(o.status.success());
@@ -74,7 +87,7 @@ fn recall_shows_every_part_of_the_memory() {
         "primary.features",
         "primary.log",
         "primary.index",
-        "primary.config",
+        "Config (config)",
         "zettelkasten",
         "primary.docs.levers",
     ] {

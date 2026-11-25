@@ -21,22 +21,41 @@ pub fn open() -> Res<(PathBuf, Value)> {
     Ok((root, cfg))
 }
 
-/// `config.json` has exactly two top-level keys: `primary` (control) and `data` (what is built).
+/// `config.json` has exactly three top-level keys: `config` (what the tools need to run),
+/// `primary` (what makes the docs) and `data` (what is built).
 pub fn check_top_level(cfg: &Value) -> Res<()> {
     let obj = cfg
         .as_object()
         .ok_or_else(|| format!("{CONFIG}: the top level must be an object"))?;
     let mut keys: Vec<&str> = obj.keys().map(String::as_str).collect();
     keys.sort_unstable();
-    if keys != ["data", "primary"] {
+    if keys != ["config", "data", "primary"] {
         return Err(format!(
-            "{CONFIG}: top-level keys must be exactly `primary` and `data`, found {keys:?}"
+            "{CONFIG}: top-level keys must be exactly `config`, `primary` and `data`, found {keys:?}"
         ));
     }
     Ok(())
 }
 
-/// Control panel: project, docs, adapters, audit, schema.
+/// What the tools need to run the repo: repository, branches, audit settings, paths.
+pub fn config(cfg: &Value) -> &Value {
+    &cfg["config"]
+}
+
+/// Every path the tools use (`config.paths`).
+pub fn paths(cfg: &Value) -> &Value {
+    &config(cfg)["paths"]
+}
+
+/// Keys of `config`, and the tools that handle each (checked by pla-lint like PRIMARY_KEYS).
+pub const CONFIG_KEYS: [(&str, &str); 4] = [
+    ("repository", "recall"),
+    ("branches", "audit (sync), recall"),
+    ("audit", "audit (allow, max_file_kb), recall, lint"),
+    ("paths", "build, lint, recall, audit"),
+];
+
+/// What makes the docs: project, docs, texts, definitions, levers, features, log, index, schema.
 pub fn primary(cfg: &Value) -> &Value {
     &cfg["primary"]
 }
@@ -49,11 +68,12 @@ pub fn docs(cfg: &Value) -> &Value {
 /// Every key of `primary`, in config order, and the tools that handle it. `pla-lint` fails on a
 /// key missing from config.json or not listed here, so memory and binaries stay wired together.
 pub const PRIMARY_KEYS: [(&str, &str); 13] = [
-    ("project", "build (logo), recall (title), audit (branches)"),
+    ("project", "build (logo), recall (title)"),
     (
         "docs",
         "build (render, levers, on_demand, strays), recall, lint",
     ),
+    ("agents-md", "build (AGENTS.md text via refs), recall, lint"),
     ("features", "recall, lint"),
     ("log", "recall, lint"),
     ("index", "recall, lint"),
@@ -66,19 +86,24 @@ pub const PRIMARY_KEYS: [(&str, &str); 13] = [
         "zettelkasten",
         "build (link target), recall, lint, audit (outside link)",
     ),
-    ("config", "audit (config.audit), recall, lint"),
     (
         "schema",
         "build (schema blocks, lever values), lint (coverage)",
     ),
 ];
 
-/// Kinds of hand-written module; each is `primary.<kind>` with `definition`, `dir` and `links`.
+/// Kinds of log entry in `primary.log`.
+pub const LOG_KINDS: [&str; 3] = ["commit", "merge", "branch"];
+
+/// Fields of every `primary.log` entry, in display order.
+pub const LOG_FIELDS: [&str; 5] = ["date", "branch", "commit", "kind", "descr"];
+
+/// Kinds of hand-written module: `primary.<kind>` holds its definition, `config.paths.modules.<kind>` its folder and links.
 pub const MODULE_KINDS: [&str; 5] = ["skills", "agents", "rules", "connectors", "guides"];
 
-/// Folder of a module kind (`primary.<kind>.dir`), without a trailing `/`.
+/// Folder of a module kind (`config.paths.modules.<kind>.dir`), without a trailing `/`.
 pub fn module_dir(cfg: &Value, kind: &str) -> Option<String> {
-    str_of(&primary(cfg)[kind], "dir").map(|d| d.trim_end_matches('/').to_string())
+    str_of(&paths(cfg)["modules"][kind], "dir").map(|d| d.trim_end_matches('/').to_string())
 }
 
 /// `(module folder, link folder)` for every provider link of every module kind.
@@ -88,7 +113,7 @@ pub fn module_links(cfg: &Value) -> Vec<(String, String)> {
         let Some(dir) = module_dir(cfg, kind) else {
             continue;
         };
-        for (_provider, dest) in primary(cfg)[kind]["links"]
+        for (_provider, dest) in paths(cfg)["modules"][kind]["links"]
             .as_object()
             .into_iter()
             .flatten()
@@ -101,14 +126,36 @@ pub fn module_links(cfg: &Value) -> Vec<(String, String)> {
     out
 }
 
-/// The value at a dotted config path such as `primary.zettelkasten.path`.
+/// Text of a content block: its `text`, or the string its `ref` points at.
+pub fn block_text(cfg: &Value, block: &Value) -> Option<String> {
+    match (str_of(block, "text"), str_of(block, "ref")) {
+        (Some(t), _) => Some(t.to_string()),
+        (None, Some(r)) => lookup(cfg, r).and_then(Value::as_str).map(String::from),
+        (None, None) => None,
+    }
+}
+
+/// Items of a list block: its `items`, or the list of strings its `ref` points at.
+pub fn block_items(cfg: &Value, block: &Value) -> Option<Vec<String>> {
+    let list = match (block.get("items"), str_of(block, "ref")) {
+        (Some(items), _) => items,
+        (None, Some(r)) => lookup(cfg, r)?,
+        (None, None) => return None,
+    };
+    list.as_array()?
+        .iter()
+        .map(|v| v.as_str().map(String::from))
+        .collect()
+}
+
+/// The value at a dotted config path such as `config.paths.zettelkasten`.
 pub fn lookup<'a>(cfg: &'a Value, dotted: &str) -> Option<&'a Value> {
     cfg.pointer(&format!("/{}", dotted.replace('.', "/")))
 }
 
-/// Folders whose `.md` files are docs (`primary.docs.dirs`), as relative paths; `.` is the root.
+/// Folders whose `.md` files are docs (`config.paths.docs`), as relative paths; `.` is the root.
 pub fn doc_dirs(cfg: &Value) -> Vec<String> {
-    strings(docs(cfg), "dirs")
+    strings(paths(cfg), "docs")
         .iter()
         .map(|d| d.trim_end_matches('/').to_string())
         .collect()

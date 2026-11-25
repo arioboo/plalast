@@ -8,8 +8,9 @@
 //! `rust`: `cargo fmt --check` and `cargo clippy -D warnings` pass.
 
 use plalast::{
-    arr, cargo, data, doc_dirs, docs, exit, is_doc_path, lever, lookup, module_dir, open, primary,
-    run, str_of, Findings, CONFIG, MODULE_KINDS, PRIMARY_KEYS,
+    arr, block_items, block_text, cargo, config, data, doc_dirs, docs, exit, is_doc_path, lever,
+    lookup, module_dir, open, paths, primary, run, str_of, Findings, CONFIG, CONFIG_KEYS,
+    LOG_FIELDS, LOG_KINDS, MODULE_KINDS, PRIMARY_KEYS,
 };
 use serde_json::Value;
 use std::env;
@@ -65,7 +66,11 @@ fn lint_config(root: &Path, cfg: &Value, f: &mut Findings) {
     let schema = &primary(cfg)["schema"];
 
     // Every key of primary and data is documented.
-    for (top, obj) in [("primary", primary(cfg)), ("data", data(cfg))] {
+    for (top, obj) in [
+        ("config", config(cfg)),
+        ("primary", primary(cfg)),
+        ("data", data(cfg)),
+    ] {
         for k in obj.as_object().into_iter().flat_map(|m| m.keys()) {
             let full = format!("{top}.{k}");
             if schema["keys"].get(&full).is_none() {
@@ -142,7 +147,7 @@ fn lint_config(root: &Path, cfg: &Value, f: &mut Findings) {
                         f.error(A, format!("{ctx}: hand-written file is missing on disk"));
                     }
                     if is_doc_path(cfg, path) {
-                        f.error(A, format!("{ctx}: it is a doc (an .md in primary.docs.dirs), so it must be generated (set `build`)"));
+                        f.error(A, format!("{ctx}: it is a doc (an .md in config.paths.docs), so it must be generated (set `build`)"));
                     }
                 }
             },
@@ -164,7 +169,7 @@ fn lint_config(root: &Path, cfg: &Value, f: &mut Findings) {
             );
         }
         check_blocks(
-            schema,
+            cfg,
             arr(doc, "head"),
             &format!("data.content.{key}.head"),
             f,
@@ -203,7 +208,7 @@ fn lint_config(root: &Path, cfg: &Value, f: &mut Findings) {
                 ),
                 Some(_) => {}
             }
-            check_blocks(schema, arr(s, "blocks"), &ctx, f);
+            check_blocks(cfg, arr(s, "blocks"), &ctx, f);
         }
     }
     for (key, m) in docs(cfg)["levers"].as_object().into_iter().flatten() {
@@ -220,44 +225,45 @@ fn lint_config(root: &Path, cfg: &Value, f: &mut Findings) {
         }
     }
 
-    // Module kinds: a definition, a folder that exists, and link folders that exist.
+    // Module kinds: a definition in primary, and in config.paths.modules a folder that
+    // exists and link folders that exist.
     for kind in MODULE_KINDS {
-        let m = &primary(cfg)[kind];
-        if !m.is_object() {
-            f.error(A, format!("primary.{kind} is missing"));
-            continue;
-        }
-        if blank(str_of(m, "definition")) {
+        if blank(str_of(&primary(cfg)[kind], "definition")) {
             f.error(A, format!("primary.{kind}: missing `definition`"));
         }
+        let ctx = format!("config.paths.modules.{kind}");
         match module_dir(cfg, kind) {
             Some(d) if root.join(&d).is_dir() => {}
-            Some(d) => f.error(A, format!("primary.{kind}.dir: `{d}` is not a folder")),
-            None => f.error(A, format!("primary.{kind}: missing `dir`")),
+            Some(d) => f.error(A, format!("{ctx}.dir: `{d}` is not a folder")),
+            None => f.error(A, format!("{ctx}: missing `dir`")),
         }
-        for (p, dest) in m["links"].as_object().into_iter().flatten() {
+        for (p, dest) in paths(cfg)["modules"][kind]["links"]
+            .as_object()
+            .into_iter()
+            .flatten()
+        {
             match dest.as_str() {
                 Some(d) if root.join(d).is_dir() => {}
-                Some(d) => f.error(
-                    A,
-                    format!("primary.{kind}.links.{p}: `{d}` is not a folder"),
-                ),
-                None => f.error(A, format!("primary.{kind}.links.{p}: not a path")),
+                Some(d) => f.error(A, format!("{ctx}.links.{p}: `{d}` is not a folder")),
+                None => f.error(A, format!("{ctx}.links.{p}: not a path")),
             }
         }
     }
     // The zettelkasten path is relative (an absolute one leaks the home folder).
-    match str_of(&primary(cfg)["zettelkasten"], "path") {
-        None => f.error(A, "primary.zettelkasten: missing `path`"),
+    match str_of(paths(cfg), "zettelkasten") {
+        None => f.error(A, "config.paths: missing `zettelkasten`"),
         Some(p) if Path::new(p).is_absolute() => f.error(
             A,
-            format!("primary.zettelkasten.path: `{p}` must be relative to the repo root"),
+            format!("config.paths.zettelkasten: `{p}` must be relative to the repo root"),
         ),
         Some(p) if !root.join(p).is_dir() => f.warn(
             A,
-            format!("primary.zettelkasten.path: `{p}` is not a folder on this machine"),
+            format!("config.paths.zettelkasten: `{p}` is not a folder on this machine"),
         ),
         Some(_) => {}
+    }
+    if blank(str_of(paths(cfg), "on_demand")) {
+        f.error(A, "config.paths: missing `on_demand`");
     }
     // Features: feature_<n> -> {descr, status}, both strings.
     for (k, v) in primary(cfg)["features"].as_object().into_iter().flatten() {
@@ -292,33 +298,78 @@ fn lint_config(root: &Path, cfg: &Value, f: &mut Findings) {
             f.error(A, format!("primary.{k} is missing from {CONFIG}"));
         }
     }
+    // Same for config (lib CONFIG_KEYS).
+    let known: Vec<&str> = CONFIG_KEYS.iter().map(|(k, _)| *k).collect();
+    let present: Vec<&str> = config(cfg)
+        .as_object()
+        .map(|m| m.keys().map(String::as_str).collect())
+        .unwrap_or_default();
+    for k in &present {
+        if !known.contains(k) {
+            f.error(A, format!("config.{k}: no tool handles it; add it to CONFIG_KEYS in src/lib.rs and wire it"));
+        }
+    }
+    for k in &known {
+        if !present.contains(k) {
+            f.error(A, format!("config.{k} is missing from {CONFIG}"));
+        }
+    }
+    for b in ["integration", "stable"] {
+        if blank(str_of(&config(cfg)["branches"], b)) {
+            f.error(A, format!("config.branches: missing `{b}`"));
+        }
+    }
     // Shapes of the keys that hold plain data.
-    if !primary(cfg)["log"].is_array() {
-        f.error(A, "primary.log must be a list of entries");
+    match primary(cfg)["log"].as_array() {
+        None => f.error(A, "primary.log must be a list of entries"),
+        Some(entries) => {
+            for (i, e) in entries.iter().enumerate() {
+                for k in LOG_FIELDS {
+                    if blank(str_of(e, k)) {
+                        f.error(A, format!("primary.log[{i}]: missing `{k}`"));
+                    }
+                }
+                if let Some(kind) = str_of(e, "kind") {
+                    if !LOG_KINDS.contains(&kind) {
+                        f.error(
+                            A,
+                            format!("primary.log[{i}]: kind `{kind}` must be one of {LOG_KINDS:?}"),
+                        );
+                    }
+                }
+                // The commit must exist in this repo's history.
+                if let Some(h) = str_of(e, "commit") {
+                    let obj = format!("{h}^{{commit}}");
+                    if !matches!(run(root, "git", &["cat-file", "-e", &obj]), Ok((true, _))) {
+                        f.error(A, format!("primary.log[{i}]: commit `{h}` is not in git"));
+                    }
+                }
+            }
+        }
     }
     if !primary(cfg)["index"].is_object() {
         f.error(A, "primary.index must be an object");
     }
-    let audit = &primary(cfg)["config"]["audit"];
-    if !primary(cfg)["config"].is_object() || !audit.is_object() {
-        f.error(A, "primary.config.audit is missing (settings of pla-audit)");
+    let audit = &config(cfg)["audit"];
+    if !audit.is_object() {
+        f.error(A, "config.audit is missing (settings of pla-audit)");
     } else {
         let allow_ok = audit["allow"]
             .as_array()
             .is_some_and(|a| a.iter().all(Value::is_string));
         if !allow_ok {
-            f.error(A, "primary.config.audit.allow must be a list of strings");
+            f.error(A, "config.audit.allow must be a list of strings");
         }
         if !audit["max_file_kb"].is_u64() {
-            f.error(A, "primary.config.audit.max_file_kb must be a whole number");
+            f.error(A, "config.audit.max_file_kb must be a whole number");
         }
     }
     if doc_dirs(cfg).is_empty() {
-        f.error(A, "primary.docs.dirs is empty: no folder holds the docs");
+        f.error(A, "config.paths.docs is empty: no folder holds the docs");
     }
     for d in doc_dirs(cfg) {
         if !root.join(&d).is_dir() {
-            f.error(A, format!("primary.docs.dirs: `{d}` is not a folder"));
+            f.error(A, format!("config.paths.docs: `{d}` is not a folder"));
         }
     }
     if let Some(logo) = primary(cfg)["project"]["plalast_logo"].as_str() {
@@ -331,14 +382,28 @@ fn lint_config(root: &Path, cfg: &Value, f: &mut Findings) {
     }
 }
 
-fn check_blocks(schema: &Value, blocks: &[Value], ctx: &str, f: &mut Findings) {
+fn check_blocks(cfg: &Value, blocks: &[Value], ctx: &str, f: &mut Findings) {
     for b in blocks {
         let t = str_of(b, "type").unwrap_or("");
-        if schema["blocks"].get(t).is_none() {
+        if primary(cfg)["schema"]["blocks"].get(t).is_none() {
             f.error(
                 "config",
                 format!("{ctx}: block type `{t}` is not documented in primary.schema.blocks"),
             );
+        }
+        // A `ref` must point at what the block needs: a string, or a list of strings.
+        if let Some(r) = str_of(b, "ref") {
+            let resolves = match t {
+                "list" | "ordered_list" => block_items(cfg, b).is_some(),
+                "image" => lookup(cfg, r).is_some_and(Value::is_string),
+                _ => block_text(cfg, b).is_some(),
+            };
+            if !resolves {
+                f.error(
+                    "config",
+                    format!("{ctx}: {t} block ref `{r}` does not point at the right kind of value"),
+                );
+            }
         }
     }
 }
@@ -685,7 +750,7 @@ mod tests {
                     {"path": "a.md", "type": "file", "build": "doc"},
                     {"path": "dir", "type": "dir", "description": "D"}
                 ],
-                "content": {"doc": {"head": [{"type": "nope"}], "sections": [
+                "content": {"doc": {"head": [{"type": "nope"}, {"type": "list", "ref": "primary.nowhere"}], "sections": [
                     {"id": "Bad_Id", "title": "T", "blocks": []}
                 ]}}
             }
@@ -712,8 +777,9 @@ mod tests {
             "primary.log must be a list",
             "primary.index must be an object",
             "primary.zettelkasten is missing",
-            "primary.docs.dirs is empty",
+            "config.paths.docs is empty",
             "data.content.doc.head: the second block must be `agent_note`",
+            "list block ref `primary.nowhere` does not point",
         ] {
             assert!(all.contains(expected), "missing `{expected}` in:\n{all}");
         }

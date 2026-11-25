@@ -7,8 +7,8 @@
 //! (`primary.docs.levers.<doc>.<section id>`): `enabled`, `on_demand` or `disabled`.
 
 use plalast::{
-    arr, data, doc_dirs, docs, exit, lever, lookup, module_dir, module_links, open, primary, req,
-    str_of, strings, Res, CONFIG,
+    arr, block_items, block_text, data, doc_dirs, docs, exit, lever, lookup, module_dir,
+    module_links, open, paths, primary, req, str_of, strings, Res, CONFIG,
 };
 use serde_json::Value;
 use std::env;
@@ -119,15 +119,15 @@ fn render_blocks(blocks: &[Value], cfg: &Value) -> Res<String> {
                 let level = b.get("level").and_then(Value::as_u64).unwrap_or(1);
                 // Verified: always 1..=6 `#` (src/verified.rs).
                 let hashes = plalast::verified::heading_hashes(level) as usize;
-                format!("{} {}", "#".repeat(hashes), req(b, "text", "heading")?)
+                format!("{} {}", "#".repeat(hashes), text(cfg, b, kind)?)
             }
-            "paragraph" | "raw" => req(b, "text", kind)?.to_string(),
-            "list" => strings(b, "items")
+            "paragraph" | "raw" => text(cfg, b, kind)?,
+            "list" => items(cfg, b, kind)?
                 .iter()
                 .map(|i| format!("- {i}"))
                 .collect::<Vec<_>>()
                 .join("\n"),
-            "ordered_list" => strings(b, "items")
+            "ordered_list" => items(cfg, b, kind)?
                 .iter()
                 .enumerate()
                 .map(|(n, i)| format!("{}. {i}", n + 1))
@@ -156,6 +156,7 @@ fn render_blocks(blocks: &[Value], cfg: &Value) -> Res<String> {
             "schema" => schema_table(cfg, b)?,
             "image" => image(cfg, b)?,
             "agent_note" => agent_note(cfg)?.to_string(),
+            "log" => log_table(cfg),
             other => return Err(format!("unknown content block type `{other}`")),
         };
         // One blank line between blocks; the agent note sits right under the first line.
@@ -170,6 +171,42 @@ fn render_blocks(blocks: &[Value], cfg: &Value) -> Res<String> {
         out.push_str(part);
     }
     Ok(out.trim_end().to_string())
+}
+
+/// A block's text (`text` or `ref`), or an error naming what is missing.
+fn text(cfg: &Value, b: &Value, kind: &str) -> Res<String> {
+    block_text(cfg, b).ok_or_else(|| match str_of(b, "ref") {
+        Some(r) => format!("{kind} block: ref `{r}` is not a string in {CONFIG}"),
+        None => format!("{kind} block: needs `text` or `ref`"),
+    })
+}
+
+/// A list block's items (`items` or `ref`), or an error naming what is missing.
+fn items(cfg: &Value, b: &Value, kind: &str) -> Res<Vec<String>> {
+    block_items(cfg, b).ok_or_else(|| match str_of(b, "ref") {
+        Some(r) => format!("{kind} block: ref `{r}` is not a list of strings in {CONFIG}"),
+        None => format!("{kind} block: needs `items` or `ref`"),
+    })
+}
+
+/// `primary.log` as a table, newest entry first.
+fn log_table(cfg: &Value) -> String {
+    let rows: Vec<Vec<String>> = arr(primary(cfg), "log")
+        .iter()
+        .rev()
+        .map(|e| {
+            let field = |k: &str| str_of(e, k).unwrap_or("").to_string();
+            vec![
+                field("date"),
+                field("branch"),
+                format!("`{}`", field("commit")),
+                field("kind"),
+                field("descr"),
+            ]
+        })
+        .collect();
+    let header = ["Date", "Branch", "Commit", "Kind", "Description"].map(String::from);
+    md_table(&header, &rows)
 }
 
 /// The note every generated doc carries on its second line (`primary.docs.agent_note`).
@@ -226,7 +263,7 @@ fn render_doc(key: &str, doc: &Value, cfg: &Value) -> Res<(String, Vec<(String, 
         match state {
             "enabled" => parts.push(with_body(format!("## {title}"))),
             "on_demand" => {
-                let dir = req(on_demand, "dir", "primary.docs.on_demand")?.trim_end_matches('/');
+                let dir = req(paths(cfg), "on_demand", "config.paths")?.trim_end_matches('/');
                 let path = format!("{dir}/{id}.md");
                 let when = req(s, "when", id)?;
                 pointers.push(
@@ -461,7 +498,7 @@ fn build(root: &Path, cfg: &Value, check: bool) -> Res<bool> {
         println!("{verb}: {d}");
     }
     for s in &strays {
-        println!("not in {CONFIG}: {s} (it is a doc, an .md in primary.docs.dirs, so it must be generated; add it to {CONFIG} or delete it)");
+        println!("not in {CONFIG}: {s} (it is a doc, an .md in config.paths.docs, so it must be generated; add it to {CONFIG} or delete it)");
     }
     if drift.is_empty() && strays.is_empty() {
         println!("in sync with {CONFIG}");
@@ -487,7 +524,7 @@ fn prune_module_links(root: &Path, cfg: &Value, check: bool) -> Res<Vec<String>>
     Ok(out)
 }
 
-/// Docs (`.md` files in `primary.docs.dirs`) that this build does not generate.
+/// Docs (`.md` files in `config.paths.docs`) that this build does not generate.
 fn stray_markdown(root: &Path, cfg: &Value, generated: &[String]) -> Vec<String> {
     let mut out = Vec::new();
     for dir in doc_dirs(cfg) {
@@ -520,11 +557,12 @@ mod tests {
     /// A config with one document `doc` holding sections `a` and `b` with the given levers.
     fn cfg(levers: Value) -> Value {
         json!({
+            "config": {"paths": {"on_demand": "agents"}},
             "primary": {
                 "docs": {
                     "agent_note": "NOTE",
                     "levers": {"doc": levers},
-                    "on_demand": {"dir": "agents", "heading": "On demand", "pointer": "`{path}`: {title}. Read it when {when}."}
+                    "on_demand": {"heading": "On demand", "pointer": "`{path}`: {title}. Read it when {when}."}
                 },
                 "schema": {"levers": {"enabled": "", "on_demand": "", "disabled": ""}}
             },
@@ -613,6 +651,35 @@ mod tests {
     }
 
     #[test]
+    fn log_block_lists_entries_newest_first() {
+        let c = json!({"primary": {"log": [
+            {"date": "d1", "branch": "main", "commit": "aaa", "kind": "commit", "descr": "first"},
+            {"date": "d2", "branch": "develop", "commit": "bbb", "kind": "merge", "descr": "second"}
+        ]}, "data": {}});
+        let b = json!([{"type": "log"}]);
+        assert_eq!(
+            render_blocks(b.as_array().unwrap(), &c).unwrap(),
+            "| Date | Branch | Commit | Kind | Description |\n|---|---|---|---|---|\n\
+             | d2 | develop | `bbb` | merge | second |\n| d1 | main | `aaa` | commit | first |"
+        );
+    }
+
+    #[test]
+    fn text_and_list_blocks_can_point_into_the_config() {
+        let c = json!({"primary": {"am": {"title": "T", "rules": ["a", "b"]}}, "data": {}});
+        let b = json!([
+            {"type": "heading", "level": 1, "ref": "primary.am.title"},
+            {"type": "list", "ref": "primary.am.rules"}
+        ]);
+        assert_eq!(
+            render_blocks(b.as_array().unwrap(), &c).unwrap(),
+            "# T\n\n- a\n- b"
+        );
+        let bad = json!([{"type": "list", "ref": "primary.am.title"}]);
+        assert!(render_blocks(bad.as_array().unwrap(), &c).is_err());
+    }
+
+    #[test]
     fn empty_document_is_an_empty_file() {
         let empty = json!({"head": [], "sections": []});
         assert_eq!(render_doc("doc", &empty, &cfg(json!({}))).unwrap().0, "");
@@ -643,10 +710,12 @@ mod tests {
     }
 
     #[test]
-    fn top_level_must_be_primary_and_data() {
-        assert!(check_top_level(&json!({"primary": {}, "data": {}})).is_ok());
-        assert!(check_top_level(&json!({"primary": {}, "data": {}, "extra": 1})).is_err());
-        assert!(check_top_level(&json!({"data": {}})).is_err());
+    fn top_level_must_be_config_primary_and_data() {
+        assert!(check_top_level(&json!({"config": {}, "primary": {}, "data": {}})).is_ok());
+        assert!(check_top_level(&json!({"primary": {}, "data": {}})).is_err());
+        assert!(
+            check_top_level(&json!({"config": {}, "primary": {}, "data": {}, "extra": 1})).is_err()
+        );
     }
 
     #[test]
@@ -701,8 +770,8 @@ mod tests {
     }
 
     #[test]
-    fn doc_paths_come_from_primary_docs_dirs() {
-        let c = json!({"primary": {"docs": {"dirs": [".", "agents/"]}}, "data": {}});
+    fn doc_paths_come_from_config_paths_docs() {
+        let c = json!({"config": {"paths": {"docs": [".", "agents/"]}}, "primary": {}, "data": {}});
         assert!(plalast::is_doc_path(&c, "README.md"));
         assert!(plalast::is_doc_path(&c, "agents/BUILD.md"));
         assert!(!plalast::is_doc_path(&c, "agents/skills/x/SKILL.md"));

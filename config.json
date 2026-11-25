@@ -1,22 +1,60 @@
 {
+  "config": {
+    "repository": "github.com/arioboo/plalast",
+    "branches": {
+      "integration": "develop",
+      "stable": "main"
+    },
+    "audit": {
+      "allow": [],
+      "max_file_kb": 1024
+    },
+    "paths": {
+      "docs": [
+        ".",
+        "agents"
+      ],
+      "on_demand": "agents",
+      "zettelkasten": "../../Projects/agent_zettelkasten",
+      "modules": {
+        "skills": {
+          "dir": "agents/skills",
+          "links": {
+            "claude": ".claude/skills"
+          }
+        },
+        "agents": {
+          "dir": "agents/subagents",
+          "links": {
+            "claude": ".claude/agents"
+          }
+        },
+        "rules": {
+          "dir": "agents/rules",
+          "links": {
+            "claude": ".claude/rules"
+          }
+        },
+        "connectors": {
+          "dir": "agents/mcp",
+          "links": {}
+        },
+        "guides": {
+          "dir": "agents/guides",
+          "links": {}
+        }
+      }
+    }
+  },
   "primary": {
     "project": {
       "name": "plalast",
       "title": "plalast - The Living Creature",
       "plalast_logo": "src/plalast.png",
-      "purpose": "The brain of this repo. Every .md in the repo root and in agents/ is generated from this file, with folders, symlinks and .gitignore: edit only this file (modules in agents/ subfolders are hand-written), then run `cargo run --release --bin pla-build`. See agents/BUILD.md.",
-      "repository": "github.com/arioboo/plalast",
-      "branches": {
-        "integration": "develop",
-        "stable": "main"
-      }
+      "purpose": "The brain of this repo. Every .md in the repo root and in agents/ is generated from this file, with folders, symlinks and .gitignore: edit only this file (modules in agents/ subfolders are hand-written), then run `cargo run --release --bin pla-build`. See agents/BUILD.md."
     },
     "docs": {
-      "definition": "Docs are all the markdown files about this project and how it operates. Every `.md` directly inside a folder of `dirs` is a doc, and every doc is generated from `data.content` by `pla-build`; a stray one fails the build.",
-      "dirs": [
-        ".",
-        "agents"
-      ],
+      "definition": "Docs are all the markdown files about this project and how it operates. Every `.md` directly inside a folder of `config.paths.docs` is a doc, and every doc is generated from `data.content` by `pla-build`; a stray one fails the build.",
       "agent_note": "note for the agent: this file is generated via the brain (config.json) and binaries (build.rs)",
       "levers": {
         "agents_md": {
@@ -40,92 +78,241 @@
         }
       },
       "on_demand": {
-        "dir": "agents",
         "heading": "On demand",
         "pointer": "`{path}`: {title}. Read it when {when}."
       }
     },
+    "agents-md": {
+      "title": "plalast - The Living Creature",
+      "intro": [
+        "This repo is a public and living creature. Turn on your VPS or machine, connect your agents, code it, teach it something, and make a pull request on Github.",
+        "The servers will be 24/7 on. This is a personal project on autonomous coding and living information systems, but everyone is welcome in."
+      ],
+      "good_practices": [
+        "Single source: `config.json` is the brain. Every `.md` in the repo root and in `agents/` is generated from it, so edit only `config.json` and run `cargo run --release --bin pla-build` (see `agents/BUILD.md`). Modules in `agents/` subfolders are hand-written. Never edit generated files by hand.",
+        "Naming: when the user says \"la memoria\", \"el contexto\" or \"el json\" (memory, context, the json), they mean `config.json`.",
+        "Docs: \"docs\" are all the markdown files about this project and how it operates; their definition, levers and on_demand settings live in `primary.docs`, their folders in `config.paths.docs`.",
+        "File changes: when the user asks to touch any file, make the change in its section of `config.json` and rebuild with `pla-build` (the Rust build tool); never edit the output directly. Only the hand-written Rust code and the modules in `agents/` subfolders are edited in place.",
+        "Secrets: they live only in `.secrets/` at the repo root, which git ignores except its `.gitkeep`. Code and configs reference them by environment variable; their values never go into other files, the chat or external services.",
+        "Memory levers: every document section in `config.json` has a lever in `primary.docs.levers`: `enabled` (always in the agent's memory), `on_demand` (its own file, read when needed) or `disabled` (not built). Every new section gets one.",
+        "Log: after every commit, merge or new branch, add an entry `{date, branch, commit, kind, descr}` to `primary.log` (a commit cannot hold its own hash, so it goes in the next commit) and rebuild; `agents/LOG.md` shows it.",
+        "Zettelkasten markdown spirit. A lot of things in the web are garbage, so notes in the agent-zettelkasten use CDU (Universal Decimal Classification) notation: the file name starts with the CDU code, then a kebab-case title, e.g. `004.8-llm-agents.md` (004.8 = artificial intelligence). The infrastructure will be up.",
+        "Specific formats: markdown for information, json for configs, bash for system scripts (setup, links, servers) and Rust for everything else (see Tools and languages).",
+        "No duplication. Only one way of functional working, only one config file, symbolic links where matters, only one zettelkasten vault, etc.",
+        "Using languages LLM-friendly like Rust, Python or Go is desirable. Also, using LLM programming-specific languages is a tool to proceed with caution, but desirable at some point.",
+        "Formal verification is desirable, but very expensive. Watch out and connect to others' ideas instead of reinventing the wheel",
+        "Open source: everyone can collaborate with it (see `README.md` at the repo root for the contribution flow)",
+        "Pareto rule: The 20% of effort in an issue makes the 80% of results, and if not, assume a similar proportion. You'll propose it, and more if it is for best practices"
+      ],
+      "commands": {
+        "tool_intro": "Repo tool (details in `agents/BUILD.md`), from anywhere inside the repo:",
+        "tool": [
+          "`cargo run --release --bin pla-build`: regenerate docs, folders and links from `config.json`",
+          "`cargo run --release --bin pla-build -- --check`: change nothing, fail if the repo drifted from `config.json`",
+          "`cargo run --release --bin pla-recall -- [term]`: print the repo map, or search it for `term`",
+          "`cargo run --release --bin pla-lint -- [config] [modules] [rust]`: check that config.json, the hand-written modules and the Rust code are well formed",
+          "`cargo run --release --bin pla-audit -- [secrets] [deps] [repo]`: look for secrets and personal data, vulnerable dependencies, broken links and branches out of sync"
+        ],
+        "code_intro": "Code:",
+        "code": [
+          "Rust: `cargo build`, `cargo test`, `cargo test <test_name>` (single test), `cargo clippy -- -D warnings`, `cargo fmt --check`",
+          "Verus: `cargo verus verify` (formal verification of the `verus!` code; install and usage in `agents/guides/verus.md`)",
+          "Lean 4: `lake build`",
+          "Dafny: `dafny verify <file>.dfy`"
+        ]
+      },
+      "tools_and_languages": [
+        "Rust: Default language for all programs and tools, with possibility to add Verus for verification.",
+        "Lean 4: For formal verification and expandable fact base.",
+        "Dafny: For software verification and default LLM-programming"
+      ],
+      "candidates": [
+        "Typescript: Best for web, UI and web scripting/crawling"
+      ]
+    },
     "features": {
       "feature_1": {
-        "descr": "",
-        "status": ""
+        "descr": "Verus + Rust",
+        "status": "verified"
       },
       "feature_2": {
-        "descr": "",
-        "status": ""
+        "descr": "agent-zettelkasten",
+        "status": "verified"
       },
       "feature_3": {
-        "descr": "",
-        "status": ""
+        "descr": "language support",
+        "status": "pending"
       }
     },
-    "log": [],
+    "log": [
+      {
+        "date": "2026-11-25",
+        "branch": "main",
+        "commit": "5087984",
+        "kind": "commit",
+        "descr": "Initial commit: AGENTS.md, CLAUDE.md and an empty README.md."
+      },
+      {
+        "date": "2026-11-25",
+        "branch": "main",
+        "commit": "53759df",
+        "kind": "commit",
+        "descr": "Expanded AGENTS.md (structure, commands), wrote README.md and linked the zettelkasten vault."
+      },
+      {
+        "date": "2026-11-25",
+        "branch": "develop",
+        "commit": "53759df",
+        "kind": "branch",
+        "descr": "Created develop from main as the integration branch."
+      },
+      {
+        "date": "2026-11-25",
+        "branch": "develop",
+        "commit": "e27d46f",
+        "kind": "commit",
+        "descr": "Contribution flow points to develop; added an empty config.json."
+      },
+      {
+        "date": "2026-11-25",
+        "branch": "main",
+        "commit": "e27d46f",
+        "kind": "merge",
+        "descr": "Fast-forward merge of develop."
+      },
+      {
+        "date": "2026-11-25",
+        "branch": "develop",
+        "commit": "cfe9d64",
+        "kind": "commit",
+        "descr": "config.json becomes the brain: docs moved to agents/ and generated by a Rust CLI (build, recall); .claude/ symlinks; module folders; .gitignore."
+      },
+      {
+        "date": "2026-11-25",
+        "branch": "main",
+        "commit": "cfe9d64",
+        "kind": "merge",
+        "descr": "Fast-forward merge of develop."
+      },
+      {
+        "date": "2026-11-25",
+        "branch": "develop",
+        "commit": "beafd54",
+        "kind": "commit",
+        "descr": "config.json split into primary and data; memory levers (enabled, on_demand, disabled) per doc section; build and recall as separate binaries."
+      },
+      {
+        "date": "2026-11-25",
+        "branch": "develop",
+        "commit": "469ea65",
+        "kind": "commit",
+        "descr": "Project logo in README.md via primary.project.plalast_logo and a new image block."
+      },
+      {
+        "date": "2026-11-25",
+        "branch": "main",
+        "commit": "469ea65",
+        "kind": "merge",
+        "descr": "Fast-forward merge of develop."
+      },
+      {
+        "date": "2026-11-25",
+        "branch": "develop",
+        "commit": "ed60c7e",
+        "kind": "commit",
+        "descr": "Added pla-lint and pla-audit; tools renamed to pla-*; naming and file-change rules in AGENTS.md."
+      },
+      {
+        "date": "2026-11-25",
+        "branch": "main",
+        "commit": "ed60c7e",
+        "kind": "merge",
+        "descr": "Fast-forward merge of develop."
+      },
+      {
+        "date": "2026-11-25",
+        "branch": "develop",
+        "commit": "d88be6f",
+        "kind": "commit",
+        "descr": "Whole memory wired into the tools: docs, features, log, index, module kinds, zettelkasten and config keys; secrets moved to .secrets/; Verus; PDF guides; wiring tests."
+      },
+      {
+        "date": "2026-11-25",
+        "branch": "main",
+        "commit": "d88be6f",
+        "kind": "merge",
+        "descr": "Fast-forward merge of develop."
+      },
+      {
+        "date": "2026-11-25",
+        "branch": "develop",
+        "commit": "95ba41f",
+        "kind": "commit",
+        "descr": "Agent note on the second line of every generated doc."
+      },
+      {
+        "date": "2026-11-25",
+        "branch": "main",
+        "commit": "95ba41f",
+        "kind": "merge",
+        "descr": "Fast-forward merge of develop."
+      }
+    ],
     "index": {},
     "skills": {
-      "definition": "Skills: reusable procedures an agent loads when its description matches the task. One folder per skill with an uppercase SKILL.md whose frontmatter has `name` (the folder name, kebab-case) and `description`. Hand-written.",
-      "dir": "agents/skills",
-      "links": {
-        "claude": ".claude/skills"
-      }
+      "definition": "Skills: reusable procedures an agent loads when its description matches the task. One folder per skill with an uppercase SKILL.md whose frontmatter has `name` (the folder name, kebab-case) and `description`. Hand-written."
     },
     "agents": {
-      "definition": "Subagents: one markdown file per subagent, whose body is its system prompt and whose frontmatter has `name` (the file name, kebab-case) and `description` (when to delegate to it). Hand-written.",
-      "dir": "agents/subagents",
-      "links": {
-        "claude": ".claude/agents"
-      }
+      "definition": "Subagents: one markdown file per subagent, whose body is its system prompt and whose frontmatter has `name` (the file name, kebab-case) and `description` (when to delegate to it). Hand-written."
     },
     "rules": {
-      "definition": "Rules: modular instructions by topic, one non-empty markdown file each. Hand-written.",
-      "dir": "agents/rules",
-      "links": {
-        "claude": ".claude/rules"
-      }
+      "definition": "Rules: modular instructions by topic, one non-empty markdown file each. Hand-written."
     },
     "connectors": {
-      "definition": "Connectors: one MCP server per json file, in a neutral format: `name` (the file name), `transport` (`stdio` or `http`), `command` and `args` (stdio) or `url` (http), and `env`. Secrets are never written in them: `env` values are `${VAR}` references whose values live in `.secrets/`. Provider configs (such as Claude Code's `.mcp.json`) are not generated yet.",
-      "dir": "agents/mcp",
-      "links": {}
+      "definition": "Connectors: one MCP server per json file, in a neutral format: `name` (the file name), `transport` (`stdio` or `http`), `command` and `args` (stdio) or `url` (http), and `env`. Secrets are never written in them: `env` values are `${VAR}` references whose values live in `.secrets/`. Provider configs (such as Claude Code's `.mcp.json`) are not generated yet."
     },
     "guides": {
       "definition": "Guides: short how-tos for humans and agents about the tools of this project. Each is a hand-written markdown source; `pla-build` renders it to a PDF next to it.",
-      "dir": "agents/guides",
-      "links": {},
       "render": "pdf"
     },
     "zettelkasten": {
-      "definition": "The single zettelkasten vault the agents use: CDU-named markdown notes outside this repo. The `zettelkasten` link at the repo root points to `path`.",
-      "path": "../../Projects/agent_zettelkasten"
-    },
-    "config": {
-      "audit": {
-        "allow": [],
-        "max_file_kb": 1024
-      }
+      "definition": "The single zettelkasten vault the agents use: CDU-named markdown notes outside this repo. The `zettelkasten` link at the repo root points to `config.paths.zettelkasten`."
     },
     "schema": {
       "keys": {
-        "primary": "Control panel: what to build and how.",
-        "primary.project": "Identity: `name`, `title`, `plalast_logo` (path of the project logo), `purpose`, `repository` and `branches`.",
+        "config": "What the tools need to run the repo: git, tool settings and every path.",
+        "config.repository": "Remote repository of the project.",
+        "config.branches": "`integration` (where work is committed) and `stable` (what receives merges); `pla-audit` checks they are in sync.",
+        "config.audit": "Settings of `pla-audit`: `allow` (exact strings or repo paths that are never reported, such as a public contact email) and `max_file_kb` (larger files are reported).",
+        "config.paths": "Every path the tools use: `docs`, `on_demand`, `zettelkasten` and `modules`.",
+        "config.paths.docs": "Folders whose `.md` files are docs (`.` is the repo root). Every `.md` directly inside them must be generated.",
+        "config.paths.on_demand": "Folder where `on_demand` sections are written as `<id>.md`.",
+        "config.paths.zettelkasten": "Path of the vault, relative to the repo root (keep it relative: an absolute path leaks your home folder). The `zettelkasten` link targets it.",
+        "config.paths.modules": "Per module kind (skills, agents, rules, connectors, guides): `dir` (where its modules are written) and `links` (provider -> folder that gets one symlink per module).",
+        "primary": "What makes the docs: project identity, texts, definitions, levers, features, log, index and this schema.",
+        "primary.project": "Identity: `name`, `title`, `plalast_logo` (path of the project logo) and `purpose`.",
         "primary.docs": "Everything about the docs, the markdown files about this project and how it operates.",
         "primary.docs.definition": "What counts as a doc, in words.",
-        "primary.docs.dirs": "Folders whose `.md` files are docs (`.` is the repo root). Every `.md` directly inside them must be generated.",
         "primary.docs.agent_note": "The note every generated doc carries on its second line, so an agent reading the file knows not to edit it by hand. Inserted by the `agent_note` block.",
         "primary.docs.levers": "Memory lever of every document section, as `<doc>` -> `<section id>` -> value (see Memory levers).",
-        "primary.docs.on_demand": "Where `on_demand` sections go (`dir`), the heading of the pointer list (`heading`) and the pointer line (`pointer`, with `{path}`, `{title}` and `{when}`).",
+        "primary.docs.on_demand": "How `on_demand` sections are pointed at: the heading of the pointer list (`heading`) and the pointer line (`pointer`, with `{path}`, `{title}` and `{when}`). Their folder is `config.paths.on_demand`.",
+        "primary.agents-md": "The text of agents/AGENTS.md, split into fields; `data.content.agents_md` gives the doc its shape (sections, levers, agent note) and points at these fields with `ref`.",
+        "primary.agents-md.title": "Title of AGENTS.md (its first line).",
+        "primary.agents-md.intro": "Paragraphs under the title.",
+        "primary.agents-md.good_practices": "Rules every agent follows (the Best practices section).",
+        "primary.agents-md.commands": "The Commands section: `tool_intro` and `tool` (the pla-* tools), `code_intro` and `code` (cargo and verifiers).",
+        "primary.agents-md.tools_and_languages": "Languages and verifiers in use.",
+        "primary.agents-md.candidates": "Languages that may be used later.",
         "primary.features": "Features of the project, as `feature_<n>` -> `{descr, status}` (both strings).",
-        "primary.log": "Project log: a list of entries (empty for now; the entry format is not defined yet).",
+        "primary.log": "Project log: entries `{date, branch, commit, kind, descr}` in the order they happened; `kind` is `commit`, `merge` or `branch`. A commit cannot hold its own hash, so each one is logged in the next commit. LOG.md shows them newest first; `pla-audit` warns about commits missing from it.",
         "primary.index": "Project index (empty for now; its format is not defined yet).",
-        "primary.skills": "Skills: `definition`, `dir` (where they are written) and `links` (provider -> folder that gets one symlink per skill).",
-        "primary.agents": "Subagents: `definition`, `dir` and `links`, as in primary.skills.",
-        "primary.rules": "Rules: `definition`, `dir` and `links`, as in primary.skills.",
-        "primary.connectors": "MCP connectors: `definition`, `dir` and `links`, as in primary.skills. `pla-lint` checks each file's neutral format.",
-        "primary.guides": "Guides: `definition`, `dir`, `links` (as in primary.skills) and `render` (`pdf`: each .md is rendered to a .pdf by `pla-build`).",
-        "primary.zettelkasten": "The zettelkasten vault to use.",
+        "primary.skills": "Skills: `definition`; its folder and provider links are in `config.paths.modules`.",
+        "primary.agents": "Subagents: `definition`; its folder and provider links are in `config.paths.modules`.",
+        "primary.rules": "Rules: `definition`; its folder and provider links are in `config.paths.modules`.",
+        "primary.connectors": "MCP connectors: `definition`; its folder and provider links are in `config.paths.modules`. `pla-lint` checks each file's neutral format.",
+        "primary.guides": "Guides: `definition` and `render` (`pdf`: each .md is rendered to a .pdf by `pla-build`); folder and links in `config.paths.modules.guides`.",
+        "primary.zettelkasten": "The zettelkasten vault to use: its `definition`; the path is `config.paths.zettelkasten`.",
         "primary.zettelkasten.definition": "What the vault is, in words.",
-        "primary.zettelkasten.path": "Path of the vault, relative to the repo root (keep it relative: an absolute path leaks your home folder). The `zettelkasten` link targets it.",
-        "primary.config": "Settings of the pla-* tools, one key per tool.",
-        "primary.config.audit": "Settings of `pla-audit`: `allow` (exact strings or repo paths that are never reported, such as a public contact email) and `max_file_kb` (larger files are reported).",
         "primary.schema": "This documentation of the config format; `BUILD.md` renders its tables.",
         "data": "What gets built.",
         "data.structure": "Every path, in order: `path`, `type`, `description`; optional `table` and `label` (its row in the Structure table), `gitkeep`, `secret`, `target` and `build`.",
@@ -133,29 +320,30 @@
       },
       "levers": {
         "enabled": "Rendered inside its document as `## <title>`: always in the agent's memory.",
-        "on_demand": "Rendered to `<primary.docs.on_demand.dir>/<id>.md`; the document keeps only a pointer line under the on_demand heading, and the agent reads the file when `when` applies.",
+        "on_demand": "Rendered to `<config.paths.on_demand>/<id>.md`; the document keeps only a pointer line under the on_demand heading, and the agent reads the file when `when` applies.",
         "disabled": "Not rendered anywhere."
       },
       "entry_types": {
         "dir": "Creates the folder; `gitkeep: true` adds an empty `.gitkeep`; `secret: true` git-ignores its contents except `.gitkeep`.",
-        "symlink": "Creates a link to `target`, relative to the link's folder; `target_ref` (a dotted config path such as `primary.zettelkasten.path`) can replace `target`.",
+        "symlink": "Creates a link to `target`, relative to the link's folder; `target_ref` (a dotted config path such as `config.paths.zettelkasten`) can replace `target`.",
         "file + build": "Renders `data.content.<build>`; `build: \"gitignore\"` renders `.gitignore` from the secret and ignored entries.",
         "file + build: null": "Hand-written code such as `Cargo.toml` or `src/`; never an `.md` in the root or `agents/`. Left as is.",
         "ignored": "Not created; listed in `.gitignore`.",
         "planned": "Not created; listed as planned in the Structure table."
       },
       "blocks": {
-        "heading": "`#` repeated `level` times, then `text`",
-        "paragraph": "`text` as is",
-        "raw": "`text` as is",
-        "list": "one `- item` line per item",
-        "ordered_list": "`1. item`, `2. item`, ...",
+        "heading": "`#` repeated `level` times, then `text`; `ref` (a dotted config path) can replace `text`",
+        "paragraph": "`text` as is; `ref` (a dotted config path) can replace `text`",
+        "raw": "`text` as is; `ref` (a dotted config path) can replace `text`",
+        "list": "one `- item` line per item; `ref` (a dotted config path to a list of strings) can replace `items`",
+        "ordered_list": "`1. item`, `2. item`, ...; `ref` (a dotted config path to a list of strings) can replace `items`",
         "code": "a fenced block with `lang` and `text`",
         "table": "`header` and `rows` as a markdown table",
         "structure_table": "the Structure table, from the `data.structure` entries that have `table`",
         "schema": "a table of `primary.schema.<part>` with the given `header`",
         "image": "`![alt](src)`, or an HTML `<img>` when `width` is set; `ref` (a dotted config path such as `primary.project.plalast_logo`) can replace `src`",
-        "agent_note": "the text of `primary.docs.agent_note`, on the line right after the first one (no blank line); every doc has it as the second block of its `head`"
+        "agent_note": "the text of `primary.docs.agent_note`, on the line right after the first one (no blank line); every doc has it as the second block of its `head`",
+        "log": "a table of `primary.log`, newest first: date, branch, commit, kind and description"
       }
     }
   },
@@ -246,7 +434,7 @@
         "path": "agents/LOG.md",
         "type": "file",
         "build": "log_md",
-        "description": "Log doc. Generated from data.content.log_md (only its title and the agent note for now)."
+        "description": "Log doc: branches, commits and merges, generated from primary.log."
       },
       {
         "path": "agents/INDEX.md",
@@ -311,7 +499,7 @@
       {
         "path": ".claude/",
         "type": "dir",
-        "table": "Claude Code adapter: `pla-build` links each module of `agents/` one by one, as the `links` of `primary.skills`, `primary.agents` and `primary.rules` say",
+        "table": "Claude Code adapter: `pla-build` links each module of `agents/` one by one, as `config.paths.modules.<kind>.links` says",
         "description": "Claude Code reads this natively."
       },
       {
@@ -360,8 +548,8 @@
         "path": "zettelkasten",
         "type": "symlink",
         "table": "Symlink to the single zettelkasten vault (CDU-named notes), outside this repo",
-        "description": "Link to the zettelkasten vault; its target is primary.zettelkasten.path. It resolves only where the vault sits at that position relative to the repo.",
-        "target_ref": "primary.zettelkasten.path"
+        "description": "Link to the zettelkasten vault; its target is config.paths.zettelkasten. It resolves only where the vault sits at that position relative to the repo.",
+        "target_ref": "config.paths.zettelkasten"
       }
     ],
     "content": {
@@ -370,18 +558,18 @@
           {
             "type": "heading",
             "level": 1,
-            "text": "plalast - The Living Creature"
+            "ref": "primary.agents-md.title"
           },
           {
             "type": "agent_note"
           },
           {
             "type": "paragraph",
-            "text": "This repo is a public and living creature. Turn on your VPS or machine, connect your agents, code it, teach it something, and make a pull request on Github."
+            "ref": "primary.agents-md.intro.0"
           },
           {
             "type": "paragraph",
-            "text": "The servers will be 24/7 on. This is a personal project on autonomous coding and living information systems, but everyone is welcome in."
+            "ref": "primary.agents-md.intro.1"
           }
         ],
         "sections": [
@@ -392,20 +580,7 @@
             "blocks": [
               {
                 "type": "list",
-                "items": [
-                  "Single source: `config.json` is the brain. Every `.md` in the repo root and in `agents/` is generated from it, so edit only `config.json` and run `cargo run --release --bin pla-build` (see `agents/BUILD.md`). Modules in `agents/` subfolders are hand-written. Never edit generated files by hand.",
-                  "Naming: when the user says \"la memoria\", \"el contexto\" or \"el json\" (memory, context, the json), they mean `config.json`.",
-                  "Docs: \"docs\" are all the markdown files about this project and how it operates; their definition, folders, levers and on_demand settings live in `primary.docs`.",
-                  "File changes: when the user asks to touch any file, make the change in its section of `config.json` and rebuild with `pla-build` (the Rust build tool); never edit the output directly. Only the hand-written Rust code and the modules in `agents/` subfolders are edited in place.",
-                  "Secrets: they live only in `.secrets/` at the repo root, which git ignores except its `.gitkeep`. Code and configs reference them by environment variable; their values never go into other files, the chat or external services.",
-                  "Memory levers: every document section in `config.json` has a lever in `primary.docs.levers`: `enabled` (always in the agent's memory), `on_demand` (its own file, read when needed) or `disabled` (not built). Every new section gets one.",
-                  "Zettelkasten markdown spirit. A lot of things in the web are garbage, so notes in the agent-zettelkasten use CDU (Universal Decimal Classification) notation: the file name starts with the CDU code, then a kebab-case title, e.g. `004.8-llm-agents.md` (004.8 = artificial intelligence). The infrastructure will be up.",
-                  "Specific formats: markdown for information, json for configs, bash for system scripts (setup, links, servers) and Rust for everything else (see Tools and languages).",
-                  "No duplication. Only one way of functional working, only one config file, symbolic links where matters, only one zettelkasten vault, etc.",
-                  "Using languages LLM-friendly like Rust, Python or Go is desirable. Also, using LLM programming-specific languages is a tool to proceed with caution, but desirable at some point.",
-                  "Formal verification is desirable, but very expensive. Watch out and connect to others' ideas instead of reinventing the wheel",
-                  "Open source: everyone can collaborate with it (see `README.md` at the repo root for the contribution flow)"
-                ]
+                "ref": "primary.agents-md.good_practices"
               }
             ]
           },
@@ -426,30 +601,19 @@
             "blocks": [
               {
                 "type": "paragraph",
-                "text": "Repo tool (details in `agents/BUILD.md`), from anywhere inside the repo:"
+                "ref": "primary.agents-md.commands.tool_intro"
               },
               {
                 "type": "list",
-                "items": [
-                  "`cargo run --release --bin pla-build`: regenerate docs, folders and links from `config.json`",
-                  "`cargo run --release --bin pla-build -- --check`: change nothing, fail if the repo drifted from `config.json`",
-                  "`cargo run --release --bin pla-recall -- [term]`: print the repo map, or search it for `term`",
-                  "`cargo run --release --bin pla-lint -- [config] [modules] [rust]`: check that config.json, the hand-written modules and the Rust code are well formed",
-                  "`cargo run --release --bin pla-audit -- [secrets] [deps] [repo]`: look for secrets and personal data, vulnerable dependencies, broken links and branches out of sync"
-                ]
+                "ref": "primary.agents-md.commands.tool"
               },
               {
                 "type": "paragraph",
-                "text": "Code:"
+                "ref": "primary.agents-md.commands.code_intro"
               },
               {
                 "type": "list",
-                "items": [
-                  "Rust: `cargo build`, `cargo test`, `cargo test <test_name>` (single test), `cargo clippy -- -D warnings`, `cargo fmt --check`",
-                  "Verus: `cargo verus verify` (formal verification of the `verus!` code; install and usage in `agents/guides/verus.md`)",
-                  "Lean 4: `lake build`",
-                  "Dafny: `dafny verify <file>.dfy`"
-                ]
+                "ref": "primary.agents-md.commands.code"
               }
             ]
           },
@@ -460,11 +624,7 @@
             "blocks": [
               {
                 "type": "list",
-                "items": [
-                  "Rust: Default language for all programs and tools, with possibility to add Verus for verification.",
-                  "Lean 4: For formal verification and expandable fact base.",
-                  "Dafny: For software verification and default LLM-programming"
-                ]
+                "ref": "primary.agents-md.tools_and_languages"
               }
             ]
           },
@@ -475,9 +635,7 @@
             "blocks": [
               {
                 "type": "list",
-                "items": [
-                  "Typescript: Best for web, UI and web scripting/crawling"
-                ]
+                "ref": "primary.agents-md.candidates"
               }
             ]
           }
@@ -589,7 +747,7 @@
                   ],
                   [
                     "`cargo run --release --bin pla-audit`",
-                    "Looks for keys, tokens, emails and home-folder paths in what git would commit, files committed inside secret folders, known vulnerabilities in `Cargo.lock` (with `cargo-audit`), broken links, large files, uncommitted changes and branches out of sync. Pass `secrets`, `deps` or `repo` to run only some areas; `primary.config.audit` holds its settings."
+                    "Looks for keys, tokens, emails and home-folder paths in what git would commit, files committed inside secret folders, known vulnerabilities in `Cargo.lock` (with `cargo-audit`), broken links, large files, uncommitted changes and branches out of sync. Pass `secrets`, `deps` or `repo` to run only some areas; `config.audit` holds its settings."
                   ]
                 ]
               },
@@ -606,7 +764,7 @@
             "blocks": [
               {
                 "type": "paragraph",
-                "text": "It has exactly two top-level keys: `primary`, the control panel (what to build and how), and `data`, what gets built. Any other top-level key is an error."
+                "text": "It has exactly three top-level keys: `config`, what the tools need to run the repo (git, settings, paths); `primary`, what makes the docs (identity, texts, definitions, levers); and `data`, what gets built. Any other top-level key is an error."
               },
               {
                 "type": "schema",
@@ -682,7 +840,7 @@
             "blocks": [
               {
                 "type": "paragraph",
-                "text": "Write the module in its folder (for example `agents/skills/<name>/SKILL.md`) and run `pla-build`: each provider in the module type's `links` (`primary.skills`, `primary.agents`, `primary.rules`, `primary.connectors`) gets one link for it (`.claude/skills/<name>` -> `../../agents/skills/<name>`), never a whole folder. Links of deleted modules are removed on the next build."
+                "text": "Write the module in its folder (for example `agents/skills/<name>/SKILL.md`) and run `pla-build`: each provider in `config.paths.modules.<kind>.links` gets one link for it (`.claude/skills/<name>` -> `../../agents/skills/<name>`), never a whole folder. Links of deleted modules are removed on the next build."
               },
               {
                 "type": "paragraph",
@@ -725,6 +883,13 @@
           },
           {
             "type": "agent_note"
+          },
+          {
+            "type": "paragraph",
+            "text": "Branches, commits and merges of this repo, newest first. Source: `primary.log` in `config.json`."
+          },
+          {
+            "type": "log"
           }
         ],
         "sections": []

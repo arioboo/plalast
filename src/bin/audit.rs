@@ -9,9 +9,11 @@
 //! `repo`:    broken symlinks, links leaving the repo, large files, uncommitted changes and
 //!            branches out of sync (against the last fetch; it does not fetch).
 //!
-//! Exact strings listed in `primary.config.audit.allow` are never reported.
+//! Exact strings listed in `config.audit.allow` are never reported.
 
-use plalast::{arr, cargo, data, exit, open, primary, repo_files, run, str_of, strings, Findings};
+use plalast::{
+    arr, cargo, config, data, exit, open, primary, repo_files, run, str_of, strings, Findings,
+};
 use regex::Regex;
 use serde_json::Value;
 use std::env;
@@ -100,7 +102,7 @@ fn scan(text: &str, pats: &[(&str, Regex)], allow: &[String]) -> Vec<(usize, Str
 
 fn audit_secrets(root: &Path, cfg: &Value, f: &mut Findings) -> Result<(), String> {
     let pats = patterns();
-    let allow = strings(&primary(cfg)["config"]["audit"], "allow");
+    let allow = strings(&config(cfg)["audit"], "allow");
     for file in repo_files(root)? {
         let p = root.join(&file);
         if p.is_symlink() || !p.is_file() {
@@ -181,10 +183,8 @@ fn lexical_target(link: &Path, target: &Path) -> PathBuf {
 
 fn audit_repo(root: &Path, cfg: &Value, f: &mut Findings) -> Result<(), String> {
     const A: &str = "repo";
-    let allow = strings(&primary(cfg)["config"]["audit"], "allow");
-    let max_kb = primary(cfg)["config"]["audit"]["max_file_kb"]
-        .as_u64()
-        .unwrap_or(1024);
+    let allow = strings(&config(cfg)["audit"], "allow");
+    let max_kb = config(cfg)["audit"]["max_file_kb"].as_u64().unwrap_or(1024);
     for file in repo_files(root)? {
         if allow.contains(&file) {
             continue;
@@ -207,10 +207,29 @@ fn audit_repo(root: &Path, cfg: &Value, f: &mut Findings) -> Result<(), String> 
                 f.warn(
                     A,
                     format!(
-                        "{file}: {} KB, larger than primary.config.audit.max_file_kb ({max_kb} KB)",
+                        "{file}: {} KB, larger than config.audit.max_file_kb ({max_kb} KB)",
                         meta.len() / 1024
                     ),
                 );
+            }
+        }
+    }
+
+    // Log: every commit of the integration and stable branches is in primary.log, except HEAD
+    // (a commit cannot hold its own hash, so it is logged by the next one).
+    let logged: Vec<String> = arr(primary(cfg), "log")
+        .iter()
+        .filter_map(|e| str_of(e, "commit").map(String::from))
+        .collect();
+    let (_, head) = run(root, "git", &["rev-parse", "--short", "HEAD"])?;
+    let (ok, hashes) = run(root, "git", &["log", "--format=%h", "--branches"])?;
+    if ok {
+        for h in hashes.lines().filter(|h| *h != head.trim()) {
+            if !logged
+                .iter()
+                .any(|l| h.starts_with(l.as_str()) || l.starts_with(h))
+            {
+                f.warn(A, format!("commit {h} is not in primary.log"));
             }
         }
     }
@@ -220,7 +239,7 @@ fn audit_repo(root: &Path, cfg: &Value, f: &mut Findings) -> Result<(), String> 
     if changed > 0 {
         f.warn(A, format!("{changed} uncommitted change(s)"));
     }
-    let branches = primary(cfg)["project"]["branches"].clone();
+    let branches = config(cfg)["branches"].clone();
     let integration = str_of(&branches, "integration").unwrap_or("develop");
     let stable = str_of(&branches, "stable").unwrap_or("main");
     let pairs = [

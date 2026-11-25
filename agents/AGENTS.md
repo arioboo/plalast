@@ -9,16 +9,18 @@ The servers will be 24/7 on. This is a personal project on autonomous coding and
 
 - Single source: `config.json` is the brain. Every `.md` in the repo root and in `agents/` is generated from it, so edit only `config.json` and run `cargo run --release --bin pla-build` (see `agents/BUILD.md`). Modules in `agents/` subfolders are hand-written. Never edit generated files by hand.
 - Naming: when the user says "la memoria", "el contexto" or "el json" (memory, context, the json), they mean `config.json`.
-- Docs: "docs" are all the markdown files about this project and how it operates; their definition, folders, levers and on_demand settings live in `primary.docs`.
+- Docs: "docs" are all the markdown files about this project and how it operates; their definition, levers and on_demand settings live in `primary.docs`, their folders in `config.paths.docs`.
 - File changes: when the user asks to touch any file, make the change in its section of `config.json` and rebuild with `pla-build` (the Rust build tool); never edit the output directly. Only the hand-written Rust code and the modules in `agents/` subfolders are edited in place.
 - Secrets: they live only in `.secrets/` at the repo root, which git ignores except its `.gitkeep`. Code and configs reference them by environment variable; their values never go into other files, the chat or external services.
 - Memory levers: every document section in `config.json` has a lever in `primary.docs.levers`: `enabled` (always in the agent's memory), `on_demand` (its own file, read when needed) or `disabled` (not built). Every new section gets one.
+- Log: after every commit, merge or new branch, add an entry `{date, branch, commit, kind, descr}` to `primary.log` (a commit cannot hold its own hash, so it goes in the next commit) and rebuild; `agents/LOG.md` shows it.
 - Zettelkasten markdown spirit. A lot of things in the web are garbage, so notes in the agent-zettelkasten use CDU (Universal Decimal Classification) notation: the file name starts with the CDU code, then a kebab-case title, e.g. `004.8-llm-agents.md` (004.8 = artificial intelligence). The infrastructure will be up.
 - Specific formats: markdown for information, json for configs, bash for system scripts (setup, links, servers) and Rust for everything else (see Tools and languages).
 - No duplication. Only one way of functional working, only one config file, symbolic links where matters, only one zettelkasten vault, etc.
 - Using languages LLM-friendly like Rust, Python or Go is desirable. Also, using LLM programming-specific languages is a tool to proceed with caution, but desirable at some point.
 - Formal verification is desirable, but very expensive. Watch out and connect to others' ideas instead of reinventing the wheel
 - Open source: everyone can collaborate with it (see `README.md` at the repo root for the contribution flow)
+- Pareto rule: The 20% of effort in an issue makes the 80% of results, and if not, assume a similar proportion. You'll propose it, and more if it is for best practices
 
 ## Structure
 
@@ -39,7 +41,7 @@ Paths are added here as they are created:
 | `agents/hooks/` | Hook scripts (their config lives in each provider's settings) |
 | `agents/mcp/<server>.json` | One MCP connector per file |
 | `agents/memory/` | Persistent memory (json) |
-| `.claude/` | Claude Code adapter: `pla-build` links each module of `agents/` one by one, as the `links` of `primary.skills`, `primary.agents` and `primary.rules` say |
+| `.claude/` | Claude Code adapter: `pla-build` links each module of `agents/` one by one, as `config.paths.modules.<kind>.links` says |
 | `zettelkasten` | Symlink to the single zettelkasten vault (CDU-named notes), outside this repo |
 
 ## Commands

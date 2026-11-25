@@ -4,8 +4,8 @@
 //! - `pla-recall <term>`   matching paths, and document lines with their file, section and lever.
 
 use plalast::{
-    arr, data, doc_dirs, docs, exit, lever, module_dir, open, primary, str_of, strings, CONFIG,
-    MODULE_KINDS,
+    arr, block_items, block_text, config, data, doc_dirs, docs, exit, lever, module_dir, open,
+    paths, primary, str_of, CONFIG, LOG_FIELDS, MODULE_KINDS,
 };
 use serde_json::Value;
 use std::env;
@@ -40,9 +40,10 @@ fn documents(cfg: &Value) -> Vec<(&str, &str)> {
 }
 
 /// Every string a block shows: `text`, list items and table cells.
-fn block_texts(b: &Value) -> Vec<String> {
-    let mut texts: Vec<String> = str_of(b, "text").map(String::from).into_iter().collect();
-    texts.extend(strings(b, "items"));
+fn block_texts(cfg: &Value, b: &Value) -> Vec<String> {
+    // `text`/`items` or what their `ref` points at (such as primary.agents-md).
+    let mut texts: Vec<String> = block_text(cfg, b).into_iter().collect();
+    texts.extend(block_items(cfg, b).unwrap_or_default());
     texts.extend(
         arr(b, "rows")
             .iter()
@@ -80,7 +81,7 @@ fn recall(root: &Path, cfg: &Value, query: &str) -> bool {
     if q.is_empty() {
         // Module kinds and the zettelkasten (primary.<kind>, primary.zettelkasten).
         for kind in MODULE_KINDS {
-            let links: Vec<String> = primary(cfg)[kind]["links"]
+            let links: Vec<String> = paths(cfg)["modules"][kind]["links"]
                 .as_object()
                 .into_iter()
                 .flatten()
@@ -100,7 +101,7 @@ fn recall(root: &Path, cfg: &Value, query: &str) -> bool {
             };
             println!("{dir:<30} {kind:<10} {links}; modules: {names}");
         }
-        if let Some(z) = str_of(&primary(cfg)["zettelkasten"], "path") {
+        if let Some(z) = str_of(paths(cfg), "zettelkasten") {
             println!("{z:<30} {:<10} the vault the agents use", "zettelkasten");
         }
         // Plain data: features, log, index, and the tools' settings.
@@ -127,9 +128,13 @@ fn recall(root: &Path, cfg: &Value, query: &str) -> bool {
             "Index (primary.index): {} entries",
             count(&primary(cfg)["index"])
         );
-        let audit = &primary(cfg)["config"]["audit"];
+        let c = config(cfg);
+        let audit = &c["audit"];
         println!(
-            "Config (primary.config): audit allows {} string(s), reports files over {} KB",
+            "Config (config): repository {}, branches {} -> {}, audit allows {} string(s) and reports files over {} KB",
+            str_of(c, "repository").unwrap_or("?"),
+            str_of(&c["branches"], "integration").unwrap_or("?"),
+            str_of(&c["branches"], "stable").unwrap_or("?"),
             count(&audit["allow"]),
             audit["max_file_kb"].as_u64().unwrap_or(0)
         );
@@ -149,10 +154,9 @@ fn recall(root: &Path, cfg: &Value, query: &str) -> bool {
             }
         }
         for (i, entry) in arr(primary(cfg), "log").iter().enumerate() {
-            let text = entry
-                .as_str()
-                .map(String::from)
-                .unwrap_or_else(|| entry.to_string());
+            let text = LOG_FIELDS
+                .map(|k| str_of(entry, k).unwrap_or(""))
+                .join(" | ");
             if hit(&text) {
                 found = true;
                 println!("primary.log[{i}]: {text}");
@@ -208,7 +212,7 @@ fn recall(root: &Path, cfg: &Value, query: &str) -> bool {
     for (path, key) in documents(cfg) {
         let doc = &data(cfg)["content"][key];
         for b in arr(doc, "head") {
-            for t in block_texts(b).iter().filter(|t| hit(t)) {
+            for t in block_texts(cfg, b).iter().filter(|t| hit(t)) {
                 found = true;
                 println!("{path} › (head): {t}");
             }
@@ -221,7 +225,7 @@ fn recall(root: &Path, cfg: &Value, query: &str) -> bool {
                 .iter()
                 .filter_map(|k| str_of(s, k).map(String::from))
                 .collect();
-            texts.extend(arr(s, "blocks").iter().flat_map(block_texts));
+            texts.extend(arr(s, "blocks").iter().flat_map(|b| block_texts(cfg, b)));
             for t in texts.iter().filter(|t| hit(t)) {
                 found = true;
                 println!("{path} › {title} [{state}]: {t}");
