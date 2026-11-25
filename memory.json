@@ -90,6 +90,11 @@
         "cmd": "`git config core.hooksPath agents/hooks`",
         "summary": "once per clone, so git's pre-commit hook refuses commits while `pla-build --check` fails",
         "detail": "Run once per clone: git then uses `agents/hooks`, whose `pre-commit` refuses a commit while `pla-build --check` fails. `pla-audit` warns when it is not set."
+      },
+      {
+        "cmd": "`cargo install cargo-audit --locked`",
+        "summary": "once per machine, so `pla-audit deps` checks `Cargo.lock` against RustSec instead of skipping it",
+        "detail": "Run once per machine (it compiles from source and can take about 15 minutes): `pla-audit deps` then checks `Cargo.lock` against the RustSec advisory database. Without it, that check is skipped with a warning."
       }
     ],
     "features": {

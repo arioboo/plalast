@@ -35,6 +35,7 @@ Repo tool (details in `agents/BUILD.md`), from anywhere inside the repo:
 - `cargo run --release --bin pla-lint -- [memory] [modules] [rust]`: check that the memory, the hand-written modules and the Rust code are well formed
 - `cargo run --release --bin pla-audit -- [secrets] [deps] [repo]`: look for secrets and personal data, vulnerable dependencies, broken links and branches out of sync
 - `git config core.hooksPath agents/hooks`: once per clone, so git's pre-commit hook refuses commits while `pla-build --check` fails
+- `cargo install cargo-audit --locked`: once per machine, so `pla-audit deps` checks `Cargo.lock` against RustSec instead of skipping it
 
 Code:
 
