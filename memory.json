@@ -246,6 +246,20 @@
         "commit": "75e8f40",
         "kind": "commit",
         "descr": "tmux start command made path-independent: it runs from the repo root and expands $PWD instead of a fixed folder."
+      },
+      {
+        "date": "2026-11-25",
+        "branch": "develop",
+        "commit": "8141acb",
+        "kind": "commit",
+        "descr": "Verus install on Linux written into its guide, with rustfmt and clippy for pla-lint; PLALAST_DIR and the zettelkasten path fixed for this machine."
+      },
+      {
+        "date": "2026-11-25",
+        "branch": "develop",
+        "commit": "43cb824",
+        "kind": "commit",
+        "descr": "Log entries for the two tmux.conf commits."
       }
     ],
     "index": {},

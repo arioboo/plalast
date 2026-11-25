@@ -5,6 +5,8 @@ Branches, commits and merges of this repo, newest first. Source: `primary.log` i
 
 | Date | Branch | Commit | Kind | Description |
 |---|---|---|---|---|
+| 2026-11-25 | develop | `43cb824` | commit | Log entries for the two tmux.conf commits. |
+| 2026-11-25 | develop | `8141acb` | commit | Verus install on Linux written into its guide, with rustfmt and clippy for pla-lint; PLALAST_DIR and the zettelkasten path fixed for this machine. |
 | 2026-11-25 | main | `75e8f40` | commit | tmux start command made path-independent: it runs from the repo root and expands $PWD instead of a fixed folder. |
 | 2026-11-25 | main | `31ef9f3` | commit | Added tmux.conf for the plalast session: agent, build and git windows plus a green status bar, scoped to the session. |
 | 2026-11-25 | develop | `1c45670` | commit | Brain moved to memory.json + params.yaml, deduplicated and cleaned up. |
