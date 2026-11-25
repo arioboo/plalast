@@ -1,9 +1,12 @@
-//! plalast: build and recall the repo from `config.json`, its single source of truth.
+//! build: renders every generated `.md`, folder, symlink and `.gitignore` from `config.json`.
 //!
-//! - `build`           renders every generated `.md`, folder, symlink and `.gitignore`.
-//! - `build --check`   changes nothing; fails if the repo drifted from `config.json`.
-//! - `recall [term]`   prints the repo map, or searches it for `term`.
+//! - `plalast-build`           applies the changes.
+//! - `plalast-build --check`   changes nothing; fails if the repo drifted from `config.json`.
+//!
+//! Each document section is rendered according to its memory lever
+//! (`primary.levers.<doc>.<section id>`): `enabled`, `on_demand` or `disabled`.
 
+use plalast::{arr, data, exit, lever, open, primary, req, str_of, strings, Res, CONFIG};
 use serde_json::Value;
 use std::env;
 use std::fs;
@@ -11,77 +14,19 @@ use std::os::unix::fs::symlink;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-const CONFIG: &str = "config.json";
-const USAGE: &str = "usage: plalast build [--check] | plalast recall [term]";
-
-type Res<T> = Result<T, String>;
+const USAGE: &str = "usage: plalast-build [--check]";
 
 fn main() -> ExitCode {
     let args: Vec<String> = env::args().skip(1).collect();
-    let run = || -> Res<bool> {
-        let root = find_root()?;
-        let cfg = load(&root)?;
-        match args.first().map(String::as_str) {
-            Some("build") => match args.get(1).map(String::as_str) {
-                None => build(&root, &cfg, false),
-                Some("--check") => build(&root, &cfg, true),
-                Some(other) => Err(format!("unknown option {other}\n{USAGE}")),
-            },
-            Some("recall") => Ok(recall(&cfg, &args[1..].join(" "))),
-            _ => Err(USAGE.to_string()),
-        }
-    };
-    match run() {
-        Ok(true) => ExitCode::SUCCESS,
-        Ok(false) => ExitCode::FAILURE,
-        Err(e) => {
-            eprintln!("error: {e}");
-            ExitCode::from(2)
-        }
-    }
-}
-
-// ---------- config ----------
-
-/// Walks up from the current directory to the folder that holds `config.json`.
-fn find_root() -> Res<PathBuf> {
-    let mut dir = env::current_dir().map_err(|e| e.to_string())?;
-    loop {
-        if dir.join(CONFIG).is_file() {
-            return Ok(dir);
-        }
-        if !dir.pop() {
-            return Err(format!("no {CONFIG} found in this folder or any parent"));
-        }
-    }
-}
-
-fn load(root: &Path) -> Res<Value> {
-    let text = fs::read_to_string(root.join(CONFIG)).map_err(|e| format!("{CONFIG}: {e}"))?;
-    serde_json::from_str(&text).map_err(|e| format!("{CONFIG}: {e}"))
-}
-
-fn str_of<'a>(v: &'a Value, key: &str) -> Option<&'a str> {
-    v.get(key).and_then(Value::as_str)
-}
-
-fn arr<'a>(v: &'a Value, key: &str) -> &'a [Value] {
-    v.get(key)
-        .and_then(Value::as_array)
-        .map(Vec::as_slice)
-        .unwrap_or(&[])
-}
-
-fn strings(v: &Value, key: &str) -> Vec<String> {
-    arr(v, key)
-        .iter()
-        .filter_map(Value::as_str)
-        .map(String::from)
-        .collect()
-}
-
-fn req<'a>(v: &'a Value, key: &str, ctx: &str) -> Res<&'a str> {
-    str_of(v, key).ok_or_else(|| format!("{ctx}: missing string field `{key}`"))
+    exit((|| {
+        let check = match args.first().map(String::as_str) {
+            None => false,
+            Some("--check") => true,
+            Some(other) => return Err(format!("unknown option {other}\n{USAGE}")),
+        };
+        let (root, cfg) = open()?;
+        build(&root, &cfg, check)
+    })())
 }
 
 // ---------- render ----------
@@ -130,7 +75,21 @@ fn structure_table(structure: &[Value]) -> String {
     )
 }
 
-fn render_blocks(blocks: &[Value], structure: &[Value]) -> Res<String> {
+/// Table of `primary.schema.<part>`: one row per key, in config order.
+fn schema_table(cfg: &Value, block: &Value) -> Res<String> {
+    let part = req(block, "part", "schema block")?;
+    let map = primary(cfg)["schema"][part]
+        .as_object()
+        .ok_or_else(|| format!("schema block: primary.schema.{part} is missing"))?;
+    let rows: Vec<Vec<String>> = map
+        .iter()
+        .map(|(k, v)| vec![format!("`{k}`"), v.as_str().unwrap_or("").to_string()])
+        .collect();
+    Ok(md_table(&strings(block, "header"), &rows))
+}
+
+/// Markdown for a list of blocks, separated by one blank line, without a trailing newline.
+fn render_blocks(blocks: &[Value], cfg: &Value) -> Res<String> {
     let mut parts = Vec::new();
     for b in blocks {
         let kind = req(b, "type", "content block")?;
@@ -170,12 +129,83 @@ fn render_blocks(blocks: &[Value], structure: &[Value]) -> Res<String> {
                     .collect();
                 md_table(&strings(b, "header"), &rows)
             }
-            "structure_table" => structure_table(structure),
+            "structure_table" => structure_table(arr(data(cfg), "structure")),
+            "schema" => schema_table(cfg, b)?,
             other => return Err(format!("unknown content block type `{other}`")),
         };
         parts.push(part);
     }
-    Ok(format!("{}\n", parts.join("\n\n").trim_end()))
+    Ok(parts.join("\n\n").trim_end().to_string())
+}
+
+/// Renders document `key`: its main text plus one `(path, text)` per `on_demand` section.
+fn render_doc(key: &str, doc: &Value, cfg: &Value) -> Res<(String, Vec<(String, String)>)> {
+    let sections = arr(doc, "sections");
+    let allowed: Vec<&str> = primary(cfg)["schema"]["levers"]
+        .as_object()
+        .map(|m| m.keys().map(String::as_str).collect())
+        .unwrap_or_default();
+    if let Some(levers) = primary(cfg)["levers"][key].as_object() {
+        for id in levers.keys() {
+            if !sections.iter().any(|s| str_of(s, "id") == Some(id)) {
+                return Err(format!(
+                    "primary.levers.{key}.{id}: no such section in data.content.{key}"
+                ));
+            }
+        }
+    }
+
+    let mut parts = Vec::new();
+    let head = render_blocks(arr(doc, "head"), cfg)?;
+    if !head.is_empty() {
+        parts.push(head);
+    }
+    let on_demand = &primary(cfg)["on_demand"];
+    let mut pointers = Vec::new();
+    let mut files = Vec::new();
+    for s in sections {
+        let id = req(s, "id", &format!("data.content.{key} section"))?;
+        let title = req(s, "title", id)?;
+        let state = lever(cfg, key, id).ok_or_else(|| {
+            format!("data.content.{key}: section `{id}` has no lever in primary.levers.{key}")
+        })?;
+        if !allowed.contains(&state) {
+            return Err(format!(
+                "primary.levers.{key}.{id}: `{state}` is not one of {allowed:?}"
+            ));
+        }
+        let body = render_blocks(arr(s, "blocks"), cfg)?;
+        let with_body = |heading: String| {
+            if body.is_empty() {
+                heading
+            } else {
+                format!("{heading}\n\n{body}")
+            }
+        };
+        match state {
+            "enabled" => parts.push(with_body(format!("## {title}"))),
+            "on_demand" => {
+                let dir = req(on_demand, "dir", "primary.on_demand")?.trim_end_matches('/');
+                let path = format!("{dir}/{id}.md");
+                let when = req(s, "when", id)?;
+                pointers.push(
+                    req(on_demand, "pointer", "primary.on_demand")?
+                        .replace("{path}", &path)
+                        .replace("{title}", title)
+                        .replace("{when}", when),
+                );
+                files.push((path, format!("{}\n", with_body(format!("# {title}")))));
+            }
+            "disabled" => {}
+            other => return Err(format!("lever `{other}` has no build rule")),
+        }
+    }
+    if !pointers.is_empty() {
+        let heading = req(on_demand, "heading", "primary.on_demand")?;
+        let list: Vec<String> = pointers.iter().map(|p| format!("- {p}")).collect();
+        parts.push(format!("## {heading}\n\n{}", list.join("\n")));
+    }
+    Ok((format!("{}\n", parts.join("\n\n")), files))
 }
 
 fn render_gitignore(structure: &[Value]) -> String {
@@ -203,11 +233,21 @@ enum Want {
 
 /// Everything `config.json` says should exist on disk, in order.
 fn wanted(root: &Path, cfg: &Value) -> Res<Vec<Want>> {
-    let structure = arr(cfg, "structure");
-    let content = cfg.get("content").cloned().unwrap_or(Value::Null);
+    let structure = arr(data(cfg), "structure");
     let mut out = Vec::new();
+    let mut files: Vec<String> = Vec::new();
+    let mut add_file = |out: &mut Vec<Want>, path: &str, text: String| -> Res<()> {
+        if files.iter().any(|f| f == path) {
+            return Err(format!(
+                "{path} is generated twice; rename a section id or a path"
+            ));
+        }
+        files.push(path.to_string());
+        out.push(Want::File(root.join(path), text));
+        Ok(())
+    };
     for e in structure {
-        let path = req(e, "path", "structure entry")?;
+        let path = req(e, "path", "data.structure entry")?;
         let full = root.join(path.trim_end_matches('/'));
         match req(e, "type", path)? {
             "dir" => {
@@ -219,13 +259,17 @@ fn wanted(root: &Path, cfg: &Value) -> Res<Vec<Want>> {
             "symlink" => out.push(Want::Link(full, req(e, "target", path)?.to_string())),
             "file" => match str_of(e, "build") {
                 None => {}
-                Some("gitignore") => out.push(Want::File(full, render_gitignore(structure))),
+                Some("gitignore") => add_file(&mut out, path, render_gitignore(structure))?,
                 Some(key) => {
-                    let blocks = content
-                        .get(key)
-                        .and_then(Value::as_array)
-                        .ok_or_else(|| format!("{path}: content.{key} is missing or not a list"))?;
-                    out.push(Want::File(full, render_blocks(blocks, structure)?));
+                    let doc = &data(cfg)["content"][key];
+                    if !doc.is_object() {
+                        return Err(format!("{path}: data.content.{key} is missing"));
+                    }
+                    let (main, extra) = render_doc(key, doc, cfg)?;
+                    add_file(&mut out, path, main)?;
+                    for (p, text) in extra {
+                        add_file(&mut out, &p, text)?;
+                    }
                 }
             },
             "planned" | "ignored" => {}
@@ -233,12 +277,7 @@ fn wanted(root: &Path, cfg: &Value) -> Res<Vec<Want>> {
         }
     }
     // Adapters: one symlink per module, never a whole folder.
-    for (_provider, maps) in cfg
-        .get("adapters")
-        .and_then(Value::as_object)
-        .into_iter()
-        .flatten()
-    {
+    for (_provider, maps) in primary(cfg)["adapters"].as_object().into_iter().flatten() {
         for m in maps.as_array().into_iter().flatten() {
             let source = req(m, "source", "adapter")?.trim_end_matches('/');
             let dest = req(m, "dest", "adapter")?.trim_end_matches('/');
@@ -275,8 +314,16 @@ fn rel(root: &Path, p: &Path) -> String {
 /// Applies (or, with `check`, only reports) every difference between disk and config.
 /// Returns false when the repo is out of sync.
 fn build(root: &Path, cfg: &Value, check: bool) -> Res<bool> {
+    let wants = wanted(root, cfg)?;
+    let generated: Vec<String> = wants
+        .iter()
+        .filter_map(|w| match w {
+            Want::File(p, _) => Some(rel(root, p)),
+            _ => None,
+        })
+        .collect();
     let mut drift = Vec::new();
-    for w in wanted(root, cfg)? {
+    for w in wants {
         match w {
             Want::Dir(p) => {
                 if p.is_dir() {
@@ -333,7 +380,7 @@ fn build(root: &Path, cfg: &Value, check: bool) -> Res<bool> {
         }
     }
     drift.extend(prune_adapter_links(root, cfg, check)?);
-    let strays = stray_markdown(root, cfg)?;
+    let strays = stray_markdown(root, &generated);
 
     let verb = if check { "out of sync" } else { "updated" };
     for d in &drift {
@@ -351,12 +398,7 @@ fn build(root: &Path, cfg: &Value, check: bool) -> Res<bool> {
 /// Removes broken adapter links (left behind by deleted modules).
 fn prune_adapter_links(root: &Path, cfg: &Value, check: bool) -> Res<Vec<String>> {
     let mut out = Vec::new();
-    for (_provider, maps) in cfg
-        .get("adapters")
-        .and_then(Value::as_object)
-        .into_iter()
-        .flatten()
-    {
+    for (_provider, maps) in primary(cfg)["adapters"].as_object().into_iter().flatten() {
         for m in maps.as_array().into_iter().flatten() {
             let dest = root.join(req(m, "dest", "adapter")?.trim_end_matches('/'));
             for name in modules(&dest)? {
@@ -373,13 +415,8 @@ fn prune_adapter_links(root: &Path, cfg: &Value, check: bool) -> Res<Vec<String>
     Ok(out)
 }
 
-/// `.md` files in the root and in `agents/` that no structure entry generates.
-fn stray_markdown(root: &Path, cfg: &Value) -> Res<Vec<String>> {
-    let generated: Vec<String> = arr(cfg, "structure")
-        .iter()
-        .filter(|e| str_of(e, "type") == Some("file") && str_of(e, "build").is_some())
-        .filter_map(|e| str_of(e, "path").map(String::from))
-        .collect();
+/// `.md` files in the root and in `agents/` that this build does not generate.
+fn stray_markdown(root: &Path, generated: &[String]) -> Vec<String> {
     let mut out = Vec::new();
     for dir in ["", "agents"] {
         let Ok(read) = fs::read_dir(root.join(dir)) else {
@@ -397,75 +434,7 @@ fn stray_markdown(root: &Path, cfg: &Value) -> Res<Vec<String>> {
         }
     }
     out.sort();
-    Ok(out)
-}
-
-// ---------- recall ----------
-
-/// Prints the repo map, or every structure entry and document line matching `query`.
-/// Returns false when a query matches nothing.
-fn recall(cfg: &Value, query: &str) -> bool {
-    let structure = arr(cfg, "structure");
-    let q = query.trim().to_lowercase();
-    let hit = |s: &str| q.is_empty() || s.to_lowercase().contains(&q);
-    let mut found = false;
-
-    if q.is_empty() {
-        if let Some(t) = cfg.pointer("/project/title").and_then(Value::as_str) {
-            println!("{t}\n");
-        }
-    }
-    for e in structure {
-        let fields = ["path", "label", "description", "table"].map(|k| str_of(e, k).unwrap_or(""));
-        if fields.iter().any(|f| hit(f)) {
-            found = true;
-            let ty = str_of(e, "type").unwrap_or("?");
-            let ty = match (ty, str_of(e, "build")) {
-                ("file", Some(_)) => "generated",
-                ("file", None) => "manual",
-                _ => ty,
-            };
-            println!("{:<30} {:<10} {}", fields[0], ty, fields[2]);
-        }
-    }
-    if q.is_empty() {
-        return true;
-    }
-    // Document text: report the file and the section each match sits in.
-    for e in structure {
-        let (Some(path), Some(key)) = (str_of(e, "path"), str_of(e, "build")) else {
-            continue;
-        };
-        let Some(blocks) = cfg
-            .pointer(&format!("/content/{key}"))
-            .and_then(Value::as_array)
-        else {
-            continue;
-        };
-        let mut section = String::new();
-        for b in blocks {
-            let mut texts: Vec<String> = str_of(b, "text").map(String::from).into_iter().collect();
-            texts.extend(strings(b, "items"));
-            texts.extend(
-                arr(b, "rows")
-                    .iter()
-                    .flat_map(|r| r.as_array().into_iter().flatten())
-                    .filter_map(Value::as_str)
-                    .map(String::from),
-            );
-            if str_of(b, "type") == Some("heading") {
-                section = texts.first().cloned().unwrap_or_default();
-            }
-            for t in texts.iter().filter(|t| hit(t)) {
-                found = true;
-                println!("{path} › {section}: {t}");
-            }
-        }
-    }
-    if !found {
-        println!("nothing in {CONFIG} matches `{query}`");
-    }
-    found
+    out
 }
 
 // ---------- tests ----------
@@ -473,7 +442,30 @@ fn recall(cfg: &Value, query: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use plalast::check_top_level;
     use serde_json::json;
+
+    /// A config with one document `doc` holding sections `a` and `b` with the given levers.
+    fn cfg(levers: Value) -> Value {
+        json!({
+            "primary": {
+                "levers": {"doc": levers},
+                "on_demand": {"dir": "agents", "heading": "On demand", "pointer": "`{path}`: {title}. Read it when {when}."},
+                "schema": {"levers": {"enabled": "", "on_demand": "", "disabled": ""}}
+            },
+            "data": {"structure": [], "content": {}}
+        })
+    }
+
+    fn doc() -> Value {
+        json!({
+            "head": [{"type": "heading", "level": 1, "text": "Doc"}],
+            "sections": [
+                {"id": "a", "title": "A", "when": "doing a", "blocks": [{"type": "paragraph", "text": "alpha"}]},
+                {"id": "b", "title": "B", "when": "doing b", "blocks": [{"type": "list", "items": ["x", "y"]}]}
+            ]
+        })
+    }
 
     #[test]
     fn renders_blocks_with_one_blank_line_between() {
@@ -482,8 +474,87 @@ mod tests {
             {"type": "list", "items": ["a", "b"]},
             {"type": "ordered_list", "items": ["x", "y"]}
         ]);
-        let out = render_blocks(blocks.as_array().unwrap(), &[]).unwrap();
-        assert_eq!(out, "## Title\n\n- a\n- b\n\n1. x\n2. y\n");
+        let out = render_blocks(blocks.as_array().unwrap(), &cfg(json!({}))).unwrap();
+        assert_eq!(out, "## Title\n\n- a\n- b\n\n1. x\n2. y");
+    }
+
+    #[test]
+    fn enabled_sections_render_inline() {
+        let (main, files) =
+            render_doc("doc", &doc(), &cfg(json!({"a": "enabled", "b": "enabled"}))).unwrap();
+        assert_eq!(main, "# Doc\n\n## A\n\nalpha\n\n## B\n\n- x\n- y\n");
+        assert!(files.is_empty());
+    }
+
+    #[test]
+    fn on_demand_section_gets_its_own_file_and_a_pointer() {
+        let (main, files) = render_doc(
+            "doc",
+            &doc(),
+            &cfg(json!({"a": "on_demand", "b": "enabled"})),
+        )
+        .unwrap();
+        assert_eq!(
+            main,
+            "# Doc\n\n## B\n\n- x\n- y\n\n## On demand\n\n- `agents/a.md`: A. Read it when doing a.\n"
+        );
+        assert_eq!(
+            files,
+            vec![("agents/a.md".to_string(), "# A\n\nalpha\n".to_string())]
+        );
+    }
+
+    #[test]
+    fn disabled_section_is_not_rendered() {
+        let (main, files) = render_doc(
+            "doc",
+            &doc(),
+            &cfg(json!({"a": "disabled", "b": "enabled"})),
+        )
+        .unwrap();
+        assert_eq!(main, "# Doc\n\n## B\n\n- x\n- y\n");
+        assert!(files.is_empty());
+    }
+
+    #[test]
+    fn missing_lever_is_an_error() {
+        let err = render_doc("doc", &doc(), &cfg(json!({"a": "enabled"}))).unwrap_err();
+        assert!(err.contains("`b` has no lever"), "{err}");
+    }
+
+    #[test]
+    fn invalid_lever_value_is_an_error() {
+        let err =
+            render_doc("doc", &doc(), &cfg(json!({"a": "maybe", "b": "enabled"}))).unwrap_err();
+        assert!(err.contains("`maybe` is not one of"), "{err}");
+    }
+
+    #[test]
+    fn lever_for_unknown_section_is_an_error() {
+        let err = render_doc(
+            "doc",
+            &doc(),
+            &cfg(json!({"a": "enabled", "b": "enabled", "c": "enabled"})),
+        )
+        .unwrap_err();
+        assert!(err.contains("primary.levers.doc.c"), "{err}");
+    }
+
+    #[test]
+    fn top_level_must_be_primary_and_data() {
+        assert!(check_top_level(&json!({"primary": {}, "data": {}})).is_ok());
+        assert!(check_top_level(&json!({"primary": {}, "data": {}, "extra": 1})).is_err());
+        assert!(check_top_level(&json!({"data": {}})).is_err());
+    }
+
+    #[test]
+    fn schema_block_renders_a_table_in_config_order() {
+        let c = json!({"primary": {"schema": {"levers": {"enabled": "on", "disabled": "off"}}}, "data": {}});
+        let b = json!([{"type": "schema", "part": "levers", "header": ["Value", "Effect"]}]);
+        assert_eq!(
+            render_blocks(b.as_array().unwrap(), &c).unwrap(),
+            "| Value | Effect |\n|---|---|\n| `enabled` | on |\n| `disabled` | off |"
+        );
     }
 
     #[test]
@@ -493,9 +564,8 @@ mod tests {
             {"path": "b", "type": "file"},
             {"path": "src/", "type": "planned", "table": "Code"}
         ]);
-        let out = structure_table(s.as_array().unwrap());
         assert_eq!(
-            out,
+            structure_table(s.as_array().unwrap()),
             "Paths are added here as they are created (`src/` is planned, not created yet):\n\n\
              | Path | Content |\n|---|---|\n| `a/<x>.md` | A |\n| `src/` | Code |"
         );
@@ -516,6 +586,6 @@ mod tests {
     #[test]
     fn unknown_block_type_is_an_error() {
         let blocks = json!([{"type": "nope"}]);
-        assert!(render_blocks(blocks.as_array().unwrap(), &[]).is_err());
+        assert!(render_blocks(blocks.as_array().unwrap(), &cfg(json!({}))).is_err());
     }
 }

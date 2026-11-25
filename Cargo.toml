@@ -6,4 +6,12 @@ description = "Build and recall the plalast repo from config.json, its single so
 publish = false
 
 [dependencies]
-serde_json = "1"
+serde_json = { version = "1", features = ["preserve_order"] }
+
+[[bin]]
+name = "plalast-build"
+path = "src/bin/build.rs"
+
+[[bin]]
+name = "plalast-recall"
+path = "src/bin/recall.rs"
