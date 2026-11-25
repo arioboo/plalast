@@ -5,6 +5,7 @@ Branches, commits and merges of this repo, newest first. Source: `primary.log` i
 
 | Date | Branch | Commit | Kind | Description |
 |---|---|---|---|---|
+| 2026-11-25 | develop | `1c45670` | commit | Brain moved to memory.json + params.yaml, deduplicated and cleaned up. |
 | 2026-11-25 | develop | `8892b72` | commit | Memory split into config, primary and data; AGENTS.md text in primary.agents-md; project log in LOG.md; features 1-3. |
 | 2026-11-25 | main | `95ba41f` | merge | Fast-forward merge of develop. |
 | 2026-11-25 | develop | `95ba41f` | commit | Agent note on the second line of every generated doc. |

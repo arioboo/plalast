@@ -20,3 +20,4 @@ Paths are added here as they are created:
 | `agents/mcp/<server>.json` | One MCP connector per file |
 | `.claude/` | Claude Code adapter: `pla-build` links each module of `agents/` one by one, as `params.config.paths.modules.<kind>.links` says |
 | `zettelkasten` | Symlink to the single zettelkasten vault (CDU-named notes), outside this repo |
+| `tmux.conf` | tmux config for the `plalast` session, sourced on top of `~/.tmux.conf`; its header comments hold the commands to start it |

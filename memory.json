@@ -225,6 +225,13 @@
         "commit": "8892b72",
         "kind": "commit",
         "descr": "Memory split into config, primary and data; AGENTS.md text in primary.agents-md; project log in LOG.md; features 1-3."
+      },
+      {
+        "date": "2026-11-25",
+        "branch": "develop",
+        "commit": "1c45670",
+        "kind": "commit",
+        "descr": "Brain moved to memory.json + params.yaml, deduplicated and cleaned up."
       }
     ],
     "index": {},
@@ -539,6 +546,13 @@
         "table": "Symlink to the single zettelkasten vault (CDU-named notes), outside this repo",
         "description": "Link to the zettelkasten vault; its target is params.config.paths.zettelkasten. It resolves only where the vault sits at that position relative to the repo.",
         "target_ref": "params.config.paths.zettelkasten"
+      },
+      {
+        "path": "tmux.conf",
+        "type": "file",
+        "build": null,
+        "table": "tmux config for the `plalast` session, sourced on top of `~/.tmux.conf`; its header comments hold the commands to start it",
+        "description": "Session-scoped tmux settings (windows agent, build, git and the status bar). Hand-written."
       }
     ],
     "content": {
