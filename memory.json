@@ -42,8 +42,8 @@
         "code": [
           "Rust: `cargo build`, `cargo test`, `cargo test <test_name>` (single test), `cargo clippy -- -D warnings`, `cargo fmt --check`",
           "Verus: `cargo verus verify` (formal verification of the `verus!` code; install and usage in `agents/guides/verus.md`)",
-          "Lean 4: `lake build`",
-          "Dafny: `dafny verify <file>.dfy`"
+          "Lean 4: `lake build` (proofs of a Lean project; install and usage in `agents/guides/lean.md`)",
+          "Dafny: `dafny verify <file>.dfy` (verification of a Dafny file; install and usage in `agents/guides/dafny.md`)"
         ]
       },
       "tools_and_languages": [
@@ -293,6 +293,13 @@
         "commit": "b9292a9",
         "kind": "merge",
         "descr": "Fast-forward merge of main."
+      },
+      {
+        "date": "2026-11-25",
+        "branch": "main",
+        "commit": "c2381f5",
+        "kind": "commit",
+        "descr": "Log entries for the previous log commit and the develop fast-forward."
       }
     ],
     "index": {},

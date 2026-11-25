@@ -1,0 +1,98 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [6 0 R 8 0 R] /Count 2 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Courier /Encoding /WinAnsiEncoding >>
+endobj
+6 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 7 0 R >>
+endobj
+7 0 obj
+<< /Length 3969 >>
+stream
+BT /F2 20.0 Tf 56.0 758.0 Td (Lean 4) Tj ET
+BT /F1 11.0 Tf 56.0 738.6 Td (Lean 4 is a programming language and a proof assistant. You state theorems as types and write) Tj ET
+BT /F1 11.0 Tf 56.0 723.2 Td (proofs as programs \(or with tactics such as simp, omega and decide\); the Lean kernel checks) Tj ET
+BT /F1 11.0 Tf 56.0 707.8 Td (every step, so a file that compiles is a proof that its theorems hold. In this repo it is the tool for) Tj ET
+BT /F1 11.0 Tf 56.0 692.4 Td (formal verification and for an expandable base of checked facts.) Tj ET
+BT /F2 15.0 Tf 56.0 656.4 Td (Install \(Linux and macOS\)) Tj ET
+BT /F1 11.0 Tf 56.0 637.0 Td (Lean is installed through elan, its toolchain manager \(the Lean counterpart of rustup\). The) Tj ET
+BT /F1 11.0 Tf 56.0 621.6 Td (installer only downloads the elan binary from the releases of leanprover/elan; read it before) Tj ET
+BT /F1 11.0 Tf 56.0 606.2 Td (running it. Pass --no-modify-path so it leaves the shell profile alone, and link the binaries into) Tj ET
+BT /F1 11.0 Tf 56.0 590.8 Td (~/.local/bin, next to verus and cargo, so non-interactive shells find them:) Tj ET
+BT /F3 9.0 Tf 68.0 570.2 Td (curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -o ela) Tj ET
+BT /F3 9.0 Tf 68.0 557.6 Td (n-init.sh) Tj ET
+BT /F3 9.0 Tf 68.0 545.0 Td (sh elan-init.sh -y --no-modify-path --default-toolchain leanprover/lean4:v4.35.0) Tj ET
+BT /F3 9.0 Tf 68.0 532.4 Td (for b in elan lean lake; do ln -sf ~/.elan/bin/$b ~/.local/bin/$b; done) Tj ET
+BT /F1 11.0 Tf 56.0 509.0 Td (Check the install with lean --version and lake --version. A toolchain takes about 3 GB in ~/.elan.) Tj ET
+BT /F1 11.0 Tf 56.0 487.6 Td (Pin a release, not stable: a project records its toolchain in a lean-toolchain file, and elan) Tj ET
+BT /F1 11.0 Tf 56.0 472.2 Td (downloads that exact version on first use, so every machine checks the proofs with the same) Tj ET
+BT /F1 11.0 Tf 56.0 456.8 Td (Lean.) Tj ET
+BT /F2 15.0 Tf 56.0 420.8 Td (Commands) Tj ET
+BT /F3 9.0 Tf 68.0 402.2 Td (lean file.lean          # check one file: no output means every theorem holds) Tj ET
+BT /F3 9.0 Tf 68.0 389.6 Td (lake new <name> math    # new project with Mathlib \(`lake new <name>` for a plain one\)) Tj ET
+BT /F3 9.0 Tf 68.0 377.0 Td (lake build              # check every file of the project) Tj ET
+BT /F3 9.0 Tf 68.0 364.4 Td (lake update             # update the dependencies listed in lakefile.toml) Tj ET
+BT /F3 9.0 Tf 68.0 351.8 Td (elan toolchain list     # installed toolchains) Tj ET
+BT /F1 11.0 Tf 56.0 328.4 Td (A failed proof prints the file, line and column, and the goal Lean could not close.) Tj ET
+BT /F2 15.0 Tf 56.0 292.4 Td (Writing proofs) Tj ET
+BT /F3 9.0 Tf 68.0 273.8 Td (theorem add_comm' \(a b : Nat\) : a + b = b + a := Nat.add_comm a b) Tj ET
+BT /F3 9.0 Tf 68.0 261.2 Td () Tj ET
+BT /F3 9.0 Tf 68.0 248.6 Td (theorem small : 2 + 2 = 4 := by decide) Tj ET
+BT /F3 9.0 Tf 68.0 236.0 Td () Tj ET
+BT /F3 9.0 Tf 68.0 223.4 Td (example \(x : Nat\) \(h : x < 5\) : x + 1 ? 5 := by omega) Tj ET
+BT /F1 11.0 Tf 56.0 200.0 Td (decide evaluates a decidable proposition, omega closes linear arithmetic over integers and) Tj ET
+BT /F1 11.0 Tf 56.0 184.6 Td (naturals, and simp rewrites with known lemmas. A false statement such as 2 + 2 = 5 := by) Tj ET
+BT /F1 11.0 Tf 56.0 169.2 Td (decide fails with Tactic decide proved that the proposition 2 + 2 = 5 is false.) Tj ET
+BT /F1 11.0 Tf 56.0 147.8 Td (Mathlib is the large community library of formalized mathematics; add it only to projects that) Tj ET
+BT /F1 11.0 Tf 56.0 132.4 Td (need it, since it downloads several GB of prebuilt files.) Tj ET
+BT /F2 15.0 Tf 56.0 96.4 Td (Sources) Tj ET
+BT /F1 11.0 Tf 78.0 77.0 Td (Install: https://lean-lang.org/install/) Tj ET
+BT /F1 11.0 Tf 62.0 77.0 Td (\225) Tj ET
+BT /F1 11.0 Tf 78.0 58.6 Td (elan: https://github.com/leanprover/elan) Tj ET
+BT /F1 11.0 Tf 62.0 58.6 Td (\225) Tj ET
+BT /F1 9.0 Tf 288.0 28.0 Td (1 / 2) Tj ET
+endstream
+endobj
+8 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 9 0 R >>
+endobj
+9 0 obj
+<< /Length 467 >>
+stream
+BT /F1 11.0 Tf 78.0 770.6 Td (Releases: https://github.com/leanprover/lean4/releases) Tj ET
+BT /F1 11.0 Tf 62.0 770.6 Td (\225) Tj ET
+BT /F1 11.0 Tf 78.0 752.2 Td (Theorem Proving in Lean 4: https://lean-lang.org/theorem_proving_in_lean4/) Tj ET
+BT /F1 11.0 Tf 62.0 752.2 Td (\225) Tj ET
+BT /F1 11.0 Tf 78.0 733.8 Td (Mathlib: https://github.com/leanprover-community/mathlib4) Tj ET
+BT /F1 11.0 Tf 62.0 733.8 Td (\225) Tj ET
+BT /F1 9.0 Tf 288.0 28.0 Td (2 / 2) Tj ET
+endstream
+endobj
+xref
+0 10
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000121 00000 n 
+0000000218 00000 n 
+0000000320 00000 n 
+0000000415 00000 n 
+0000000561 00000 n 
+0000004581 00000 n 
+0000004727 00000 n 
+trailer
+<< /Size 10 /Root 1 0 R >>
+startxref
+5244
+%%EOF

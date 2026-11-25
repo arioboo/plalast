@@ -41,8 +41,8 @@ Code:
 
 - Rust: `cargo build`, `cargo test`, `cargo test <test_name>` (single test), `cargo clippy -- -D warnings`, `cargo fmt --check`
 - Verus: `cargo verus verify` (formal verification of the `verus!` code; install and usage in `agents/guides/verus.md`)
-- Lean 4: `lake build`
-- Dafny: `dafny verify <file>.dfy`
+- Lean 4: `lake build` (proofs of a Lean project; install and usage in `agents/guides/lean.md`)
+- Dafny: `dafny verify <file>.dfy` (verification of a Dafny file; install and usage in `agents/guides/dafny.md`)
 
 ## Tools and languages
 
