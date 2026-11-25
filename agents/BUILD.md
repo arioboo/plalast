@@ -20,7 +20,7 @@ It has exactly two top-level keys: `primary`, the control panel (what to build a
 | Key | Meaning |
 |---|---|
 | `primary` | Control panel: what to build and how. |
-| `primary.project` | Identity: `name`, `title`, `purpose`, `repository` and `branches`. |
+| `primary.project` | Identity: `name`, `title`, `plalast_logo` (path of the project logo), `purpose`, `repository` and `branches`. |
 | `primary.levers` | Memory lever of every document section, as `<doc>` -> `<section id>` -> value (see Memory levers). |
 | `primary.on_demand` | Where `on_demand` sections go (`dir`), the heading of the pointer list (`heading`) and the pointer line (`pointer`, with `{path}`, `{title}` and `{when}`). |
 | `primary.adapters` | Per provider, which `agents/` folders get one symlink per module (`source`) and where (`dest`). |
@@ -65,6 +65,7 @@ Switching a section from `on_demand` to `disabled` leaves its old file behind: `
 | `table` | `header` and `rows` as a markdown table |
 | `structure_table` | the Structure table, from the `data.structure` entries that have `table` |
 | `schema` | a table of `primary.schema.<part>` with the given `header` |
+| `image` | `![alt](src)`, or an HTML `<img>` when `width` is set; `ref` (a dotted config path such as `primary.project.plalast_logo`) can replace `src` |
 
 Each section is rendered as `## <title>` followed by its blocks. Blocks are separated by one blank line and every file ends with one newline.
 

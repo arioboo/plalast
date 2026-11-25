@@ -88,6 +88,25 @@ fn schema_table(cfg: &Value, block: &Value) -> Res<String> {
     Ok(md_table(&strings(block, "header"), &rows))
 }
 
+/// An image. Its path is `src`, or the config value named by `ref` (a dotted path such as
+/// `primary.project.plalast_logo`), so a path kept in the config is written only once.
+/// With `width`, it is an HTML `<img>` (markdown cannot size images).
+fn image(cfg: &Value, block: &Value) -> Res<String> {
+    let src = match (str_of(block, "src"), str_of(block, "ref")) {
+        (Some(src), _) => src,
+        (None, Some(r)) => cfg
+            .pointer(&format!("/{}", r.replace('.', "/")))
+            .and_then(Value::as_str)
+            .ok_or_else(|| format!("image block: `{r}` is not a string in {CONFIG}"))?,
+        (None, None) => return Err("image block: needs `src` or `ref`".to_string()),
+    };
+    let alt = str_of(block, "alt").unwrap_or("");
+    Ok(match block.get("width").and_then(Value::as_u64) {
+        Some(w) => format!("<img src=\"{src}\" alt=\"{alt}\" width=\"{w}\">"),
+        None => format!("![{alt}]({src})"),
+    })
+}
+
 /// Markdown for a list of blocks, separated by one blank line, without a trailing newline.
 fn render_blocks(blocks: &[Value], cfg: &Value) -> Res<String> {
     let mut parts = Vec::new();
@@ -131,6 +150,7 @@ fn render_blocks(blocks: &[Value], cfg: &Value) -> Res<String> {
             }
             "structure_table" => structure_table(arr(data(cfg), "structure")),
             "schema" => schema_table(cfg, b)?,
+            "image" => image(cfg, b)?,
             other => return Err(format!("unknown content block type `{other}`")),
         };
         parts.push(part);
@@ -581,6 +601,21 @@ mod tests {
             render_gitignore(s.as_array().unwrap()),
             "agents/.secrets/*\n!agents/.secrets/.gitkeep\ntarget/\n"
         );
+    }
+
+    #[test]
+    fn image_block_resolves_its_path_from_the_config() {
+        let c = json!({"primary": {"project": {"logo": "src/logo.png"}}, "data": {}});
+        let b = json!([
+            {"type": "image", "ref": "primary.project.logo", "alt": "Logo", "width": 200},
+            {"type": "image", "src": "a.png", "alt": "A"}
+        ]);
+        assert_eq!(
+            render_blocks(b.as_array().unwrap(), &c).unwrap(),
+            "<img src=\"src/logo.png\" alt=\"Logo\" width=\"200\">\n\n![A](a.png)"
+        );
+        let bad = json!([{"type": "image", "ref": "primary.project.nope"}]);
+        assert!(render_blocks(bad.as_array().unwrap(), &c).is_err());
     }
 
     #[test]

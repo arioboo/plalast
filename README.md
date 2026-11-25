@@ -1,5 +1,7 @@
 # plalast - The Living Creature
 
+<img src="src/plalast.png" alt="plalast logo" width="200">
+
 A public, living repository on autonomous coding and living information systems. Servers run 24/7; anyone can connect their agents, teach it something and open a pull request.
 
 Project rules and conventions for humans and agents: [agents/AGENTS.md](agents/AGENTS.md). Everything is generated from [config.json](config.json); see [agents/BUILD.md](agents/BUILD.md).

@@ -3,6 +3,7 @@
     "project": {
       "name": "plalast",
       "title": "plalast - The Living Creature",
+      "plalast_logo": "src/plalast.png",
       "purpose": "The brain of this repo. Every .md in the repo root and in agents/ is generated from this file, with folders, symlinks and .gitignore: edit only this file (modules in agents/ subfolders are hand-written), then run `cargo run --release --bin plalast-build`. See agents/BUILD.md.",
       "repository": "github.com/arioboo/plalast",
       "branches": {
@@ -55,7 +56,7 @@
     "schema": {
       "keys": {
         "primary": "Control panel: what to build and how.",
-        "primary.project": "Identity: `name`, `title`, `purpose`, `repository` and `branches`.",
+        "primary.project": "Identity: `name`, `title`, `plalast_logo` (path of the project logo), `purpose`, `repository` and `branches`.",
         "primary.levers": "Memory lever of every document section, as `<doc>` -> `<section id>` -> value (see Memory levers).",
         "primary.on_demand": "Where `on_demand` sections go (`dir`), the heading of the pointer list (`heading`) and the pointer line (`pointer`, with `{path}`, `{title}` and `{when}`).",
         "primary.adapters": "Per provider, which `agents/` folders get one symlink per module (`source`) and where (`dest`).",
@@ -86,7 +87,8 @@
         "code": "a fenced block with `lang` and `text`",
         "table": "`header` and `rows` as a markdown table",
         "structure_table": "the Structure table, from the `data.structure` entries that have `table`",
-        "schema": "a table of `primary.schema.<part>` with the given `header`"
+        "schema": "a table of `primary.schema.<part>` with the given `header`",
+        "image": "`![alt](src)`, or an HTML `<img>` when `width` is set; `ref` (a dotted config path such as `primary.project.plalast_logo`) can replace `src`"
       }
     }
   },
@@ -117,6 +119,12 @@
         "type": "dir",
         "table": "Rust code: `lib.rs` (shared config access), `bin/build.rs`, `bin/recall.rs`",
         "description": "Hand-edited Rust code."
+      },
+      {
+        "path": "src/plalast.png",
+        "type": "file",
+        "build": null,
+        "description": "Project logo, shown in README.md. Its path lives in primary.project.plalast_logo."
       },
       {
         "path": "target/",
@@ -382,6 +390,12 @@
             "type": "heading",
             "level": 1,
             "text": "plalast - The Living Creature"
+          },
+          {
+            "type": "image",
+            "ref": "primary.project.plalast_logo",
+            "alt": "plalast logo",
+            "width": 200
           },
           {
             "type": "paragraph",
