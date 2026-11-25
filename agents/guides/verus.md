@@ -23,6 +23,31 @@ rustup install 1.100.0-aarch64-apple-darwin
 
 Check the install with `verus --version` (version, platform and toolchain) and `cargo verus --help`.
 
+## Install (Linux, x86_64 and arm64)
+
+Same shape: download the `*-x86-linux.zip` or `*-arm64-linux.zip` release, unpack it, put it in `~/.local/verus` and link the two binaries. `unzip` is not always installed; `python3 -m zipfile -e <zip> .` unpacks the same tree, but it does not keep the executable bit, so restore it by hand.
+
+```sh
+gh release download --repo verus-lang/verus --pattern '*-x86-linux.zip'
+python3 -m zipfile -e verus-*-x86-linux.zip .
+mv verus-x86-linux ~/.local/verus
+chmod +x ~/.local/verus/{verus,cargo-verus,rust_verify,z3}
+ln -s ~/.local/verus/verus ~/.local/bin/verus
+ln -s ~/.local/verus/cargo-verus ~/.local/bin/cargo-verus
+```
+
+Verus still needs `rustup` and its exact toolchain; `verus --version` prints the command when it is missing. On Linux, without a rustup yet:
+
+```sh
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs |
+    sh -s -- -y --profile minimal --default-toolchain 1.100.0-x86_64-unknown-linux-gnu
+rustup component add rustfmt clippy --toolchain 1.100.0-x86_64-unknown-linux-gnu
+```
+
+The second line is not optional for this repo: `pla-lint` runs `cargo fmt` and `cargo clippy`, so a bare toolchain fails its `rust` area. `cargo` must also be reachable from non-interactive shells, since the tools call it as a subprocess; either export `~/.cargo/bin` in the shell profile or link `cargo`, `rustc` and `rustup` into `~/.local/bin`, next to `verus`.
+
+The release must match the `vstd` pin in `Cargo.toml`: `cargo build` fails while the two disagree.
+
 ## How this repo uses it
 
 - `Cargo.toml` depends on `vstd`, the Verus standard library, pinned to the version that matches the installed release.
