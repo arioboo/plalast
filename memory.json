@@ -265,6 +265,20 @@
         "commit": "43cb824",
         "kind": "commit",
         "descr": "Log entries for the two tmux.conf commits."
+      },
+      {
+        "date": "2026-11-25",
+        "branch": "main",
+        "commit": "1fdc5fd",
+        "kind": "commit",
+        "descr": "Log entries for the Verus guide commit and the previous log commit."
+      },
+      {
+        "date": "2026-11-25",
+        "branch": "main",
+        "commit": "f12be87",
+        "kind": "commit",
+        "descr": "cargo-audit documented as a once-per-machine install, so `pla-audit deps` no longer skips the dependency check unnoticed."
       }
     ],
     "index": {},
