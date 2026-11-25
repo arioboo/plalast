@@ -14,7 +14,7 @@ The servers will be 24/7 on. This is a personal project on autonomous coding and
 - Open source: everyone can collaborate with it (see README.md for the contribution flow)
 
 ## Structure
-Paths are added here as they are created (`config.json` and `src/` are planned, not created yet):
+Paths are added here as they are created (`src/` is planned, not created yet):
 
 | Path | Content |
 |---|---|
