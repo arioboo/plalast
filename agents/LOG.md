@@ -5,6 +5,8 @@ Branches, commits and merges of this repo, newest first. Source: `primary.log` i
 
 | Date | Branch | Commit | Kind | Description |
 |---|---|---|---|---|
+| 2026-11-25 | develop | `b9292a9` | merge | Fast-forward merge of main. |
+| 2026-11-25 | main | `b9292a9` | commit | Log entries for the cargo-audit commit and the previous log commit. |
 | 2026-11-25 | main | `f12be87` | commit | cargo-audit documented as a once-per-machine install, so `pla-audit deps` no longer skips the dependency check unnoticed. |
 | 2026-11-25 | main | `1fdc5fd` | commit | Log entries for the Verus guide commit and the previous log commit. |
 | 2026-11-25 | develop | `43cb824` | commit | Log entries for the two tmux.conf commits. |

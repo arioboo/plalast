@@ -279,6 +279,20 @@
         "commit": "f12be87",
         "kind": "commit",
         "descr": "cargo-audit documented as a once-per-machine install, so `pla-audit deps` no longer skips the dependency check unnoticed."
+      },
+      {
+        "date": "2026-11-25",
+        "branch": "main",
+        "commit": "b9292a9",
+        "kind": "commit",
+        "descr": "Log entries for the cargo-audit commit and the previous log commit."
+      },
+      {
+        "date": "2026-11-25",
+        "branch": "develop",
+        "commit": "b9292a9",
+        "kind": "merge",
+        "descr": "Fast-forward merge of main."
       }
     ],
     "index": {},
