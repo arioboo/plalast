@@ -1,7 +1,7 @@
 //! build: renders every generated `.md`, folder, symlink and `.gitignore` from `config.json`.
 //!
-//! - `plalast-build`           applies the changes.
-//! - `plalast-build --check`   changes nothing; fails if the repo drifted from `config.json`.
+//! - `pla-build`           applies the changes.
+//! - `pla-build --check`   changes nothing; fails if the repo drifted from `config.json`.
 //!
 //! Each document section is rendered according to its memory lever
 //! (`primary.levers.<doc>.<section id>`): `enabled`, `on_demand` or `disabled`.
@@ -14,7 +14,7 @@ use std::os::unix::fs::symlink;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-const USAGE: &str = "usage: plalast-build [--check]";
+const USAGE: &str = "usage: pla-build [--check]";
 
 fn main() -> ExitCode {
     let args: Vec<String> = env::args().skip(1).collect();

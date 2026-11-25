@@ -1,7 +1,7 @@
 //! recall: prints the repo map from `config.json`, or searches it.
 //!
-//! - `plalast-recall`          every path with its type and description, then every memory lever.
-//! - `plalast-recall <term>`   matching paths, and document lines with their file, section and lever.
+//! - `pla-recall`          every path with its type and description, then every memory lever.
+//! - `pla-recall <term>`   matching paths, and document lines with their file, section and lever.
 
 use plalast::{arr, data, exit, lever, open, primary, str_of, strings, CONFIG};
 use serde_json::Value;

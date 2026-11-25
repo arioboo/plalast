@@ -100,3 +100,84 @@ pub fn strings(v: &Value, key: &str) -> Vec<String> {
 pub fn req<'a>(v: &'a Value, key: &str, ctx: &str) -> Res<&'a str> {
     str_of(v, key).ok_or_else(|| format!("{ctx}: missing string field `{key}`"))
 }
+
+// ---------- checks shared by pla-lint and pla-audit ----------
+
+/// How serious a finding is: errors fail the run, warnings are only reported.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Level {
+    Error,
+    Warn,
+}
+
+/// Findings of one run, grouped by area (`config`, `secrets`, ...).
+#[derive(Default)]
+pub struct Findings {
+    pub items: Vec<(Level, String, String)>,
+}
+
+impl Findings {
+    pub fn error(&mut self, area: &str, msg: impl Into<String>) {
+        self.items
+            .push((Level::Error, area.to_string(), msg.into()));
+    }
+
+    pub fn warn(&mut self, area: &str, msg: impl Into<String>) {
+        self.items.push((Level::Warn, area.to_string(), msg.into()));
+    }
+
+    pub fn errors(&self) -> usize {
+        self.items
+            .iter()
+            .filter(|(l, _, _)| *l == Level::Error)
+            .count()
+    }
+
+    /// Prints every finding and a summary. Returns true when there are no errors.
+    pub fn finish(&self, tool: &str) -> bool {
+        for (level, area, msg) in &self.items {
+            let tag = match level {
+                Level::Error => "error",
+                Level::Warn => "warn ",
+            };
+            println!("{tag} [{area}] {msg}");
+        }
+        let errors = self.errors();
+        let warns = self.items.len() - errors;
+        println!("{tool}: {errors} error(s), {warns} warning(s)");
+        errors == 0
+    }
+}
+
+/// Runs `program args` in `root`. Returns (success, stdout + stderr), or Err if it cannot start.
+pub fn run(root: &Path, program: &str, args: &[&str]) -> Res<(bool, String)> {
+    let out = std::process::Command::new(program)
+        .args(args)
+        .current_dir(root)
+        .output()
+        .map_err(|e| format!("cannot run {program}: {e}"))?;
+    let mut text = String::from_utf8_lossy(&out.stdout).into_owned();
+    text.push_str(&String::from_utf8_lossy(&out.stderr));
+    Ok((out.status.success(), text))
+}
+
+/// The cargo to call: the one running us under `cargo run` (`$CARGO`), else `cargo` on PATH.
+pub fn cargo() -> String {
+    env::var("CARGO").unwrap_or_else(|_| "cargo".to_string())
+}
+
+/// Files git would commit: tracked plus untracked-but-not-ignored, relative to `root`.
+pub fn repo_files(root: &Path) -> Res<Vec<String>> {
+    let (ok, out) = run(
+        root,
+        "git",
+        &["ls-files", "--cached", "--others", "--exclude-standard"],
+    )?;
+    if !ok {
+        return Err(format!("git ls-files failed: {out}"));
+    }
+    let mut files: Vec<String> = out.lines().map(String::from).collect();
+    files.sort();
+    files.dedup();
+    Ok(files)
+}
