@@ -8,6 +8,17 @@ publish = false
 [dependencies]
 regex = "1"
 serde_json = { version = "1", features = ["preserve_order"] }
+# Verus standard library: specs and proofs inside `verus! { ... }` (see agents/guides/verus.md).
+# Pinned to the version of the installed Verus release (`verus --version`).
+vstd = "=0.0.0-2026-11-22-0344"
+
+# `cargo verus verify` checks the `verus!` code of this crate.
+[package.metadata.verus]
+verify = true
+
+# Verus turns on `cfg(verus_only)` while verifying; declare it so cargo does not warn.
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(verus_only)'] }
 
 [[bin]]
 name = "pla-build"

@@ -7,7 +7,10 @@
 //! `modules`: hand-written modules in `agents/` subfolders have the expected shape.
 //! `rust`: `cargo fmt --check` and `cargo clippy -D warnings` pass.
 
-use plalast::{arr, cargo, data, exit, lever, open, primary, run, str_of, Findings};
+use plalast::{
+    arr, cargo, data, doc_dirs, docs, exit, is_doc_path, lever, lookup, module_dir, open, primary,
+    run, str_of, Findings, CONFIG, MODULE_KINDS, PRIMARY_KEYS,
+};
 use serde_json::Value;
 use std::env;
 use std::fs;
@@ -32,7 +35,8 @@ fn main() -> ExitCode {
             lint_config(&root, &cfg, &mut f);
         }
         if want("modules") {
-            lint_modules(&root, &mut f);
+            lint_modules(&root, &cfg, &mut f);
+            lint_guides(&root, &cfg, &mut f);
         }
         if want("rust") {
             lint_rust(&root, &mut f);
@@ -70,6 +74,21 @@ fn lint_config(root: &Path, cfg: &Value, f: &mut Findings) {
                     format!("{full} is not documented in primary.schema.keys"),
                 );
             }
+            // A key whose children are documented (such as primary.docs) needs all of them documented.
+            let prefix = format!("{full}.");
+            let documents_children = schema["keys"]
+                .as_object()
+                .is_some_and(|m| m.keys().any(|d| d.starts_with(&prefix)));
+            if documents_children {
+                for sub in obj[k].as_object().into_iter().flat_map(|m| m.keys()) {
+                    if schema["keys"].get(format!("{prefix}{sub}")).is_none() {
+                        f.error(
+                            A,
+                            format!("{prefix}{sub} is not documented in primary.schema.keys"),
+                        );
+                    }
+                }
+            }
         }
     }
 
@@ -100,9 +119,18 @@ fn lint_config(root: &Path, cfg: &Value, f: &mut Findings) {
             f.error(A, format!("{ctx}: only folders end with `/`"));
         }
         match ty {
-            "symlink" if str_of(e, "target").is_none() => {
-                f.error(A, format!("{ctx}: symlink without `target`"))
-            }
+            "symlink" => match (str_of(e, "target"), str_of(e, "target_ref")) {
+                (Some(_), _) => {}
+                (None, Some(r)) if lookup(cfg, r).and_then(Value::as_str).is_none() => f.error(
+                    A,
+                    format!("{ctx}: target_ref `{r}` is not a string in the config"),
+                ),
+                (None, Some(_)) => {}
+                (None, None) => f.error(
+                    A,
+                    format!("{ctx}: symlink without `target` or `target_ref`"),
+                ),
+            },
             "file" => match str_of(e, "build") {
                 Some("gitignore") => {}
                 Some(key) if !data(cfg)["content"][key].is_object() => {
@@ -113,11 +141,8 @@ fn lint_config(root: &Path, cfg: &Value, f: &mut Findings) {
                     if !root.join(path).exists() {
                         f.error(A, format!("{ctx}: hand-written file is missing on disk"));
                     }
-                    let top_md = path.ends_with(".md")
-                        && (!path.contains('/')
-                            || path.starts_with("agents/") && path.matches('/').count() == 1);
-                    if top_md {
-                        f.error(A, format!("{ctx}: an .md in the root or agents/ must be generated (set `build`)"));
+                    if is_doc_path(cfg, path) {
+                        f.error(A, format!("{ctx}: it is a doc (an .md in primary.docs.dirs), so it must be generated (set `build`)"));
                     }
                 }
             },
@@ -163,7 +188,7 @@ fn lint_config(root: &Path, cfg: &Value, f: &mut Findings) {
                 }
             }
             match lever(cfg, key, id) {
-                None => f.error(A, format!("{ctx}: no lever in primary.levers.{key}")),
+                None => f.error(A, format!("{ctx}: no lever in primary.docs.levers.{key}")),
                 Some(v) if schema["levers"].get(v).is_none() => f.error(
                     A,
                     format!("{ctx}: lever `{v}` is not in primary.schema.levers"),
@@ -173,30 +198,119 @@ fn lint_config(root: &Path, cfg: &Value, f: &mut Findings) {
             check_blocks(schema, arr(s, "blocks"), &ctx, f);
         }
     }
-    for (key, m) in primary(cfg)["levers"].as_object().into_iter().flatten() {
+    for (key, m) in docs(cfg)["levers"].as_object().into_iter().flatten() {
         for id in m.as_object().into_iter().flat_map(|m| m.keys()) {
             let exists = arr(&data(cfg)["content"][key], "sections")
                 .iter()
                 .any(|s| str_of(s, "id") == Some(id));
             if !exists {
-                f.error(A, format!("primary.levers.{key}.{id}: no such section"));
+                f.error(
+                    A,
+                    format!("primary.docs.levers.{key}.{id}: no such section"),
+                );
             }
         }
     }
 
-    // Adapters and project paths point to real places.
-    for (p, maps) in primary(cfg)["adapters"].as_object().into_iter().flatten() {
-        for m in maps.as_array().into_iter().flatten() {
-            for k in ["source", "dest"] {
-                match str_of(m, k) {
-                    Some(d) if root.join(d).is_dir() => {}
-                    Some(d) => f.error(
-                        A,
-                        format!("primary.adapters.{p}: {k} `{d}` is not a folder"),
-                    ),
-                    None => f.error(A, format!("primary.adapters.{p}: missing `{k}`")),
-                }
+    // Module kinds: a definition, a folder that exists, and link folders that exist.
+    for kind in MODULE_KINDS {
+        let m = &primary(cfg)[kind];
+        if !m.is_object() {
+            f.error(A, format!("primary.{kind} is missing"));
+            continue;
+        }
+        if blank(str_of(m, "definition")) {
+            f.error(A, format!("primary.{kind}: missing `definition`"));
+        }
+        match module_dir(cfg, kind) {
+            Some(d) if root.join(&d).is_dir() => {}
+            Some(d) => f.error(A, format!("primary.{kind}.dir: `{d}` is not a folder")),
+            None => f.error(A, format!("primary.{kind}: missing `dir`")),
+        }
+        for (p, dest) in m["links"].as_object().into_iter().flatten() {
+            match dest.as_str() {
+                Some(d) if root.join(d).is_dir() => {}
+                Some(d) => f.error(
+                    A,
+                    format!("primary.{kind}.links.{p}: `{d}` is not a folder"),
+                ),
+                None => f.error(A, format!("primary.{kind}.links.{p}: not a path")),
             }
+        }
+    }
+    // The zettelkasten path is relative (an absolute one leaks the home folder).
+    match str_of(&primary(cfg)["zettelkasten"], "path") {
+        None => f.error(A, "primary.zettelkasten: missing `path`"),
+        Some(p) if Path::new(p).is_absolute() => f.error(
+            A,
+            format!("primary.zettelkasten.path: `{p}` must be relative to the repo root"),
+        ),
+        Some(p) if !root.join(p).is_dir() => f.warn(
+            A,
+            format!("primary.zettelkasten.path: `{p}` is not a folder on this machine"),
+        ),
+        Some(_) => {}
+    }
+    // Features: feature_<n> -> {descr, status}, both strings.
+    for (k, v) in primary(cfg)["features"].as_object().into_iter().flatten() {
+        let numbered = k
+            .strip_prefix("feature_")
+            .is_some_and(|n| !n.is_empty() && n.chars().all(|c| c.is_ascii_digit()));
+        if !numbered {
+            f.error(A, format!("primary.features.{k}: keys are feature_<n>"));
+        }
+        for field in ["descr", "status"] {
+            if !v[field].is_string() {
+                f.error(
+                    A,
+                    format!("primary.features.{k}: `{field}` must be a string"),
+                );
+            }
+        }
+    }
+    // Wiring: primary holds exactly the keys the tools handle (lib PRIMARY_KEYS), in that order.
+    let known: Vec<&str> = PRIMARY_KEYS.iter().map(|(k, _)| *k).collect();
+    let present: Vec<&str> = primary(cfg)
+        .as_object()
+        .map(|m| m.keys().map(String::as_str).collect())
+        .unwrap_or_default();
+    for k in &present {
+        if !known.contains(k) {
+            f.error(A, format!("primary.{k}: no tool handles it; add it to PRIMARY_KEYS in src/lib.rs and wire it"));
+        }
+    }
+    for k in &known {
+        if !present.contains(k) {
+            f.error(A, format!("primary.{k} is missing from {CONFIG}"));
+        }
+    }
+    // Shapes of the keys that hold plain data.
+    if !primary(cfg)["log"].is_array() {
+        f.error(A, "primary.log must be a list of entries");
+    }
+    if !primary(cfg)["index"].is_object() {
+        f.error(A, "primary.index must be an object");
+    }
+    let audit = &primary(cfg)["config"]["audit"];
+    if !primary(cfg)["config"].is_object() || !audit.is_object() {
+        f.error(A, "primary.config.audit is missing (settings of pla-audit)");
+    } else {
+        let allow_ok = audit["allow"]
+            .as_array()
+            .is_some_and(|a| a.iter().all(Value::is_string));
+        if !allow_ok {
+            f.error(A, "primary.config.audit.allow must be a list of strings");
+        }
+        if !audit["max_file_kb"].is_u64() {
+            f.error(A, "primary.config.audit.max_file_kb must be a whole number");
+        }
+    }
+    if doc_dirs(cfg).is_empty() {
+        f.error(A, "primary.docs.dirs is empty: no folder holds the docs");
+    }
+    for d in doc_dirs(cfg) {
+        if !root.join(&d).is_dir() {
+            f.error(A, format!("primary.docs.dirs: `{d}` is not a folder"));
         }
     }
     if let Some(logo) = primary(cfg)["project"]["plalast_logo"].as_str() {
@@ -277,13 +391,14 @@ fn entries(dir: &Path) -> Vec<String> {
     names
 }
 
-fn lint_modules(root: &Path, f: &mut Findings) {
+fn lint_modules(root: &Path, cfg: &Value, f: &mut Findings) {
     const A: &str = "modules";
     // Skills: agents/skills/<name>/SKILL.md, name in kebab-case and in the frontmatter.
-    let skills = root.join("agents/skills");
+    let skills_dir = module_dir(cfg, "skills").unwrap_or_default();
+    let skills = root.join(&skills_dir);
     for name in entries(&skills) {
         let dir = skills.join(&name);
-        let rel = format!("agents/skills/{name}");
+        let rel = format!("{skills_dir}/{name}");
         if !dir.is_dir() {
             f.error(A, format!("{rel}: a skill is a folder"));
             continue;
@@ -302,9 +417,10 @@ fn lint_modules(root: &Path, f: &mut Findings) {
         }
     }
     // Subagents: agents/subagents/<name>.md with frontmatter name == file name.
-    let subagents = root.join("agents/subagents");
+    let agents_dir = module_dir(cfg, "agents").unwrap_or_default();
+    let subagents = root.join(&agents_dir);
     for name in entries(&subagents) {
-        let rel = format!("agents/subagents/{name}");
+        let rel = format!("{agents_dir}/{name}");
         let Some(stem) = name.strip_suffix(".md") else {
             f.error(A, format!("{rel}: a subagent is one .md file"));
             continue;
@@ -318,15 +434,99 @@ fn lint_modules(root: &Path, f: &mut Findings) {
         }
     }
     // Rules: agents/rules/<name>.md, not empty.
-    let rules = root.join("agents/rules");
+    let rules_dir = module_dir(cfg, "rules").unwrap_or_default();
+    let rules = root.join(&rules_dir);
     for name in entries(&rules) {
-        let rel = format!("agents/rules/{name}");
+        let rel = format!("{rules_dir}/{name}");
         if !name.ends_with(".md") {
             f.error(A, format!("{rel}: a rule is one .md file"));
             continue;
         }
         if fs::read_to_string(rules.join(&name)).map_or(true, |t| t.trim().is_empty()) {
             f.error(A, format!("{rel}: empty or unreadable"));
+        }
+    }
+    // Connectors: one MCP server per json file in the neutral format.
+    let mcp_dir = module_dir(cfg, "connectors").unwrap_or_default();
+    for name in entries(&root.join(&mcp_dir)) {
+        let rel = format!("{mcp_dir}/{name}");
+        match fs::read_to_string(root.join(&mcp_dir).join(&name)) {
+            Ok(text) => lint_connector(f, &rel, &name, &text),
+            Err(e) => f.error(A, format!("{rel}: {e}")),
+        }
+    }
+}
+
+/// Guides: hand-written `.md` sources, each with the `.pdf` that pla-build renders from it.
+fn lint_guides(root: &Path, cfg: &Value, f: &mut Findings) {
+    const A: &str = "modules";
+    let dir = module_dir(cfg, "guides").unwrap_or_default();
+    let names = entries(&root.join(&dir));
+    for name in &names {
+        let rel = format!("{dir}/{name}");
+        if let Some(stem) = name.strip_suffix(".pdf") {
+            if !names.contains(&format!("{stem}.md")) {
+                f.error(A, format!("{rel}: no {stem}.md to build it from (pla-build renders guides from their .md)"));
+            }
+        } else if name.ends_with(".md") {
+            if fs::read_to_string(root.join(&dir).join(name)).map_or(true, |t| t.trim().is_empty())
+            {
+                f.error(A, format!("{rel}: empty or unreadable"));
+            }
+        } else {
+            f.error(
+                A,
+                format!("{rel}: a guide is an .md source and its rendered .pdf"),
+            );
+        }
+    }
+}
+
+/// A connector: `name` = file name, `transport` stdio (with `command`) or http (with `url`),
+/// and `env` values that are only `${VAR}` references, never secrets.
+fn lint_connector(f: &mut Findings, rel: &str, file: &str, text: &str) {
+    const A: &str = "modules";
+    let Some(stem) = file.strip_suffix(".json") else {
+        f.error(A, format!("{rel}: a connector is one .json file"));
+        return;
+    };
+    let v: Value = match serde_json::from_str(text) {
+        Ok(v) => v,
+        Err(e) => {
+            f.error(A, format!("{rel}: invalid json: {e}"));
+            return;
+        }
+    };
+    match str_of(&v, "name") {
+        Some(n) if n == stem => {}
+        Some(n) => f.error(A, format!("{rel}: name `{n}` must be `{stem}`")),
+        None => f.error(A, format!("{rel}: missing `name`")),
+    }
+    match str_of(&v, "transport") {
+        Some("stdio") if str_of(&v, "command").is_none() => {
+            f.error(A, format!("{rel}: stdio transport needs `command`"))
+        }
+        Some("http") if str_of(&v, "url").is_none() => {
+            f.error(A, format!("{rel}: http transport needs `url`"))
+        }
+        Some("stdio" | "http") => {}
+        Some(t) => f.error(
+            A,
+            format!("{rel}: transport `{t}` must be `stdio` or `http`"),
+        ),
+        None => f.error(A, format!("{rel}: missing `transport`")),
+    }
+    for (k, val) in v["env"].as_object().into_iter().flatten() {
+        let is_ref = val
+            .as_str()
+            .is_some_and(|s| s.starts_with("${") && s.ends_with('}') && s.len() > 3);
+        if !is_ref {
+            f.error(
+                A,
+                format!(
+                    "{rel}: env `{k}` must be a `${{VAR}}` reference (values live in .secrets/)"
+                ),
+            );
         }
     }
 }
@@ -348,6 +548,22 @@ fn lint_rust(root: &Path, f: &mut Findings) {
             Ok((false, out)) => f.error("rust", format!("{label} failed:\n{}", out.trim())),
             Err(e) => f.error("rust", format!("{label}: {e}")),
         }
+    }
+    // Formal verification of the `verus!` code, when Verus is installed.
+    match run(root, &cargo, &["verus", "--help"]) {
+        Ok((true, _)) => match run(root, &cargo, &["verus", "verify"]) {
+            Ok((true, _)) => {}
+            Ok((false, out)) => {
+                let lines: Vec<&str> = out.lines().collect();
+                let tail = lines[lines.len().saturating_sub(30)..].join("\n");
+                f.error("rust", format!("cargo verus verify failed:\n{tail}"));
+            }
+            Err(e) => f.error("rust", format!("cargo verus verify: {e}")),
+        },
+        _ => f.warn(
+            "rust",
+            "cargo-verus is not installed, formal verification skipped (see agents/guides/verus.md)",
+        ),
     }
 }
 
@@ -408,11 +624,51 @@ mod tests {
     }
 
     #[test]
+    fn connectors_need_the_neutral_format_and_no_literal_secrets() {
+        let mut f = Findings::default();
+        lint_connector(
+            &mut f,
+            "ok",
+            "gh.json",
+            r#"{"name":"gh","transport":"stdio","command":"gh-mcp","env":{"TOKEN":"${GH_TOKEN}"}}"#,
+        );
+        lint_connector(
+            &mut f,
+            "a",
+            "web.json",
+            r#"{"name":"other","transport":"http"}"#,
+        );
+        lint_connector(
+            &mut f,
+            "b",
+            "x.json",
+            r#"{"name":"x","transport":"ftp","env":{"KEY":"abc123"}}"#,
+        );
+        lint_connector(&mut f, "c", "y.json", "not json");
+        let all = f
+            .items
+            .iter()
+            .map(|(_, _, m)| m.as_str())
+            .collect::<Vec<_>>()
+            .join("\n");
+        assert!(!all.contains("ok:"), "{all}");
+        for expected in [
+            "a: name `other` must be `web`",
+            "a: http transport needs `url`",
+            "b: transport `ftp` must be `stdio` or `http`",
+            "b: env `KEY` must be a `${VAR}` reference",
+            "c: invalid json",
+        ] {
+            assert!(all.contains(expected), "missing `{expected}` in:\n{all}");
+        }
+    }
+
+    #[test]
     fn config_lint_finds_each_kind_of_problem() {
         let cfg = json!({
             "primary": {
-                "levers": {"doc": {"Bad_Id": "maybe", "ghost": "enabled"}},
-                "schema": {"keys": {"primary.levers": "", "primary.schema": "", "data.structure": ""},
+                "docs": {"levers": {"doc": {"Bad_Id": "maybe", "ghost": "enabled"}}, "extra": 1},
+                "schema": {"keys": {"primary.docs": "", "primary.docs.levers": "", "primary.schema": "", "data.structure": ""},
                            "levers": {"enabled": ""}, "blocks": {"paragraph": ""}}
             },
             "data": {
@@ -443,7 +699,12 @@ mod tests {
             "id must be kebab-case",
             "missing `when`",
             "lever `maybe` is not in primary.schema.levers",
-            "primary.levers.doc.ghost: no such section",
+            "primary.docs.levers.doc.ghost: no such section",
+            "primary.docs.extra is not documented",
+            "primary.log must be a list",
+            "primary.index must be an object",
+            "primary.zettelkasten is missing",
+            "primary.docs.dirs is empty",
         ] {
             assert!(all.contains(expected), "missing `{expected}` in:\n{all}");
         }

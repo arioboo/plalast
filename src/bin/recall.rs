@@ -3,14 +3,31 @@
 //! - `pla-recall`          every path with its type and description, then every memory lever.
 //! - `pla-recall <term>`   matching paths, and document lines with their file, section and lever.
 
-use plalast::{arr, data, exit, lever, open, primary, str_of, strings, CONFIG};
+use plalast::{
+    arr, data, doc_dirs, docs, exit, lever, module_dir, open, primary, str_of, strings, CONFIG,
+    MODULE_KINDS,
+};
 use serde_json::Value;
 use std::env;
+use std::path::Path;
 use std::process::ExitCode;
 
 fn main() -> ExitCode {
     let query = env::args().skip(1).collect::<Vec<_>>().join(" ");
-    exit(open().map(|(_root, cfg)| recall(&cfg, &query)))
+    exit(open().map(|(root, cfg)| recall(&root, &cfg, &query)))
+}
+
+/// Visible entries of a module folder (hidden ones such as `.gitkeep` are skipped), sorted.
+fn module_names(dir: &Path) -> Vec<String> {
+    let mut names: Vec<String> = std::fs::read_dir(dir)
+        .into_iter()
+        .flatten()
+        .filter_map(Result::ok)
+        .map(|d| d.file_name().to_string_lossy().into_owned())
+        .filter(|n| !n.starts_with('.'))
+        .collect();
+    names.sort();
+    names
 }
 
 /// `(path, content key)` of every generated document, in structure order.
@@ -38,7 +55,7 @@ fn block_texts(b: &Value) -> Vec<String> {
 
 /// Prints the repo map, or every structure entry and document line matching `query`.
 /// Returns false when a query matches nothing.
-fn recall(cfg: &Value, query: &str) -> bool {
+fn recall(root: &Path, cfg: &Value, query: &str) -> bool {
     let q = query.trim().to_lowercase();
     let hit = |s: &str| q.is_empty() || s.to_lowercase().contains(&q);
     let mut found = false;
@@ -49,6 +66,116 @@ fn recall(cfg: &Value, query: &str) -> bool {
             .and_then(Value::as_str)
         {
             println!("{t}\n");
+        }
+    }
+    // What the docs are, and where they live (primary.docs).
+    let definition = str_of(docs(cfg), "definition").unwrap_or("");
+    if q.is_empty() || hit(definition) {
+        found = true;
+        println!(
+            "Docs (primary.docs): {definition} Folders: {}\n",
+            doc_dirs(cfg).join(", ")
+        );
+    }
+    if q.is_empty() {
+        // Module kinds and the zettelkasten (primary.<kind>, primary.zettelkasten).
+        for kind in MODULE_KINDS {
+            let links: Vec<String> = primary(cfg)[kind]["links"]
+                .as_object()
+                .into_iter()
+                .flatten()
+                .map(|(p, d)| format!("{p} -> {}", d.as_str().unwrap_or("?")))
+                .collect();
+            let links = if links.is_empty() {
+                "no links".to_string()
+            } else {
+                links.join(", ")
+            };
+            let dir = module_dir(cfg, kind).unwrap_or_default();
+            let names = module_names(&root.join(&dir));
+            let names = if names.is_empty() {
+                "none yet".to_string()
+            } else {
+                names.join(", ")
+            };
+            println!("{dir:<30} {kind:<10} {links}; modules: {names}");
+        }
+        if let Some(z) = str_of(&primary(cfg)["zettelkasten"], "path") {
+            println!("{z:<30} {:<10} the vault the agents use", "zettelkasten");
+        }
+        // Plain data: features, log, index, and the tools' settings.
+        println!("\nFeatures (primary.features):");
+        for (k, v) in primary(cfg)["features"].as_object().into_iter().flatten() {
+            let status = v["status"]
+                .as_str()
+                .filter(|s| !s.is_empty())
+                .unwrap_or("-");
+            let descr = v["descr"]
+                .as_str()
+                .filter(|s| !s.is_empty())
+                .unwrap_or("(no description)");
+            println!("{k:<30} {status:<10} {descr}");
+        }
+        let count = |v: &Value| {
+            v.as_array()
+                .map(Vec::len)
+                .or_else(|| v.as_object().map(|m| m.len()))
+                .unwrap_or(0)
+        };
+        println!("Log (primary.log): {} entries", count(&primary(cfg)["log"]));
+        println!(
+            "Index (primary.index): {} entries",
+            count(&primary(cfg)["index"])
+        );
+        let audit = &primary(cfg)["config"]["audit"];
+        println!(
+            "Config (primary.config): audit allows {} string(s), reports files over {} KB",
+            count(&audit["allow"]),
+            audit["max_file_kb"].as_u64().unwrap_or(0)
+        );
+        println!();
+    }
+    // Definitions of module kinds and the zettelkasten, and the plain data, also answer queries.
+    if !q.is_empty() {
+        for (k, v) in primary(cfg)["features"].as_object().into_iter().flatten() {
+            let text = format!(
+                "{k} [{}] {}",
+                v["status"].as_str().unwrap_or(""),
+                v["descr"].as_str().unwrap_or("")
+            );
+            if hit(&text) {
+                found = true;
+                println!("primary.features: {text}");
+            }
+        }
+        for (i, entry) in arr(primary(cfg), "log").iter().enumerate() {
+            let text = entry
+                .as_str()
+                .map(String::from)
+                .unwrap_or_else(|| entry.to_string());
+            if hit(&text) {
+                found = true;
+                println!("primary.log[{i}]: {text}");
+            }
+        }
+        for (k, v) in primary(cfg)["index"].as_object().into_iter().flatten() {
+            let text = format!(
+                "{k}: {}",
+                v.as_str()
+                    .map(String::from)
+                    .unwrap_or_else(|| v.to_string())
+            );
+            if hit(&text) {
+                found = true;
+                println!("primary.index.{text}");
+            }
+        }
+        for kind in MODULE_KINDS.iter().copied().chain(["zettelkasten"]) {
+            let d = str_of(&primary(cfg)[kind], "definition").unwrap_or("");
+            if hit(d) {
+                found = true;
+                println!("primary.{kind}: {d}");
+            }
         }
     }
     for e in arr(data(cfg), "structure") {
@@ -65,7 +192,7 @@ fn recall(cfg: &Value, query: &str) -> bool {
     }
 
     if q.is_empty() {
-        println!("\nMemory levers (primary.levers):");
+        println!("\nMemory levers (primary.docs.levers):");
         for (path, key) in documents(cfg) {
             for s in arr(&data(cfg)["content"][key], "sections") {
                 let id = str_of(s, "id").unwrap_or("?");

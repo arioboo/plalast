@@ -1,5 +1,8 @@
 //! Shared helpers for the plalast tools: locate and read `config.json`, the brain of the repo.
 
+pub mod pdf;
+pub mod verified;
+
 use serde_json::Value;
 use std::env;
 use std::fs;
@@ -33,9 +36,96 @@ pub fn check_top_level(cfg: &Value) -> Res<()> {
     Ok(())
 }
 
-/// Control panel: project, levers, on_demand, adapters, schema.
+/// Control panel: project, docs, adapters, audit, schema.
 pub fn primary(cfg: &Value) -> &Value {
     &cfg["primary"]
+}
+
+/// Everything about the docs (`primary.docs`): definition, dirs, levers, on_demand.
+pub fn docs(cfg: &Value) -> &Value {
+    &primary(cfg)["docs"]
+}
+
+/// Every key of `primary`, in config order, and the tools that handle it. `pla-lint` fails on a
+/// key missing from config.json or not listed here, so memory and binaries stay wired together.
+pub const PRIMARY_KEYS: [(&str, &str); 13] = [
+    ("project", "build (logo), recall (title), audit (branches)"),
+    (
+        "docs",
+        "build (render, levers, on_demand, strays), recall, lint",
+    ),
+    ("features", "recall, lint"),
+    ("log", "recall, lint"),
+    ("index", "recall, lint"),
+    ("skills", "build (links), recall, lint"),
+    ("agents", "build (links), recall, lint"),
+    ("rules", "build (links), recall, lint"),
+    ("connectors", "build (links), recall, lint (format)"),
+    ("guides", "build (links, pdf), recall, lint"),
+    (
+        "zettelkasten",
+        "build (link target), recall, lint, audit (outside link)",
+    ),
+    ("config", "audit (config.audit), recall, lint"),
+    (
+        "schema",
+        "build (schema blocks, lever values), lint (coverage)",
+    ),
+];
+
+/// Kinds of hand-written module; each is `primary.<kind>` with `definition`, `dir` and `links`.
+pub const MODULE_KINDS: [&str; 5] = ["skills", "agents", "rules", "connectors", "guides"];
+
+/// Folder of a module kind (`primary.<kind>.dir`), without a trailing `/`.
+pub fn module_dir(cfg: &Value, kind: &str) -> Option<String> {
+    str_of(&primary(cfg)[kind], "dir").map(|d| d.trim_end_matches('/').to_string())
+}
+
+/// `(module folder, link folder)` for every provider link of every module kind.
+pub fn module_links(cfg: &Value) -> Vec<(String, String)> {
+    let mut out = Vec::new();
+    for kind in MODULE_KINDS {
+        let Some(dir) = module_dir(cfg, kind) else {
+            continue;
+        };
+        for (_provider, dest) in primary(cfg)[kind]["links"]
+            .as_object()
+            .into_iter()
+            .flatten()
+        {
+            if let Some(d) = dest.as_str() {
+                out.push((dir.clone(), d.trim_end_matches('/').to_string()));
+            }
+        }
+    }
+    out
+}
+
+/// The value at a dotted config path such as `primary.zettelkasten.path`.
+pub fn lookup<'a>(cfg: &'a Value, dotted: &str) -> Option<&'a Value> {
+    cfg.pointer(&format!("/{}", dotted.replace('.', "/")))
+}
+
+/// Folders whose `.md` files are docs (`primary.docs.dirs`), as relative paths; `.` is the root.
+pub fn doc_dirs(cfg: &Value) -> Vec<String> {
+    strings(docs(cfg), "dirs")
+        .iter()
+        .map(|d| d.trim_end_matches('/').to_string())
+        .collect()
+}
+
+/// Whether the repo-relative `path` is a doc: an `.md` directly inside one of `doc_dirs`.
+pub fn is_doc_path(cfg: &Value, path: &str) -> bool {
+    if !path.ends_with(".md") {
+        return false;
+    }
+    let parent = Path::new(path)
+        .parent()
+        .map(|p| p.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    doc_dirs(cfg)
+        .iter()
+        .any(|d| (d == "." && parent.is_empty()) || *d == parent)
 }
 
 /// What gets built: structure and content.
@@ -43,9 +133,9 @@ pub fn data(cfg: &Value) -> &Value {
     &cfg["data"]
 }
 
-/// Memory lever of one document section (`primary.levers.<doc>.<id>`), if set.
+/// Memory lever of one document section (`primary.docs.levers.<doc>.<id>`), if set.
 pub fn lever<'a>(cfg: &'a Value, doc: &str, id: &str) -> Option<&'a str> {
-    primary(cfg)["levers"][doc][id].as_str()
+    docs(cfg)["levers"][doc][id].as_str()
 }
 
 /// Exit code shared by every tool: 0 in sync / found, 1 not, 2 error.

@@ -4,9 +4,12 @@
 //! - `pla-build --check`   changes nothing; fails if the repo drifted from `config.json`.
 //!
 //! Each document section is rendered according to its memory lever
-//! (`primary.levers.<doc>.<section id>`): `enabled`, `on_demand` or `disabled`.
+//! (`primary.docs.levers.<doc>.<section id>`): `enabled`, `on_demand` or `disabled`.
 
-use plalast::{arr, data, exit, lever, open, primary, req, str_of, strings, Res, CONFIG};
+use plalast::{
+    arr, data, doc_dirs, docs, exit, lever, lookup, module_dir, module_links, open, primary, req,
+    str_of, strings, Res, CONFIG,
+};
 use serde_json::Value;
 use std::env;
 use std::fs;
@@ -94,8 +97,7 @@ fn schema_table(cfg: &Value, block: &Value) -> Res<String> {
 fn image(cfg: &Value, block: &Value) -> Res<String> {
     let src = match (str_of(block, "src"), str_of(block, "ref")) {
         (Some(src), _) => src,
-        (None, Some(r)) => cfg
-            .pointer(&format!("/{}", r.replace('.', "/")))
+        (None, Some(r)) => lookup(cfg, r)
             .and_then(Value::as_str)
             .ok_or_else(|| format!("image block: `{r}` is not a string in {CONFIG}"))?,
         (None, None) => return Err("image block: needs `src` or `ref`".to_string()),
@@ -114,8 +116,10 @@ fn render_blocks(blocks: &[Value], cfg: &Value) -> Res<String> {
         let kind = req(b, "type", "content block")?;
         let part = match kind {
             "heading" => {
-                let level = b.get("level").and_then(Value::as_u64).unwrap_or(1) as usize;
-                format!("{} {}", "#".repeat(level), req(b, "text", "heading")?)
+                let level = b.get("level").and_then(Value::as_u64).unwrap_or(1);
+                // Verified: always 1..=6 `#` (src/verified.rs).
+                let hashes = plalast::verified::heading_hashes(level) as usize;
+                format!("{} {}", "#".repeat(hashes), req(b, "text", "heading")?)
             }
             "paragraph" | "raw" => req(b, "text", kind)?.to_string(),
             "list" => strings(b, "items")
@@ -165,11 +169,11 @@ fn render_doc(key: &str, doc: &Value, cfg: &Value) -> Res<(String, Vec<(String, 
         .as_object()
         .map(|m| m.keys().map(String::as_str).collect())
         .unwrap_or_default();
-    if let Some(levers) = primary(cfg)["levers"][key].as_object() {
+    if let Some(levers) = docs(cfg)["levers"][key].as_object() {
         for id in levers.keys() {
             if !sections.iter().any(|s| str_of(s, "id") == Some(id)) {
                 return Err(format!(
-                    "primary.levers.{key}.{id}: no such section in data.content.{key}"
+                    "primary.docs.levers.{key}.{id}: no such section in data.content.{key}"
                 ));
             }
         }
@@ -180,18 +184,18 @@ fn render_doc(key: &str, doc: &Value, cfg: &Value) -> Res<(String, Vec<(String, 
     if !head.is_empty() {
         parts.push(head);
     }
-    let on_demand = &primary(cfg)["on_demand"];
+    let on_demand = &docs(cfg)["on_demand"];
     let mut pointers = Vec::new();
     let mut files = Vec::new();
     for s in sections {
         let id = req(s, "id", &format!("data.content.{key} section"))?;
         let title = req(s, "title", id)?;
         let state = lever(cfg, key, id).ok_or_else(|| {
-            format!("data.content.{key}: section `{id}` has no lever in primary.levers.{key}")
+            format!("data.content.{key}: section `{id}` has no lever in primary.docs.levers.{key}")
         })?;
         if !allowed.contains(&state) {
             return Err(format!(
-                "primary.levers.{key}.{id}: `{state}` is not one of {allowed:?}"
+                "primary.docs.levers.{key}.{id}: `{state}` is not one of {allowed:?}"
             ));
         }
         let body = render_blocks(arr(s, "blocks"), cfg)?;
@@ -205,11 +209,11 @@ fn render_doc(key: &str, doc: &Value, cfg: &Value) -> Res<(String, Vec<(String, 
         match state {
             "enabled" => parts.push(with_body(format!("## {title}"))),
             "on_demand" => {
-                let dir = req(on_demand, "dir", "primary.on_demand")?.trim_end_matches('/');
+                let dir = req(on_demand, "dir", "primary.docs.on_demand")?.trim_end_matches('/');
                 let path = format!("{dir}/{id}.md");
                 let when = req(s, "when", id)?;
                 pointers.push(
-                    req(on_demand, "pointer", "primary.on_demand")?
+                    req(on_demand, "pointer", "primary.docs.on_demand")?
                         .replace("{path}", &path)
                         .replace("{title}", title)
                         .replace("{when}", when),
@@ -221,11 +225,17 @@ fn render_doc(key: &str, doc: &Value, cfg: &Value) -> Res<(String, Vec<(String, 
         }
     }
     if !pointers.is_empty() {
-        let heading = req(on_demand, "heading", "primary.on_demand")?;
+        let heading = req(on_demand, "heading", "primary.docs.on_demand")?;
         let list: Vec<String> = pointers.iter().map(|p| format!("- {p}")).collect();
         parts.push(format!("## {heading}\n\n{}", list.join("\n")));
     }
-    Ok((format!("{}\n", parts.join("\n\n")), files))
+    // A document with nothing in it is an empty file, not a lone newline.
+    let main = if parts.is_empty() {
+        String::new()
+    } else {
+        format!("{}\n", parts.join("\n\n"))
+    };
+    Ok((main, files))
 }
 
 fn render_gitignore(structure: &[Value]) -> String {
@@ -276,7 +286,19 @@ fn wanted(root: &Path, cfg: &Value) -> Res<Vec<Want>> {
                     out.push(Want::File(full.join(".gitkeep"), String::new()));
                 }
             }
-            "symlink" => out.push(Want::Link(full, req(e, "target", path)?.to_string())),
+            "symlink" => {
+                // `target`, or `target_ref`: a dotted config path holding it (one place for it).
+                let target = match (str_of(e, "target"), str_of(e, "target_ref")) {
+                    (Some(t), _) => t,
+                    (None, Some(r)) => lookup(cfg, r).and_then(Value::as_str).ok_or_else(|| {
+                        format!("{path}: target_ref `{r}` is not a string in {CONFIG}")
+                    })?,
+                    (None, None) => {
+                        return Err(format!("{path}: symlink needs `target` or `target_ref`"))
+                    }
+                };
+                out.push(Want::Link(full, target.to_string()))
+            }
             "file" => match str_of(e, "build") {
                 None => {}
                 Some("gitignore") => add_file(&mut out, path, render_gitignore(structure))?,
@@ -296,18 +318,32 @@ fn wanted(root: &Path, cfg: &Value) -> Res<Vec<Want>> {
             other => return Err(format!("{path}: unknown type `{other}`")),
         }
     }
-    // Adapters: one symlink per module, never a whole folder.
-    for (_provider, maps) in primary(cfg)["adapters"].as_object().into_iter().flatten() {
-        for m in maps.as_array().into_iter().flatten() {
-            let source = req(m, "source", "adapter")?.trim_end_matches('/');
-            let dest = req(m, "dest", "adapter")?.trim_end_matches('/');
-            let up = "../".repeat(Path::new(dest).components().count());
-            for name in modules(&root.join(source))? {
-                out.push(Want::Link(
-                    root.join(dest).join(&name),
-                    format!("{up}{source}/{name}"),
-                ));
+    // Guides: with `render: "pdf"`, every hand-written .md in primary.guides.dir gets a .pdf
+    // next to it (src/pdf.rs; deterministic, so --check compares it like any other file).
+    if str_of(&primary(cfg)["guides"], "render") == Some("pdf") {
+        if let Some(dir) = module_dir(cfg, "guides") {
+            for name in modules(&root.join(&dir))? {
+                let Some(stem) = name.strip_suffix(".md") else {
+                    continue;
+                };
+                let md = fs::read_to_string(root.join(&dir).join(&name))
+                    .map_err(|e| format!("{dir}/{name}: {e}"))?;
+                add_file(
+                    &mut out,
+                    &format!("{dir}/{stem}.pdf"),
+                    plalast::pdf::render(&md),
+                )?;
             }
+        }
+    }
+    // Module links (primary.<kind>.links): one symlink per module, never a whole folder.
+    for (source, dest) in module_links(cfg) {
+        let up = "../".repeat(Path::new(&dest).components().count());
+        for name in modules(&root.join(&source))? {
+            out.push(Want::Link(
+                root.join(&dest).join(&name),
+                format!("{up}{source}/{name}"),
+            ));
         }
     }
     Ok(out)
@@ -399,15 +435,15 @@ fn build(root: &Path, cfg: &Value, check: bool) -> Res<bool> {
             }
         }
     }
-    drift.extend(prune_adapter_links(root, cfg, check)?);
-    let strays = stray_markdown(root, &generated);
+    drift.extend(prune_module_links(root, cfg, check)?);
+    let strays = stray_markdown(root, cfg, &generated);
 
     let verb = if check { "out of sync" } else { "updated" };
     for d in &drift {
         println!("{verb}: {d}");
     }
     for s in &strays {
-        println!("not in {CONFIG}: {s} (every .md in the root and agents/ must be generated; add it to {CONFIG} or delete it)");
+        println!("not in {CONFIG}: {s} (it is a doc, an .md in primary.docs.dirs, so it must be generated; add it to {CONFIG} or delete it)");
     }
     if drift.is_empty() && strays.is_empty() {
         println!("in sync with {CONFIG}");
@@ -415,19 +451,17 @@ fn build(root: &Path, cfg: &Value, check: bool) -> Res<bool> {
     Ok(strays.is_empty() && (!check || drift.is_empty()))
 }
 
-/// Removes broken adapter links (left behind by deleted modules).
-fn prune_adapter_links(root: &Path, cfg: &Value, check: bool) -> Res<Vec<String>> {
+/// Removes broken module links (left behind by deleted modules).
+fn prune_module_links(root: &Path, cfg: &Value, check: bool) -> Res<Vec<String>> {
     let mut out = Vec::new();
-    for (_provider, maps) in primary(cfg)["adapters"].as_object().into_iter().flatten() {
-        for m in maps.as_array().into_iter().flatten() {
-            let dest = root.join(req(m, "dest", "adapter")?.trim_end_matches('/'));
-            for name in modules(&dest)? {
-                let p = dest.join(&name);
-                if p.is_symlink() && !p.exists() {
-                    out.push(format!("remove broken link {}", rel(root, &p)));
-                    if !check {
-                        fs::remove_file(&p).map_err(|e| e.to_string())?;
-                    }
+    for (_source, dest) in module_links(cfg) {
+        let dest = root.join(dest);
+        for name in modules(&dest)? {
+            let p = dest.join(&name);
+            if p.is_symlink() && !p.exists() {
+                out.push(format!("remove broken link {}", rel(root, &p)));
+                if !check {
+                    fs::remove_file(&p).map_err(|e| e.to_string())?;
                 }
             }
         }
@@ -435,11 +469,11 @@ fn prune_adapter_links(root: &Path, cfg: &Value, check: bool) -> Res<Vec<String>
     Ok(out)
 }
 
-/// `.md` files in the root and in `agents/` that this build does not generate.
-fn stray_markdown(root: &Path, generated: &[String]) -> Vec<String> {
+/// Docs (`.md` files in `primary.docs.dirs`) that this build does not generate.
+fn stray_markdown(root: &Path, cfg: &Value, generated: &[String]) -> Vec<String> {
     let mut out = Vec::new();
-    for dir in ["", "agents"] {
-        let Ok(read) = fs::read_dir(root.join(dir)) else {
+    for dir in doc_dirs(cfg) {
+        let Ok(read) = fs::read_dir(root.join(&dir)) else {
             continue;
         };
         for entry in read.filter_map(Result::ok) {
@@ -469,8 +503,10 @@ mod tests {
     fn cfg(levers: Value) -> Value {
         json!({
             "primary": {
-                "levers": {"doc": levers},
-                "on_demand": {"dir": "agents", "heading": "On demand", "pointer": "`{path}`: {title}. Read it when {when}."},
+                "docs": {
+                    "levers": {"doc": levers},
+                    "on_demand": {"dir": "agents", "heading": "On demand", "pointer": "`{path}`: {title}. Read it when {when}."}
+                },
                 "schema": {"levers": {"enabled": "", "on_demand": "", "disabled": ""}}
             },
             "data": {"structure": [], "content": {}}
@@ -537,6 +573,12 @@ mod tests {
     }
 
     #[test]
+    fn empty_document_is_an_empty_file() {
+        let empty = json!({"head": [], "sections": []});
+        assert_eq!(render_doc("doc", &empty, &cfg(json!({}))).unwrap().0, "");
+    }
+
+    #[test]
     fn missing_lever_is_an_error() {
         let err = render_doc("doc", &doc(), &cfg(json!({"a": "enabled"}))).unwrap_err();
         assert!(err.contains("`b` has no lever"), "{err}");
@@ -557,7 +599,7 @@ mod tests {
             &cfg(json!({"a": "enabled", "b": "enabled", "c": "enabled"})),
         )
         .unwrap_err();
-        assert!(err.contains("primary.levers.doc.c"), "{err}");
+        assert!(err.contains("primary.docs.levers.doc.c"), "{err}");
     }
 
     #[test]
@@ -616,6 +658,16 @@ mod tests {
         );
         let bad = json!([{"type": "image", "ref": "primary.project.nope"}]);
         assert!(render_blocks(bad.as_array().unwrap(), &c).is_err());
+    }
+
+    #[test]
+    fn doc_paths_come_from_primary_docs_dirs() {
+        let c = json!({"primary": {"docs": {"dirs": [".", "agents/"]}}, "data": {}});
+        assert!(plalast::is_doc_path(&c, "README.md"));
+        assert!(plalast::is_doc_path(&c, "agents/BUILD.md"));
+        assert!(!plalast::is_doc_path(&c, "agents/skills/x/SKILL.md"));
+        assert!(!plalast::is_doc_path(&c, "src/notes.md"));
+        assert!(!plalast::is_doc_path(&c, "agents/config.json"));
     }
 
     #[test]

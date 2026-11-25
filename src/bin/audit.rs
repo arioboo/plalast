@@ -9,7 +9,7 @@
 //! `repo`:    broken symlinks, links leaving the repo, large files, uncommitted changes and
 //!            branches out of sync (against the last fetch; it does not fetch).
 //!
-//! Exact strings listed in `primary.audit.allow` are never reported.
+//! Exact strings listed in `primary.config.audit.allow` are never reported.
 
 use plalast::{arr, cargo, data, exit, open, primary, repo_files, run, str_of, strings, Findings};
 use regex::Regex;
@@ -100,7 +100,7 @@ fn scan(text: &str, pats: &[(&str, Regex)], allow: &[String]) -> Vec<(usize, Str
 
 fn audit_secrets(root: &Path, cfg: &Value, f: &mut Findings) -> Result<(), String> {
     let pats = patterns();
-    let allow = strings(&primary(cfg)["audit"], "allow");
+    let allow = strings(&primary(cfg)["config"]["audit"], "allow");
     for file in repo_files(root)? {
         let p = root.join(&file);
         if p.is_symlink() || !p.is_file() {
@@ -181,8 +181,8 @@ fn lexical_target(link: &Path, target: &Path) -> PathBuf {
 
 fn audit_repo(root: &Path, cfg: &Value, f: &mut Findings) -> Result<(), String> {
     const A: &str = "repo";
-    let allow = strings(&primary(cfg)["audit"], "allow");
-    let max_kb = primary(cfg)["audit"]["max_file_kb"]
+    let allow = strings(&primary(cfg)["config"]["audit"], "allow");
+    let max_kb = primary(cfg)["config"]["audit"]["max_file_kb"]
         .as_u64()
         .unwrap_or(1024);
     for file in repo_files(root)? {
@@ -207,7 +207,7 @@ fn audit_repo(root: &Path, cfg: &Value, f: &mut Findings) -> Result<(), String> 
                 f.warn(
                     A,
                     format!(
-                        "{file}: {} KB, larger than primary.audit.max_file_kb ({max_kb} KB)",
+                        "{file}: {} KB, larger than primary.config.audit.max_file_kb ({max_kb} KB)",
                         meta.len() / 1024
                     ),
                 );

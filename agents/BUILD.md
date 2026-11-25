@@ -10,10 +10,10 @@
 | `cargo run --release --bin pla-build -- --check` | Changes nothing; exits non-zero if the repo drifted from `config.json` (stale file, missing link, stray `.md`). |
 | `cargo run --release --bin pla-recall` | Prints the map: every path in `structure` with its type and description. |
 | `cargo run --release --bin pla-recall -- <term>` | Searches paths, descriptions and document text for `<term>` (case-insensitive), naming the file and section of each hit. |
-| `cargo run --release --bin pla-lint` | Checks that `config.json` is consistent and fully documented in `primary.schema`, that hand-written modules have the right shape (skill folders with `SKILL.md`, frontmatter `name` and `description`), and that `cargo fmt` and `cargo clippy` pass. Pass `config`, `modules` or `rust` to run only some areas. |
-| `cargo run --release --bin pla-audit` | Looks for keys, tokens, emails and home-folder paths in what git would commit, files committed inside secret folders, known vulnerabilities in `Cargo.lock` (with `cargo-audit`), broken links, large files, uncommitted changes and branches out of sync. Pass `secrets`, `deps` or `repo` to run only some areas; `primary.audit` holds its settings. |
+| `cargo run --release --bin pla-lint` | Checks that `config.json` is consistent and fully documented in `primary.schema`, that hand-written modules have the right shape (skill folders with `SKILL.md`, frontmatter `name` and `description`), that guides have their source, and that `cargo fmt`, `cargo clippy` and, when Verus is installed, `cargo verus verify` pass. Pass `config`, `modules` or `rust` to run only some areas. |
+| `cargo run --release --bin pla-audit` | Looks for keys, tokens, emails and home-folder paths in what git would commit, files committed inside secret folders, known vulnerabilities in `Cargo.lock` (with `cargo-audit`), broken links, large files, uncommitted changes and branches out of sync. Pass `secrets`, `deps` or `repo` to run only some areas; `primary.config.audit` holds its settings. |
 
-Run them from anywhere inside the repo: the tool walks up to the folder that holds `config.json`. Symlinks need a Unix system (Linux or macOS). `pla-build` never replaces a real file or folder with a link, and never deletes anything except broken adapter links.
+Run them from anywhere inside the repo: the tool walks up to the folder that holds `config.json`. Symlinks need a Unix system (Linux or macOS). `pla-build` never replaces a real file or folder with a link, and never deletes anything except broken module links.
 
 ## config.json
 
@@ -23,10 +23,24 @@ It has exactly two top-level keys: `primary`, the control panel (what to build a
 |---|---|
 | `primary` | Control panel: what to build and how. |
 | `primary.project` | Identity: `name`, `title`, `plalast_logo` (path of the project logo), `purpose`, `repository` and `branches`. |
-| `primary.levers` | Memory lever of every document section, as `<doc>` -> `<section id>` -> value (see Memory levers). |
-| `primary.on_demand` | Where `on_demand` sections go (`dir`), the heading of the pointer list (`heading`) and the pointer line (`pointer`, with `{path}`, `{title}` and `{when}`). |
-| `primary.adapters` | Per provider, which `agents/` folders get one symlink per module (`source`) and where (`dest`). |
-| `primary.audit` | Settings of `pla-audit`: `allow` (exact strings or repo paths that are never reported, such as a public contact email) and `max_file_kb` (larger files are reported). |
+| `primary.docs` | Everything about the docs, the markdown files about this project and how it operates. |
+| `primary.docs.definition` | What counts as a doc, in words. |
+| `primary.docs.dirs` | Folders whose `.md` files are docs (`.` is the repo root). Every `.md` directly inside them must be generated. |
+| `primary.docs.levers` | Memory lever of every document section, as `<doc>` -> `<section id>` -> value (see Memory levers). |
+| `primary.docs.on_demand` | Where `on_demand` sections go (`dir`), the heading of the pointer list (`heading`) and the pointer line (`pointer`, with `{path}`, `{title}` and `{when}`). |
+| `primary.features` | Features of the project, as `feature_<n>` -> `{descr, status}` (both strings). |
+| `primary.log` | Project log: a list of entries (empty for now; the entry format is not defined yet). |
+| `primary.index` | Project index (empty for now; its format is not defined yet). |
+| `primary.skills` | Skills: `definition`, `dir` (where they are written) and `links` (provider -> folder that gets one symlink per skill). |
+| `primary.agents` | Subagents: `definition`, `dir` and `links`, as in primary.skills. |
+| `primary.rules` | Rules: `definition`, `dir` and `links`, as in primary.skills. |
+| `primary.connectors` | MCP connectors: `definition`, `dir` and `links`, as in primary.skills. `pla-lint` checks each file's neutral format. |
+| `primary.guides` | Guides: `definition`, `dir`, `links` (as in primary.skills) and `render` (`pdf`: each .md is rendered to a .pdf by `pla-build`). |
+| `primary.zettelkasten` | The zettelkasten vault to use. |
+| `primary.zettelkasten.definition` | What the vault is, in words. |
+| `primary.zettelkasten.path` | Path of the vault, relative to the repo root (keep it relative: an absolute path leaks your home folder). The `zettelkasten` link targets it. |
+| `primary.config` | Settings of the pla-* tools, one key per tool. |
+| `primary.config.audit` | Settings of `pla-audit`: `allow` (exact strings or repo paths that are never reported, such as a public contact email) and `max_file_kb` (larger files are reported). |
 | `primary.schema` | This documentation of the config format; `BUILD.md` renders its tables. |
 | `data` | What gets built. |
 | `data.structure` | Every path, in order: `path`, `type`, `description`; optional `table` and `label` (its row in the Structure table), `gitkeep`, `secret`, `target` and `build`. |
@@ -34,12 +48,12 @@ It has exactly two top-level keys: `primary`, the control panel (what to build a
 
 ## Memory levers
 
-Every section of every document has a lever in `primary.levers.<doc>.<section id>`. A missing lever, a lever for a section that does not exist, or a value outside this table stops the build.
+Every section of every document has a lever in `primary.docs.levers.<doc>.<section id>`. A missing lever, a lever for a section that does not exist, or a value outside this table stops the build.
 
 | Value | Effect |
 |---|---|
 | `enabled` | Rendered inside its document as `## <title>`: always in the agent's memory. |
-| `on_demand` | Rendered to `<on_demand.dir>/<id>.md`; the document keeps only a pointer line under the on_demand heading, and the agent reads the file when `when` applies. |
+| `on_demand` | Rendered to `<primary.docs.on_demand.dir>/<id>.md`; the document keeps only a pointer line under the on_demand heading, and the agent reads the file when `when` applies. |
 | `disabled` | Not rendered anywhere. |
 
 Switching a section from `on_demand` to `disabled` leaves its old file behind: `pla-build` reports it as a stray `.md` and fails until you delete it.
@@ -49,7 +63,7 @@ Switching a section from `on_demand` to `disabled` leaves its old file behind: `
 | Type | Build action |
 |---|---|
 | `dir` | Creates the folder; `gitkeep: true` adds an empty `.gitkeep`; `secret: true` git-ignores its contents except `.gitkeep`. |
-| `symlink` | Creates a link to `target`, relative to the link's folder. |
+| `symlink` | Creates a link to `target`, relative to the link's folder; `target_ref` (a dotted config path such as `primary.zettelkasten.path`) can replace `target`. |
 | `file + build` | Renders `data.content.<build>`; `build: "gitignore"` renders `.gitignore` from the secret and ignored entries. |
 | `file + build: null` | Hand-written code such as `Cargo.toml` or `src/`; never an `.md` in the root or `agents/`. Left as is. |
 | `ignored` | Not created; listed in `.gitignore`. |
@@ -74,7 +88,9 @@ Each section is rendered as `## <title>` followed by its blocks. Blocks are sepa
 
 ## Adding a module
 
-Write the module in its folder (for example `agents/skills/<name>/SKILL.md`) and run `pla-build`: each adapter links it on its own (`.claude/skills/<name>` -> `../../agents/skills/<name>`), never a whole folder. Links of deleted modules are removed on the next build.
+Write the module in its folder (for example `agents/skills/<name>/SKILL.md`) and run `pla-build`: each provider in the module type's `links` (`primary.skills`, `primary.agents`, `primary.rules`, `primary.connectors`) gets one link for it (`.claude/skills/<name>` -> `../../agents/skills/<name>`), never a whole folder. Links of deleted modules are removed on the next build.
+
+Guides are modules too: write `agents/guides/<name>.md` and run `pla-build`, which renders `agents/guides/<name>.pdf` from it (headings, paragraphs, lists and code blocks; inline markup is flattened). The PDF is deterministic, so `pla-build --check` reports a stale one.
 
 ## Removing a path
 
