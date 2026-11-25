@@ -169,6 +169,14 @@ fn lint_config(root: &Path, cfg: &Value, f: &mut Findings) {
             &format!("data.content.{key}.head"),
             f,
         );
+        // Every doc carries the agent note on its second line.
+        let second = arr(doc, "head").get(1).and_then(|b| str_of(b, "type"));
+        if second != Some("agent_note") {
+            f.error(
+                A,
+                format!("data.content.{key}.head: the second block must be `agent_note`"),
+            );
+        }
         for s in arr(doc, "sections") {
             let id = str_of(s, "id").unwrap_or("");
             let ctx = format!("data.content.{key} section `{id}`");
@@ -705,6 +713,7 @@ mod tests {
             "primary.index must be an object",
             "primary.zettelkasten is missing",
             "primary.docs.dirs is empty",
+            "data.content.doc.head: the second block must be `agent_note`",
         ] {
             assert!(all.contains(expected), "missing `{expected}` in:\n{all}");
         }

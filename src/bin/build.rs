@@ -155,11 +155,28 @@ fn render_blocks(blocks: &[Value], cfg: &Value) -> Res<String> {
             "structure_table" => structure_table(arr(data(cfg), "structure")),
             "schema" => schema_table(cfg, b)?,
             "image" => image(cfg, b)?,
+            "agent_note" => agent_note(cfg)?.to_string(),
             other => return Err(format!("unknown content block type `{other}`")),
         };
-        parts.push(part);
+        // One blank line between blocks; the agent note sits right under the first line.
+        let sep = if kind == "agent_note" { "\n" } else { "\n\n" };
+        parts.push((sep, part));
     }
-    Ok(parts.join("\n\n").trim_end().to_string())
+    let mut out = String::new();
+    for (i, (sep, part)) in parts.iter().enumerate() {
+        if i > 0 {
+            out.push_str(sep);
+        }
+        out.push_str(part);
+    }
+    Ok(out.trim_end().to_string())
+}
+
+/// The note every generated doc carries on its second line (`primary.docs.agent_note`).
+fn agent_note(cfg: &Value) -> Res<&str> {
+    docs(cfg)["agent_note"]
+        .as_str()
+        .ok_or_else(|| "primary.docs.agent_note is missing".to_string())
 }
 
 /// Renders document `key`: its main text plus one `(path, text)` per `on_demand` section.
@@ -218,7 +235,8 @@ fn render_doc(key: &str, doc: &Value, cfg: &Value) -> Res<(String, Vec<(String, 
                         .replace("{title}", title)
                         .replace("{when}", when),
                 );
-                files.push((path, format!("{}\n", with_body(format!("# {title}")))));
+                let heading = format!("# {title}\n{}", agent_note(cfg)?);
+                files.push((path, format!("{}\n", with_body(heading))));
             }
             "disabled" => {}
             other => return Err(format!("lever `{other}` has no build rule")),
@@ -504,6 +522,7 @@ mod tests {
         json!({
             "primary": {
                 "docs": {
+                    "agent_note": "NOTE",
                     "levers": {"doc": levers},
                     "on_demand": {"dir": "agents", "heading": "On demand", "pointer": "`{path}`: {title}. Read it when {when}."}
                 },
@@ -556,7 +575,10 @@ mod tests {
         );
         assert_eq!(
             files,
-            vec![("agents/a.md".to_string(), "# A\n\nalpha\n".to_string())]
+            vec![(
+                "agents/a.md".to_string(),
+                "# A\nNOTE\n\nalpha\n".to_string()
+            )]
         );
     }
 
@@ -570,6 +592,24 @@ mod tests {
         .unwrap();
         assert_eq!(main, "# Doc\n\n## B\n\n- x\n- y\n");
         assert!(files.is_empty());
+    }
+
+    #[test]
+    fn agent_note_sits_on_the_second_line() {
+        let d = json!({
+            "head": [{"type": "heading", "level": 1, "text": "Doc"}, {"type": "agent_note"},
+                     {"type": "paragraph", "text": "intro"}],
+            "sections": []
+        });
+        let (main, _) = render_doc("doc", &d, &cfg(json!({}))).unwrap();
+        assert_eq!(main, "# Doc\nNOTE\n\nintro\n");
+    }
+
+    #[test]
+    fn agent_note_without_its_text_is_an_error() {
+        let c = json!({"primary": {"docs": {}}, "data": {}});
+        let b = json!([{"type": "agent_note"}]);
+        assert!(render_blocks(b.as_array().unwrap(), &c).is_err());
     }
 
     #[test]

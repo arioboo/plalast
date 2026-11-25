@@ -1,4 +1,5 @@
 # BUILD
+note for the agent: this file is generated via the brain (config.json) and binaries (build.rs)
 
 `config.json` is the brain of this repo: every `.md` file in the repo root and in `agents/` is generated from it, together with folders, symlinks and `.gitignore`. Modules in the `agents/` subfolders (skills, subagents, rules, hooks, mcp, memory) are hand-written and are not generated. Never edit a generated file: edit `config.json` and rebuild.
 
@@ -26,6 +27,7 @@ It has exactly two top-level keys: `primary`, the control panel (what to build a
 | `primary.docs` | Everything about the docs, the markdown files about this project and how it operates. |
 | `primary.docs.definition` | What counts as a doc, in words. |
 | `primary.docs.dirs` | Folders whose `.md` files are docs (`.` is the repo root). Every `.md` directly inside them must be generated. |
+| `primary.docs.agent_note` | The note every generated doc carries on its second line, so an agent reading the file knows not to edit it by hand. Inserted by the `agent_note` block. |
 | `primary.docs.levers` | Memory lever of every document section, as `<doc>` -> `<section id>` -> value (see Memory levers). |
 | `primary.docs.on_demand` | Where `on_demand` sections go (`dir`), the heading of the pointer list (`heading`) and the pointer line (`pointer`, with `{path}`, `{title}` and `{when}`). |
 | `primary.features` | Features of the project, as `feature_<n>` -> `{descr, status}` (both strings). |
@@ -83,8 +85,9 @@ Switching a section from `on_demand` to `disabled` leaves its old file behind: `
 | `structure_table` | the Structure table, from the `data.structure` entries that have `table` |
 | `schema` | a table of `primary.schema.<part>` with the given `header` |
 | `image` | `![alt](src)`, or an HTML `<img>` when `width` is set; `ref` (a dotted config path such as `primary.project.plalast_logo`) can replace `src` |
+| `agent_note` | the text of `primary.docs.agent_note`, on the line right after the first one (no blank line); every doc has it as the second block of its `head` |
 
-Each section is rendered as `## <title>` followed by its blocks. Blocks are separated by one blank line and every file ends with one newline.
+Each section is rendered as `## <title>` followed by its blocks. Blocks are separated by one blank line, except `agent_note`, which goes right under the first line; every file ends with one newline.
 
 ## Adding a module
 

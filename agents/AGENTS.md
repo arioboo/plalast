@@ -1,4 +1,5 @@
 # plalast - The Living Creature
+note for the agent: this file is generated via the brain (config.json) and binaries (build.rs)
 
 This repo is a public and living creature. Turn on your VPS or machine, connect your agents, code it, teach it something, and make a pull request on Github.
 

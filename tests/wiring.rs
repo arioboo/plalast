@@ -29,6 +29,26 @@ fn repo_is_in_sync_with_the_memory() {
 }
 
 #[test]
+fn every_generated_doc_has_the_agent_note_on_line_two() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let cfg = load(root).unwrap();
+    let note = cfg["primary"]["docs"]["agent_note"].as_str().unwrap();
+    let mut checked = 0;
+    for e in cfg["data"]["structure"].as_array().unwrap() {
+        let (Some(path), Some(build)) = (e["path"].as_str(), e["build"].as_str()) else {
+            continue;
+        };
+        if build == "gitignore" {
+            continue;
+        }
+        let text = std::fs::read_to_string(root.join(path)).unwrap();
+        assert_eq!(text.lines().nth(1), Some(note), "{path} line 2");
+        checked += 1;
+    }
+    assert!(checked >= 7, "only {checked} docs checked");
+}
+
+#[test]
 fn memory_keys_match_the_tools_registry() {
     let cfg = load(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
     let present: Vec<&str> = primary(&cfg)
