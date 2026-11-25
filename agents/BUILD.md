@@ -26,7 +26,7 @@ The brain is two files. `memory.json` has exactly `primary` (what makes the docs
 |---|---|
 | `params` | Parameters, from `params.yaml`: `config` and `levers`. |
 | `params.config` | What the tools need to run the repo: git, tool settings and every path. |
-| `params.config.PLALAST_DIR` | Where the repo lives, written with `$HOME` (never expanded, so it does not leak the user name). |
+| `params.config.PLALAST_DIR` | Where the repo lives: always `$PWD`, the repo root, which the tools find by walking up to `memory.json` and resolve at run time. No path is written, so the same value works on every machine and never leaks the user name. |
 | `params.config.repository` | Remote repository of the project. |
 | `params.config.branches` | `integration` (where work is committed) and `stable` (what receives merges); `pla-audit` checks they are in sync. |
 | `params.config.audit` | Settings of `pla-audit`: `allow` (exact strings or repo paths that are never reported, such as a public contact email) and `max_file_kb` (larger files are reported). |
@@ -35,7 +35,7 @@ The brain is two files. `memory.json` has exactly `primary` (what makes the docs
 | `params.config.paths` | Every path the tools use: `docs`, `on_demand`, `zettelkasten` and `modules`. |
 | `params.config.paths.docs` | Folders whose `.md` files are docs (`.` is the repo root). Every `.md` directly inside them must be generated. |
 | `params.config.paths.on_demand` | Folder where `on_demand` sections are written as `<id>.md`. |
-| `params.config.paths.zettelkasten` | Path of the vault, relative to the repo root (keep it relative: an absolute path leaks your home folder). The `zettelkasten` link targets it. |
+| `params.config.paths.zettelkasten` | Path of the vault, relative to `PLALAST_DIR` (the repo root), the same on every machine: `../zettelkasten`, a folder next to the repo. Keep it relative: an absolute path leaks your home folder and ties the repo to one machine. The `zettelkasten` link targets it; on a machine whose vault lives elsewhere, put a link there to the vault (once, outside the repo) instead of changing this value. |
 | `params.config.paths.modules` | Per module kind (skills, agents, rules, connectors, guides): `dir` (where its modules are written) and `links` (provider -> folder that gets one symlink per module). |
 | `params.levers` | Memory lever of every document section, as `<doc>` -> `<section id>` -> value (see Memory levers). |
 | `primary` | What makes the docs: project identity, texts, definitions, commands, features, log, index and this schema. |

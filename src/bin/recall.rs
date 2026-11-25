@@ -170,8 +170,9 @@ fn print_map(root: &Path, cfg: &Value) {
     );
     let c = config(cfg);
     println!(
-        "Config (params.config): PLALAST_DIR {}, repository {}, branches {} -> {}, audit allows {} string(s) and reports files over {} KB\n",
+        "Config (params.config): PLALAST_DIR {} = {}, repository {}, branches {} -> {}, audit allows {} string(s) and reports files over {} KB\n",
         str_of(c, "PLALAST_DIR").unwrap_or("?"),
+        root.display(),
         str_of(c, "repository").unwrap_or("?"),
         str_of(&c["branches"], "integration").unwrap_or("?"),
         str_of(&c["branches"], "stable").unwrap_or("?"),

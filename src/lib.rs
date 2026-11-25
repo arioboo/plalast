@@ -118,7 +118,10 @@ pub fn lookup<'a>(cfg: &'a Value, dotted: &str) -> Option<&'a Value> {
 
 /// Keys of `params.config`, in file order, and the tools that handle each.
 pub const CONFIG_KEYS: [(&str, &str); 7] = [
-    ("PLALAST_DIR", "recall, lint (written with $HOME)"),
+    (
+        "PLALAST_DIR",
+        "recall (resolved to the repo root), lint (must be $PWD)",
+    ),
     ("repository", "recall"),
     ("branches", "audit (sync), recall"),
     ("audit", "audit (allow, max_file_kb), recall, lint"),

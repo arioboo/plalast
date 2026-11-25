@@ -374,12 +374,13 @@ fn lint_params(root: &Path, cfg: &Value, f: &mut Findings) {
             f.error(M, format!("params.config.branches: missing `{b}`"));
         }
     }
-    // PLALAST_DIR is written with $HOME, never expanded (an expanded path leaks the user name).
+    // PLALAST_DIR is `$PWD`: the tools resolve it to the repo root they find, on any machine
+    // (a written path works on one machine only, and an expanded one leaks the user name).
     match str_of(c, "PLALAST_DIR") {
-        Some(d) if d.starts_with("$HOME/") || d.starts_with("${HOME}/") => {}
+        Some("$PWD" | "${PWD}") => {}
         Some(d) => f.error(
             M,
-            format!("params.config.PLALAST_DIR: `{d}` must start with $HOME/"),
+            format!("params.config.PLALAST_DIR: `{d}` must be `$PWD`"),
         ),
         None => f.error(M, "params.config: missing `PLALAST_DIR`"),
     }
@@ -877,7 +878,7 @@ mod tests {
             "primary.zettelkasten is missing",
             "params.config.repository is missing",
             "params.config.paths.docs is empty",
-            "must start with $HOME/",
+            "must be `$PWD`",
             "data.content.doc.head: the second block must be `agent_note`",
             "list block ref `primary.nowhere` does not point",
         ] {

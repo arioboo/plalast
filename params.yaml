@@ -1,7 +1,7 @@
 # params.yaml: what the tools need to run the repo (config) and the memory levers (levers).
 # Documented in memory.json (primary.schema.keys) and agents/BUILD.md.
 config:
-  PLALAST_DIR: "$HOME/plalast"
+  PLALAST_DIR: "$PWD"
   repository: github.com/arioboo/plalast
   branches:
     integration: develop
