@@ -1,0 +1,13 @@
+#!/bin/bash
+# git pre-commit hook (core.hooksPath = params.config.hooks.dir): refuses the commit while the
+# generated files drift from memory.json and params.yaml, so docs and brain are committed in sync.
+root="$(git rev-parse --show-toplevel)"
+bin="$root/target/release/pla-build"
+if [ ! -x "$bin" ]; then
+    echo "pre-commit: $bin not built; run: cargo build --release" >&2
+    exit 1
+fi
+if ! "$bin" --check; then
+    echo "pre-commit: generated files are out of sync; run pla-build and stage the result" >&2
+    exit 1
+fi

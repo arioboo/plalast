@@ -3,10 +3,11 @@
 //! The output is deterministic (no dates, no ids), so `pla-build --check` can compare it byte
 //! for byte. It supports `#` headings, paragraphs, `-`/`*` and `1.` lists, and fenced code
 //! blocks; inline `code`, **bold** and [text](url) are flattened to plain text. It uses the
-//! PDF base-14 fonts (Helvetica, Helvetica-Bold, Courier) with WinAnsi encoding, so nothing
+//! PDF base-14 fonts (Helvetica, Helvetica-Bold, Courier) with `WinAnsi` encoding, so nothing
 //! is embedded and the file stays plain ASCII.
 
 use crate::verified::heading_hashes;
+use std::fmt::Write as _;
 
 const PAGE_W: f64 = 595.0; // A4, in points
 const PAGE_H: f64 = 842.0;
@@ -89,7 +90,7 @@ fn parse(md: &str) -> Vec<Block> {
         if digits > 0 && t[digits..].starts_with(". ") {
             flush(&mut para, &mut blocks);
             blocks.push(Block::Item {
-                marker: t[..digits + 1].to_string(),
+                marker: t[..=digits].to_string(),
                 text: t[digits + 2..].to_string(),
             });
             continue;
@@ -120,11 +121,11 @@ fn inline(s: &str) -> String {
         match (after.find("]("), after.find(')')) {
             (Some(mid), Some(close)) if mid < close => {
                 out.push_str(&rest[..open]);
-                out.push_str(&format!("{} ({})", &after[..mid], &after[mid + 2..close]));
+                let _ = write!(out, "{} ({})", &after[..mid], &after[mid + 2..close]);
                 rest = &after[close + 1..];
             }
             _ => {
-                out.push_str(&rest[..open + 1]);
+                out.push_str(&rest[..=open]);
                 rest = after;
             }
         }
@@ -193,7 +194,7 @@ fn wrap(text: &str, max: f64, size: f64, font: Font) -> Vec<String> {
     lines
 }
 
-/// Escapes text for a PDF string in WinAnsi encoding (non-Latin characters become `?`).
+/// Escapes text for a PDF string in `WinAnsi` encoding (non-Latin characters become `?`).
 fn escape(s: &str) -> String {
     let mut out = String::new();
     for c in s.chars() {
@@ -212,7 +213,9 @@ fn escape(s: &str) -> String {
             '\u{201D}' => out.push_str("\\224"),
             '\u{2026}' => out.push_str("\\205"),
             '\u{2192}' => out.push_str("->"),
-            '\u{A0}'..='\u{FF}' => out.push_str(&format!("\\{:03o}", c as u32)),
+            '\u{A0}'..='\u{FF}' => {
+                let _ = write!(out, "\\{:03o}", c as u32);
+            }
             _ => out.push('?'),
         }
     }
@@ -249,16 +252,18 @@ impl Pages {
             self.break_page();
         }
         self.y -= lead;
-        self.cur.push_str(&format!(
-            "BT /{} {size:.1} Tf {x:.1} {:.1} Td ({}) Tj ET\n",
+        let _ = writeln!(
+            self.cur,
+            "BT /{} {size:.1} Tf {x:.1} {:.1} Td ({}) Tj ET",
             font.name(),
             self.y,
             escape(s)
-        ));
+        );
     }
 }
 
 /// Renders markdown to a complete PDF file.
+#[must_use]
 pub fn render(md: &str) -> String {
     let mut p = Pages::new();
     for (i, block) in parse(md).iter().enumerate() {
@@ -290,11 +295,12 @@ pub fn render(md: &str) -> String {
                         // Marker and first line share a baseline.
                         p.text(Font::Regular, 11.0, MARGIN + 22.0, line);
                         let y = p.y;
-                        p.cur.push_str(&format!(
-                            "BT /F1 11.0 Tf {:.1} {y:.1} Td ({}) Tj ET\n",
+                        let _ = writeln!(
+                            p.cur,
+                            "BT /F1 11.0 Tf {:.1} {y:.1} Td ({}) Tj ET",
                             MARGIN + 6.0,
                             escape(marker)
-                        ));
+                        );
                     } else {
                         p.text(Font::Regular, 11.0, MARGIN + 22.0, line);
                     }
@@ -369,20 +375,18 @@ fn write_pdf(pages: &[String]) -> String {
     let mut offsets = Vec::new();
     for (i, body) in objects.iter().enumerate() {
         offsets.push(out.len());
-        out.push_str(&format!("{} 0 obj\n{body}\nendobj\n", i + 1));
+        let _ = write!(out, "{} 0 obj\n{body}\nendobj\n", i + 1);
     }
     let xref = out.len();
-    out.push_str(&format!(
-        "xref\n0 {}\n0000000000 65535 f \n",
-        objects.len() + 1
-    ));
+    let _ = write!(out, "xref\n0 {}\n0000000000 65535 f \n", objects.len() + 1);
     for off in offsets {
-        out.push_str(&format!("{off:010} 00000 n \n"));
+        let _ = writeln!(out, "{off:010} 00000 n ");
     }
-    out.push_str(&format!(
+    let _ = write!(
+        out,
         "trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n",
         objects.len() + 1
-    ));
+    );
     out
 }
 

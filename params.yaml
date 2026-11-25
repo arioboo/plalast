@@ -1,0 +1,66 @@
+# params.yaml: what the tools need to run the repo (config) and the memory levers (levers).
+# Documented in memory.json (primary.schema.keys) and agents/BUILD.md.
+config:
+  PLALAST_DIR: "$HOME/Workdir/plalast"
+  repository: github.com/arioboo/plalast
+  branches:
+    integration: develop
+    stable: main
+  audit:
+    allow: []
+    max_file_kb: 1024
+  paths:
+    docs:
+      - "."
+      - agents
+    on_demand: agents
+    zettelkasten: "../../Projects/agent_zettelkasten"
+    modules:
+      skills:
+        dir: agents/skills
+        links:
+          claude: ".claude/skills"
+      agents:
+        dir: agents/subagents
+        links:
+          claude: ".claude/agents"
+      rules:
+        dir: agents/rules
+        links:
+          claude: ".claude/rules"
+      connectors:
+        dir: agents/mcp
+        links: {}
+      guides:
+        dir: agents/guides
+        links: {}
+  lint:
+    always_on:
+      - agents/CLAUDE.md
+      - agents/AGENTS.md
+    max_lines: 200
+  hooks:
+    dir: agents/hooks
+    claude:
+      PreToolUse:
+        - matcher: "Edit|Write"
+          hooks:
+            - type: command
+              command: "\"$CLAUDE_PROJECT_DIR\"/agents/hooks/protect-generated.sh"
+levers:
+  agents_md:
+    best-practices: enabled
+    structure: on_demand
+    commands: enabled
+    tools: enabled
+    candidates: enabled
+  readme_md:
+    contributing: enabled
+  build_md:
+    build-commands: enabled
+    brain-files: enabled
+    levers: enabled
+    entry-types: enabled
+    content-blocks: enabled
+    adding-module: enabled
+    removing-path: enabled

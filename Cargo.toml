@@ -2,12 +2,14 @@
 name = "plalast"
 version = "0.1.0"
 edition = "2021"
-description = "Build and recall the plalast repo from config.json, its single source of truth"
+description = "Build, recall, lint and audit the plalast repo from its brain: memory.json and params.yaml"
 publish = false
 
 [dependencies]
 regex = "1"
 serde_json = { version = "1", features = ["preserve_order"] }
+# Reads params.yaml. serde_yaml is unmaintained; RustSec (RUSTSEC-2025-0068) recommends this fork.
+serde_norway = "0.9"
 # Verus standard library: specs and proofs inside `verus! { ... }` (see agents/guides/verus.md).
 # Pinned to the version of the installed Verus release (`verus --version`).
 vstd = "=0.0.0-2026-11-22-0344"

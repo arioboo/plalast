@@ -1,7 +1,7 @@
-//! End-to-end wiring: runs the four compiled tools against the real config.json of this repo.
+//! End-to-end wiring: runs the four compiled tools against this repo's real brain (memory.json, params.yaml).
 //! If a memory key, a generated file or a tool drifts apart, one of these fails.
 
-use plalast::{load, primary, CONFIG_KEYS, MODULE_KINDS, PRIMARY_KEYS};
+use plalast::{entry_path, load, primary, CONFIG_KEYS, MODULE_KINDS, PRIMARY_KEYS};
 use std::path::Path;
 use std::process::{Command, Output};
 
@@ -35,17 +35,37 @@ fn every_generated_doc_has_the_agent_note_on_line_two() {
     let note = cfg["primary"]["docs"]["agent_note"].as_str().unwrap();
     let mut checked = 0;
     for e in cfg["data"]["structure"].as_array().unwrap() {
-        let (Some(path), Some(build)) = (e["path"].as_str(), e["build"].as_str()) else {
+        let (Some(path), Some(_)) = (entry_path(&cfg, e), e["build"].as_str()) else {
             continue;
         };
-        if build == "gitignore" {
+        // Only markdown docs carry the note (.gitignore and .claude/settings.json do not).
+        if !path.ends_with(".md") {
             continue;
         }
-        let text = std::fs::read_to_string(root.join(path)).unwrap();
+        let text = std::fs::read_to_string(root.join(&path)).unwrap();
         assert_eq!(text.lines().nth(1), Some(note), "{path} line 2");
         checked += 1;
     }
     assert!(checked >= 7, "only {checked} docs checked");
+}
+
+#[test]
+fn the_brain_is_memory_json_and_params_yaml() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    assert!(root.join(plalast::MEMORY).is_file() && root.join(plalast::PARAMS).is_file());
+    assert!(
+        !root.join("config.json").exists(),
+        "config.json was replaced by memory.json + params.yaml"
+    );
+    let cfg = load(root).unwrap();
+    let mut top: Vec<&str> = cfg
+        .as_object()
+        .unwrap()
+        .keys()
+        .map(String::as_str)
+        .collect();
+    top.sort_unstable();
+    assert_eq!(top, ["data", "params", "primary"]);
 }
 
 #[test]
@@ -67,7 +87,7 @@ fn memory_keys_match_the_tools_registry() {
 #[test]
 fn config_keys_match_the_tools_registry() {
     let cfg = load(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
-    let present: Vec<&str> = cfg["config"]
+    let present: Vec<&str> = cfg["params"]["config"]
         .as_object()
         .unwrap()
         .keys()
@@ -87,9 +107,9 @@ fn recall_shows_every_part_of_the_memory() {
         "primary.features",
         "primary.log",
         "primary.index",
-        "Config (config)",
+        "Config (params.config)",
         "zettelkasten",
-        "primary.docs.levers",
+        "params.levers",
     ] {
         assert!(out.contains(part), "recall map lacks {part}:\n{out}");
     }
@@ -107,7 +127,7 @@ fn recall_fails_when_nothing_matches() {
 #[test]
 fn lint_passes_on_config_and_modules() {
     // The `rust` area runs cargo itself, so it is left to `pla-lint` runs outside tests.
-    let o = run(LINT, &["config", "modules"]);
+    let o = run(LINT, &["memory", "modules"]);
     assert!(o.status.success(), "pla-lint:\n{}", stdout(&o));
 }
 

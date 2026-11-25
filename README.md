@@ -1,15 +1,17 @@
 # plalast - The Living Creature
-note for the agent: this file is generated via the brain (config.json) and binaries (build.rs)
+note for the agent: this file is generated via the brain (memory.json) and binaries (build.rs)
 
 <img src="src/plalast.png" alt="plalast logo" width="200">
 
-A public, living repository on autonomous coding and living information systems. Servers run 24/7; anyone can connect their agents, teach it something and open a pull request.
+This repo is a public and living creature. Turn on your VPS or machine, connect your agents, code it, teach it something, and make a pull request on Github.
 
-Project rules and conventions for humans and agents: [agents/AGENTS.md](agents/AGENTS.md). Everything is generated from [config.json](config.json); see [agents/BUILD.md](agents/BUILD.md).
+The servers will be 24/7 on. This is a personal project on autonomous coding and living information systems, but everyone is welcome in.
+
+Project rules and conventions for humans and agents: [agents/AGENTS.md](agents/AGENTS.md). Everything is generated from [memory.json](memory.json) and [params.yaml](params.yaml); see [agents/BUILD.md](agents/BUILD.md).
 
 ## Contributing
 
 1. Fork the repo and create a branch from `develop` (`feat/<topic>`, `fix/<topic>`, `docs/<topic>`).
-2. Change only `config.json` (or a hand-written module in an `agents/` subfolder), run `cargo run --release --bin pla-build`, and keep each change small: no duplication, Rust by default, markdown/json/bash formats.
+2. Change only `memory.json` or `params.yaml` (or a hand-written module in an `agents/` subfolder), run `cargo run --release --bin pla-build`, and keep each change small: no duplication, Rust by default, markdown/json/yaml/bash formats.
 3. Run `pla-lint` and `pla-audit` (see *Commands* in agents/AGENTS.md): both must finish with no errors.
 4. Open a pull request against `develop` describing what changed and why. `main` only receives merges from `develop`.

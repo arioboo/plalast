@@ -1,43 +1,45 @@
 //! lint: checks that the repo is well formed.
 //!
-//! - `pla-lint`                         every area.
-//! - `pla-lint [config] [modules] [rust]`  only the given areas.
+//! - `pla-lint`                            every area.
+//! - `pla-lint [memory] [modules] [rust]`  only the given areas.
 //!
-//! `config`: config.json is consistent and fully documented in `primary.schema`.
+//! `memory`: memory.json and params.yaml are consistent and fully documented in `primary.schema`.
 //! `modules`: hand-written modules in `agents/` subfolders have the expected shape.
-//! `rust`: `cargo fmt --check` and `cargo clippy -D warnings` pass.
+//! `rust`: `cargo fmt --check`, `cargo clippy -D warnings` and `cargo verus verify` pass.
 
 use plalast::{
-    arr, block_items, block_text, cargo, config, data, doc_dirs, docs, exit, is_doc_path, lever,
-    lookup, module_dir, open, paths, primary, run, str_of, Findings, CONFIG, CONFIG_KEYS,
-    LOG_FIELDS, LOG_KINDS, MODULE_KINDS, PRIMARY_KEYS,
+    arr, block_items, block_text, cargo, config, data, doc_dirs, entry_path, exit, is_doc_path,
+    lever, lookup, module_dir, open, paths, primary, run, str_of, visible_entries, Findings,
+    CONFIG_KEYS, LOG_FIELDS, LOG_KINDS, MEMORY, MODULE_KINDS, PARAMS, PRIMARY_KEYS, SPECIAL_BUILDS,
 };
 use serde_json::Value;
 use std::env;
 use std::fs;
+use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::process::ExitCode;
 
-const AREAS: [&str; 3] = ["config", "modules", "rust"];
+const AREAS: [&str; 3] = ["memory", "modules", "rust"];
 const ENTRY_TYPES: [&str; 5] = ["dir", "symlink", "file", "ignored", "planned"];
+/// Findings about the brain are reported under this area.
+const M: &str = "memory";
 
 fn main() -> ExitCode {
     let args: Vec<String> = env::args().skip(1).collect();
     exit((|| {
         if let Some(bad) = args.iter().find(|a| !AREAS.contains(&a.as_str())) {
             return Err(format!(
-                "unknown area {bad}\nusage: pla-lint [config] [modules] [rust]"
+                "unknown area {bad}\nusage: pla-lint [memory] [modules] [rust]"
             ));
         }
         let want = |area: &str| args.is_empty() || args.iter().any(|a| a == area);
         let (root, cfg) = open()?;
         let mut f = Findings::default();
-        if want("config") {
-            lint_config(&root, &cfg, &mut f);
+        if want("memory") {
+            lint_memory(&root, &cfg, &mut f);
         }
         if want("modules") {
             lint_modules(&root, &cfg, &mut f);
-            lint_guides(&root, &cfg, &mut f);
         }
         if want("rust") {
             lint_rust(&root, &mut f);
@@ -59,36 +61,48 @@ fn blank(v: Option<&str>) -> bool {
     v.is_none_or(|s| s.trim().is_empty())
 }
 
-// ---------- config ----------
+fn keys(v: &Value) -> Vec<&str> {
+    v.as_object()
+        .map_or_default(|m| m.keys().map(String::as_str).collect())
+}
 
-fn lint_config(root: &Path, cfg: &Value, f: &mut Findings) {
-    const A: &str = "config";
-    let schema = &primary(cfg)["schema"];
+// ---------- memory ----------
 
-    // Every key of primary and data is documented.
+fn lint_memory(root: &Path, cfg: &Value, f: &mut Findings) {
+    lint_schema_coverage(cfg, f);
+    lint_registries(cfg, f);
+    lint_structure(root, cfg, f);
+    lint_docs(cfg, f);
+    lint_modules_and_paths(root, cfg, f);
+    lint_params(root, cfg, f);
+    lint_plain_data(root, cfg, f);
+}
+
+/// Every key of params, params.config, primary and data is documented in primary.schema.keys;
+/// a key with documented children has all of them documented.
+fn lint_schema_coverage(cfg: &Value, f: &mut Findings) {
+    let documented = &primary(cfg)["schema"]["keys"];
     for (top, obj) in [
-        ("config", config(cfg)),
+        ("params", &cfg["params"]),
+        ("params.config", config(cfg)),
         ("primary", primary(cfg)),
         ("data", data(cfg)),
     ] {
-        for k in obj.as_object().into_iter().flat_map(|m| m.keys()) {
+        for k in keys(obj) {
             let full = format!("{top}.{k}");
-            if schema["keys"].get(&full).is_none() {
+            if documented.get(&full).is_none() {
                 f.error(
-                    A,
+                    M,
                     format!("{full} is not documented in primary.schema.keys"),
                 );
             }
-            // A key whose children are documented (such as primary.docs) needs all of them documented.
             let prefix = format!("{full}.");
-            let documents_children = schema["keys"]
-                .as_object()
-                .is_some_and(|m| m.keys().any(|d| d.starts_with(&prefix)));
+            let documents_children = keys(documented).iter().any(|d| d.starts_with(&prefix));
             if documents_children {
-                for sub in obj[k].as_object().into_iter().flat_map(|m| m.keys()) {
-                    if schema["keys"].get(format!("{prefix}{sub}")).is_none() {
+                for sub in keys(&obj[k]) {
+                    if documented.get(format!("{prefix}{sub}")).is_none() {
                         f.error(
-                            A,
+                            M,
                             format!("{prefix}{sub} is not documented in primary.schema.keys"),
                         );
                     }
@@ -96,67 +110,98 @@ fn lint_config(root: &Path, cfg: &Value, f: &mut Findings) {
             }
         }
     }
+}
 
-    // Structure entries.
-    let structure = arr(data(cfg), "structure");
-    let mut seen: Vec<&str> = Vec::new();
-    for e in structure {
-        let Some(path) = str_of(e, "path") else {
-            f.error(A, "data.structure: an entry has no `path`");
+/// primary and params.config hold exactly the keys the tools handle (lib registries), in order.
+fn lint_registries(cfg: &Value, f: &mut Findings) {
+    for (name, obj, registry, file) in [
+        ("primary", primary(cfg), &PRIMARY_KEYS[..], MEMORY),
+        ("params.config", config(cfg), &CONFIG_KEYS[..], PARAMS),
+    ] {
+        let known: Vec<&str> = registry.iter().map(|(k, _)| *k).collect();
+        let present = keys(obj);
+        for k in &present {
+            if !known.contains(k) {
+                f.error(M, format!("{name}.{k}: no tool handles it; add it to the registry in src/lib.rs and wire it"));
+            }
+        }
+        for k in &known {
+            if !present.contains(k) {
+                f.error(M, format!("{name}.{k} is missing from {file}"));
+            }
+        }
+    }
+}
+
+/// data.structure: resolvable unique paths, descriptions, known types, and per-type fields.
+fn lint_structure(root: &Path, cfg: &Value, f: &mut Findings) {
+    let mut seen: Vec<String> = Vec::new();
+    for e in arr(data(cfg), "structure") {
+        let Some(path) = entry_path(cfg, e) else {
+            let r = str_of(e, "path_ref").unwrap_or("?");
+            f.error(M, format!("data.structure: an entry has no `path`, or its path_ref `{r}` does not resolve"));
             continue;
         };
-        let ctx = format!("data.structure `{path}`");
+        // Messages show the path as written (path_ref entries show the resolved one).
+        let ctx = format!("data.structure `{}`", str_of(e, "path").unwrap_or(&path));
         if seen.contains(&path) {
-            f.error(A, format!("{ctx}: duplicate path"));
+            f.error(M, format!("{ctx}: duplicate path"));
         }
-        seen.push(path);
+        seen.push(path.clone());
         if blank(str_of(e, "description")) {
-            f.error(A, format!("{ctx}: missing description"));
+            f.error(M, format!("{ctx}: missing description"));
         }
         let ty = str_of(e, "type").unwrap_or("");
         if !ENTRY_TYPES.contains(&ty) {
-            f.error(A, format!("{ctx}: unknown type `{ty}`"));
+            f.error(M, format!("{ctx}: unknown type `{ty}`"));
             continue;
         }
-        if ty == "dir" && !path.ends_with('/')
+        // Folders written literally end with `/` (path_ref folders are normalized).
+        let literal = str_of(e, "path").unwrap_or("");
+        if ty == "dir" && !literal.is_empty() && !literal.ends_with('/')
             || matches!(ty, "file" | "symlink") && path.ends_with('/')
         {
-            f.error(A, format!("{ctx}: only folders end with `/`"));
+            f.error(M, format!("{ctx}: only folders end with `/`"));
         }
         match ty {
             "symlink" => match (str_of(e, "target"), str_of(e, "target_ref")) {
-                (Some(_), _) => {}
-                (None, Some(r)) if lookup(cfg, r).and_then(Value::as_str).is_none() => f.error(
-                    A,
-                    format!("{ctx}: target_ref `{r}` is not a string in the config"),
-                ),
-                (None, Some(_)) => {}
                 (None, None) => f.error(
-                    A,
+                    M,
                     format!("{ctx}: symlink without `target` or `target_ref`"),
                 ),
+                (None, Some(r)) if lookup(cfg, r).and_then(Value::as_str).is_none() => {
+                    f.error(
+                        M,
+                        format!("{ctx}: target_ref `{r}` is not a string in the brain"),
+                    );
+                }
+                _ => {}
             },
             "file" => match str_of(e, "build") {
-                Some("gitignore") => {}
+                Some(b) if SPECIAL_BUILDS.contains(&b) => {}
                 Some(key) if !data(cfg)["content"][key].is_object() => {
-                    f.error(A, format!("{ctx}: data.content.{key} does not exist"))
+                    f.error(M, format!("{ctx}: data.content.{key} does not exist"));
                 }
                 Some(_) => {}
                 None => {
-                    if !root.join(path).exists() {
-                        f.error(A, format!("{ctx}: hand-written file is missing on disk"));
+                    if !root.join(&path).exists() {
+                        f.error(M, format!("{ctx}: hand-written file is missing on disk"));
                     }
-                    if is_doc_path(cfg, path) {
-                        f.error(A, format!("{ctx}: it is a doc (an .md in config.paths.docs), so it must be generated (set `build`)"));
+                    if is_doc_path(cfg, &path) {
+                        f.error(M, format!("{ctx}: it is a doc (an .md in params.config.paths.docs), so it must be generated (set `build`)"));
                     }
                 }
             },
             _ => {}
         }
     }
+}
 
-    // Documents, sections and levers.
-    let built: Vec<&str> = structure
+/// data.content and params.levers: every doc is built, carries the agent note, has unique
+/// kebab-case section ids with `title` and `when`, a valid lever each, and valid blocks.
+fn lint_docs(cfg: &Value, f: &mut Findings) {
+    let schema = &primary(cfg)["schema"];
+    let built: Vec<&str> = arr(data(cfg), "structure")
         .iter()
         .filter_map(|e| str_of(e, "build"))
         .collect();
@@ -164,7 +209,7 @@ fn lint_config(root: &Path, cfg: &Value, f: &mut Findings) {
     for (key, doc) in data(cfg)["content"].as_object().into_iter().flatten() {
         if !built.contains(&key.as_str()) {
             f.error(
-                A,
+                M,
                 format!("data.content.{key}: no data.structure entry builds it"),
             );
         }
@@ -174,11 +219,10 @@ fn lint_config(root: &Path, cfg: &Value, f: &mut Findings) {
             &format!("data.content.{key}.head"),
             f,
         );
-        // Every doc carries the agent note on its second line.
         let second = arr(doc, "head").get(1).and_then(|b| str_of(b, "type"));
         if second != Some("agent_note") {
             f.error(
-                A,
+                M,
                 format!("data.content.{key}.head: the second block must be `agent_note`"),
             );
         }
@@ -186,56 +230,83 @@ fn lint_config(root: &Path, cfg: &Value, f: &mut Findings) {
             let id = str_of(s, "id").unwrap_or("");
             let ctx = format!("data.content.{key} section `{id}`");
             if !is_kebab(id) {
-                f.error(A, format!("{ctx}: id must be kebab-case"));
+                f.error(M, format!("{ctx}: id must be kebab-case"));
             }
             if ids.iter().any(|x| x == id) {
                 f.error(
-                    A,
+                    M,
                     format!("{ctx}: id already used elsewhere (on_demand files would collide)"),
                 );
             }
             ids.push(id.to_string());
             for k in ["title", "when"] {
                 if blank(str_of(s, k)) {
-                    f.error(A, format!("{ctx}: missing `{k}`"));
+                    f.error(M, format!("{ctx}: missing `{k}`"));
                 }
             }
             match lever(cfg, key, id) {
-                None => f.error(A, format!("{ctx}: no lever in primary.docs.levers.{key}")),
-                Some(v) if schema["levers"].get(v).is_none() => f.error(
-                    A,
-                    format!("{ctx}: lever `{v}` is not in primary.schema.levers"),
-                ),
+                None => f.error(M, format!("{ctx}: no lever in params.levers.{key}")),
+                Some(v) if schema["levers"].get(v).is_none() => {
+                    f.error(
+                        M,
+                        format!("{ctx}: lever `{v}` is not in primary.schema.levers"),
+                    );
+                }
                 Some(_) => {}
             }
             check_blocks(cfg, arr(s, "blocks"), &ctx, f);
         }
     }
-    for (key, m) in docs(cfg)["levers"].as_object().into_iter().flatten() {
-        for id in m.as_object().into_iter().flat_map(|m| m.keys()) {
+    for (key, m) in cfg["params"]["levers"].as_object().into_iter().flatten() {
+        for id in keys(m) {
             let exists = arr(&data(cfg)["content"][key], "sections")
                 .iter()
                 .any(|s| str_of(s, "id") == Some(id));
             if !exists {
+                f.error(M, format!("params.levers.{key}.{id}: no such section"));
+            }
+        }
+    }
+}
+
+/// Block types are documented, and every `ref` points at the right kind of value.
+fn check_blocks(cfg: &Value, blocks: &[Value], ctx: &str, f: &mut Findings) {
+    for b in blocks {
+        let t = str_of(b, "type").unwrap_or("");
+        if primary(cfg)["schema"]["blocks"].get(t).is_none() {
+            f.error(
+                M,
+                format!("{ctx}: block type `{t}` is not documented in primary.schema.blocks"),
+            );
+        }
+        if let Some(r) = str_of(b, "ref") {
+            let resolves = match t {
+                "list" | "ordered_list" => block_items(cfg, b).is_some(),
+                "table" => lookup(cfg, r).is_some_and(Value::is_array),
+                "image" => lookup(cfg, r).is_some_and(Value::is_string),
+                _ => block_text(cfg, b).is_some(),
+            };
+            if !resolves {
                 f.error(
-                    A,
-                    format!("primary.docs.levers.{key}.{id}: no such section"),
+                    M,
+                    format!("{ctx}: {t} block ref `{r}` does not point at the right kind of value"),
                 );
             }
         }
     }
+}
 
-    // Module kinds: a definition in primary, and in config.paths.modules a folder that
-    // exists and link folders that exist.
+/// Module kinds (definition in primary, folder and links in params) and the other paths.
+fn lint_modules_and_paths(root: &Path, cfg: &Value, f: &mut Findings) {
     for kind in MODULE_KINDS {
         if blank(str_of(&primary(cfg)[kind], "definition")) {
-            f.error(A, format!("primary.{kind}: missing `definition`"));
+            f.error(M, format!("primary.{kind}: missing `definition`"));
         }
-        let ctx = format!("config.paths.modules.{kind}");
+        let ctx = format!("params.config.paths.modules.{kind}");
         match module_dir(cfg, kind) {
             Some(d) if root.join(&d).is_dir() => {}
-            Some(d) => f.error(A, format!("{ctx}.dir: `{d}` is not a folder")),
-            None => f.error(A, format!("{ctx}: missing `dir`")),
+            Some(d) => f.error(M, format!("{ctx}.dir: `{d}` is not a folder")),
+            None => f.error(M, format!("{ctx}: missing `dir`")),
         }
         for (p, dest) in paths(cfg)["modules"][kind]["links"]
             .as_object()
@@ -244,165 +315,206 @@ fn lint_config(root: &Path, cfg: &Value, f: &mut Findings) {
         {
             match dest.as_str() {
                 Some(d) if root.join(d).is_dir() => {}
-                Some(d) => f.error(A, format!("{ctx}.links.{p}: `{d}` is not a folder")),
-                None => f.error(A, format!("{ctx}.links.{p}: not a path")),
+                Some(d) => f.error(M, format!("{ctx}.links.{p}: `{d}` is not a folder")),
+                None => f.error(M, format!("{ctx}.links.{p}: not a path")),
             }
         }
     }
     // The zettelkasten path is relative (an absolute one leaks the home folder).
     match str_of(paths(cfg), "zettelkasten") {
-        None => f.error(A, "config.paths: missing `zettelkasten`"),
-        Some(p) if Path::new(p).is_absolute() => f.error(
-            A,
-            format!("config.paths.zettelkasten: `{p}` must be relative to the repo root"),
-        ),
-        Some(p) if !root.join(p).is_dir() => f.warn(
-            A,
-            format!("config.paths.zettelkasten: `{p}` is not a folder on this machine"),
-        ),
+        None => f.error(M, "params.config.paths: missing `zettelkasten`"),
+        Some(p) if Path::new(p).is_absolute() => {
+            f.error(
+                M,
+                format!(
+                    "params.config.paths.zettelkasten: `{p}` must be relative to the repo root"
+                ),
+            );
+        }
+        Some(p) if !root.join(p).is_dir() => {
+            f.warn(
+                M,
+                format!("params.config.paths.zettelkasten: `{p}` is not a folder on this machine"),
+            );
+        }
         Some(_) => {}
     }
     if blank(str_of(paths(cfg), "on_demand")) {
-        f.error(A, "config.paths: missing `on_demand`");
-    }
-    // Features: feature_<n> -> {descr, status}, both strings.
-    for (k, v) in primary(cfg)["features"].as_object().into_iter().flatten() {
-        let numbered = k
-            .strip_prefix("feature_")
-            .is_some_and(|n| !n.is_empty() && n.chars().all(|c| c.is_ascii_digit()));
-        if !numbered {
-            f.error(A, format!("primary.features.{k}: keys are feature_<n>"));
-        }
-        for field in ["descr", "status"] {
-            if !v[field].is_string() {
-                f.error(
-                    A,
-                    format!("primary.features.{k}: `{field}` must be a string"),
-                );
-            }
-        }
-    }
-    // Wiring: primary holds exactly the keys the tools handle (lib PRIMARY_KEYS), in that order.
-    let known: Vec<&str> = PRIMARY_KEYS.iter().map(|(k, _)| *k).collect();
-    let present: Vec<&str> = primary(cfg)
-        .as_object()
-        .map(|m| m.keys().map(String::as_str).collect())
-        .unwrap_or_default();
-    for k in &present {
-        if !known.contains(k) {
-            f.error(A, format!("primary.{k}: no tool handles it; add it to PRIMARY_KEYS in src/lib.rs and wire it"));
-        }
-    }
-    for k in &known {
-        if !present.contains(k) {
-            f.error(A, format!("primary.{k} is missing from {CONFIG}"));
-        }
-    }
-    // Same for config (lib CONFIG_KEYS).
-    let known: Vec<&str> = CONFIG_KEYS.iter().map(|(k, _)| *k).collect();
-    let present: Vec<&str> = config(cfg)
-        .as_object()
-        .map(|m| m.keys().map(String::as_str).collect())
-        .unwrap_or_default();
-    for k in &present {
-        if !known.contains(k) {
-            f.error(A, format!("config.{k}: no tool handles it; add it to CONFIG_KEYS in src/lib.rs and wire it"));
-        }
-    }
-    for k in &known {
-        if !present.contains(k) {
-            f.error(A, format!("config.{k} is missing from {CONFIG}"));
-        }
-    }
-    for b in ["integration", "stable"] {
-        if blank(str_of(&config(cfg)["branches"], b)) {
-            f.error(A, format!("config.branches: missing `{b}`"));
-        }
-    }
-    // Shapes of the keys that hold plain data.
-    match primary(cfg)["log"].as_array() {
-        None => f.error(A, "primary.log must be a list of entries"),
-        Some(entries) => {
-            for (i, e) in entries.iter().enumerate() {
-                for k in LOG_FIELDS {
-                    if blank(str_of(e, k)) {
-                        f.error(A, format!("primary.log[{i}]: missing `{k}`"));
-                    }
-                }
-                if let Some(kind) = str_of(e, "kind") {
-                    if !LOG_KINDS.contains(&kind) {
-                        f.error(
-                            A,
-                            format!("primary.log[{i}]: kind `{kind}` must be one of {LOG_KINDS:?}"),
-                        );
-                    }
-                }
-                // The commit must exist in this repo's history.
-                if let Some(h) = str_of(e, "commit") {
-                    let obj = format!("{h}^{{commit}}");
-                    if !matches!(run(root, "git", &["cat-file", "-e", &obj]), Ok((true, _))) {
-                        f.error(A, format!("primary.log[{i}]: commit `{h}` is not in git"));
-                    }
-                }
-            }
-        }
-    }
-    if !primary(cfg)["index"].is_object() {
-        f.error(A, "primary.index must be an object");
-    }
-    let audit = &config(cfg)["audit"];
-    if !audit.is_object() {
-        f.error(A, "config.audit is missing (settings of pla-audit)");
-    } else {
-        let allow_ok = audit["allow"]
-            .as_array()
-            .is_some_and(|a| a.iter().all(Value::is_string));
-        if !allow_ok {
-            f.error(A, "config.audit.allow must be a list of strings");
-        }
-        if !audit["max_file_kb"].is_u64() {
-            f.error(A, "config.audit.max_file_kb must be a whole number");
-        }
+        f.error(M, "params.config.paths: missing `on_demand`");
     }
     if doc_dirs(cfg).is_empty() {
-        f.error(A, "config.paths.docs is empty: no folder holds the docs");
+        f.error(
+            M,
+            "params.config.paths.docs is empty: no folder holds the docs",
+        );
     }
     for d in doc_dirs(cfg) {
         if !root.join(&d).is_dir() {
-            f.error(A, format!("config.paths.docs: `{d}` is not a folder"));
+            f.error(
+                M,
+                format!("params.config.paths.docs: `{d}` is not a folder"),
+            );
         }
     }
     if let Some(logo) = primary(cfg)["project"]["plalast_logo"].as_str() {
         if !root.join(logo).is_file() {
             f.error(
-                A,
+                M,
                 format!("primary.project.plalast_logo: `{logo}` does not exist"),
             );
         }
     }
 }
 
-fn check_blocks(cfg: &Value, blocks: &[Value], ctx: &str, f: &mut Findings) {
-    for b in blocks {
-        let t = str_of(b, "type").unwrap_or("");
-        if primary(cfg)["schema"]["blocks"].get(t).is_none() {
+/// params.config settings: branches, `PLALAST_DIR`, lint budget, hooks and audit.
+fn lint_params(root: &Path, cfg: &Value, f: &mut Findings) {
+    let c = config(cfg);
+    for b in ["integration", "stable"] {
+        if blank(str_of(&c["branches"], b)) {
+            f.error(M, format!("params.config.branches: missing `{b}`"));
+        }
+    }
+    // PLALAST_DIR is written with $HOME, never expanded (an expanded path leaks the user name).
+    match str_of(c, "PLALAST_DIR") {
+        Some(d) if d.starts_with("$HOME/") || d.starts_with("${HOME}/") => {}
+        Some(d) => f.error(
+            M,
+            format!("params.config.PLALAST_DIR: `{d}` must start with $HOME/"),
+        ),
+        None => f.error(M, "params.config: missing `PLALAST_DIR`"),
+    }
+    // Context budget: the docs an agent loads every session stay under lint.max_lines.
+    let lint_cfg = &c["lint"];
+    match (
+        lint_cfg["max_lines"].as_u64(),
+        lint_cfg["always_on"].as_array(),
+    ) {
+        (Some(max), Some(files)) => {
+            let mut total = 0;
+            for file in files.iter().filter_map(Value::as_str) {
+                match fs::read_to_string(root.join(file)) {
+                    Ok(t) => total += t.lines().count() as u64,
+                    Err(_) => f.error(
+                        M,
+                        format!("params.config.lint.always_on: `{file}` cannot be read"),
+                    ),
+                }
+            }
+            if total > max {
+                f.error(M, format!("always-on docs have {total} lines, over params.config.lint.max_lines ({max}): move sections to on_demand"));
+            }
+        }
+        _ => f.error(
+            M,
+            "params.config.lint needs `always_on` (list of docs) and `max_lines` (number)",
+        ),
+    }
+    // Hooks: every script is executable, and every Claude Code hook command exists.
+    let hooks = &c["hooks"];
+    let hooks_dir = str_of(hooks, "dir")
+        .unwrap_or_default()
+        .trim_end_matches('/');
+    if !root.join(hooks_dir).is_dir() {
+        f.error(
+            M,
+            format!("params.config.hooks.dir: `{hooks_dir}` is not a folder"),
+        );
+    }
+    for name in visible_entries(&root.join(hooks_dir)) {
+        let mode =
+            fs::metadata(root.join(hooks_dir).join(&name)).map_or(0, |m| m.permissions().mode());
+        if mode & 0o111 == 0 {
             f.error(
-                "config",
-                format!("{ctx}: block type `{t}` is not documented in primary.schema.blocks"),
+                M,
+                format!("{hooks_dir}/{name}: hook script is not executable (chmod +x)"),
             );
         }
-        // A `ref` must point at what the block needs: a string, or a list of strings.
-        if let Some(r) = str_of(b, "ref") {
-            let resolves = match t {
-                "list" | "ordered_list" => block_items(cfg, b).is_some(),
-                "image" => lookup(cfg, r).is_some_and(Value::is_string),
-                _ => block_text(cfg, b).is_some(),
-            };
-            if !resolves {
+    }
+    let commands = hooks["claude"]
+        .as_object()
+        .into_iter()
+        .flat_map(|events| events.values())
+        .flat_map(|groups| groups.as_array().into_iter().flatten())
+        .flat_map(|g| g["hooks"].as_array().into_iter().flatten())
+        .filter_map(|h| str_of(h, "command"));
+    for cmd in commands {
+        let rel = cmd
+            .replace("\"$CLAUDE_PROJECT_DIR\"/", "")
+            .replace("${CLAUDE_PROJECT_DIR}/", "");
+        if !root.join(&rel).is_file() {
+            f.error(
+                M,
+                format!("params.config.hooks.claude: command `{cmd}` points at a missing script"),
+            );
+        }
+    }
+    let audit = &c["audit"];
+    if audit.is_object() {
+        if !audit["allow"]
+            .as_array()
+            .is_some_and(|a| a.iter().all(Value::is_string))
+        {
+            f.error(M, "params.config.audit.allow must be a list of strings");
+        }
+        if !audit["max_file_kb"].is_u64() {
+            f.error(M, "params.config.audit.max_file_kb must be a whole number");
+        }
+    } else {
+        f.error(M, "params.config.audit is missing (settings of pla-audit)");
+    }
+}
+
+/// Shapes of primary's plain data: features, log (with real commits), index, commands.
+fn lint_plain_data(root: &Path, cfg: &Value, f: &mut Findings) {
+    for (k, v) in primary(cfg)["features"].as_object().into_iter().flatten() {
+        let numbered = k
+            .strip_prefix("feature_")
+            .is_some_and(|n| !n.is_empty() && n.chars().all(|c| c.is_ascii_digit()));
+        if !numbered {
+            f.error(M, format!("primary.features.{k}: keys are feature_<n>"));
+        }
+        for field in ["descr", "status"] {
+            if !v[field].is_string() {
                 f.error(
-                    "config",
-                    format!("{ctx}: {t} block ref `{r}` does not point at the right kind of value"),
+                    M,
+                    format!("primary.features.{k}: `{field}` must be a string"),
                 );
+            }
+        }
+    }
+    match primary(cfg)["log"].as_array() {
+        None => f.error(M, "primary.log must be a list of entries"),
+        Some(entries) => {
+            for (i, e) in entries.iter().enumerate() {
+                for k in LOG_FIELDS {
+                    if blank(str_of(e, k)) {
+                        f.error(M, format!("primary.log[{i}]: missing `{k}`"));
+                    }
+                }
+                if let Some(kind) = str_of(e, "kind") {
+                    if !LOG_KINDS.contains(&kind) {
+                        f.error(
+                            M,
+                            format!("primary.log[{i}]: kind `{kind}` must be one of {LOG_KINDS:?}"),
+                        );
+                    }
+                }
+                if let Some(h) = str_of(e, "commit") {
+                    let obj = format!("{h}^{{commit}}");
+                    if !matches!(run(root, "git", &["cat-file", "-e", &obj]), Ok((true, _))) {
+                        f.error(M, format!("primary.log[{i}]: commit `{h}` is not in git"));
+                    }
+                }
+            }
+        }
+    }
+    if !primary(cfg)["index"].is_object() {
+        f.error(M, "primary.index must be an object");
+    }
+    for (i, c) in arr(primary(cfg), "commands").iter().enumerate() {
+        for k in ["cmd", "summary", "detail"] {
+            if blank(str_of(c, k)) {
+                f.error(M, format!("primary.commands[{i}]: missing `{k}`"));
             }
         }
     }
@@ -451,26 +563,20 @@ fn check_frontmatter(f: &mut Findings, file: &str, text: &str, expected: &str) {
     }
 }
 
-/// Visible entries of a folder (hidden ones such as `.gitkeep` are skipped), sorted.
-fn entries(dir: &Path) -> Vec<String> {
-    let mut names: Vec<String> = fs::read_dir(dir)
-        .into_iter()
-        .flatten()
-        .filter_map(Result::ok)
-        .map(|d| d.file_name().to_string_lossy().into_owned())
-        .filter(|n| !n.starts_with('.'))
-        .collect();
-    names.sort();
-    names
+/// Reads `dir/name`, or reports it.
+fn read(f: &mut Findings, dir: &Path, name: &str, rel: &str) -> Option<String> {
+    fs::read_to_string(dir.join(name))
+        .map_err(|e| f.error("modules", format!("{rel}: {e}")))
+        .ok()
 }
 
 fn lint_modules(root: &Path, cfg: &Value, f: &mut Findings) {
     const A: &str = "modules";
-    // Skills: agents/skills/<name>/SKILL.md, name in kebab-case and in the frontmatter.
-    let skills_dir = module_dir(cfg, "skills").unwrap_or_default();
-    let skills = root.join(&skills_dir);
-    for name in entries(&skills) {
-        let dir = skills.join(&name);
+    let dir_of = |kind: &str| module_dir(cfg, kind).unwrap_or_default();
+    // Skills: <dir>/<name>/SKILL.md, name in kebab-case and in the frontmatter.
+    let skills_dir = dir_of("skills");
+    for name in visible_entries(&root.join(&skills_dir)) {
+        let dir = root.join(&skills_dir).join(&name);
         let rel = format!("{skills_dir}/{name}");
         if !dir.is_dir() {
             f.error(A, format!("{rel}: a skill is a folder"));
@@ -480,19 +586,17 @@ fn lint_modules(root: &Path, cfg: &Value, f: &mut Findings) {
             f.error(A, format!("{rel}: folder name must be kebab-case"));
         }
         // Exact case: the folder listing must contain `SKILL.md` itself.
-        if !entries(&dir).iter().any(|n| n == "SKILL.md") {
+        if !visible_entries(&dir).iter().any(|n| n == "SKILL.md") {
             f.error(A, format!("{rel}: missing SKILL.md (exact uppercase name)"));
             continue;
         }
-        match fs::read_to_string(dir.join("SKILL.md")) {
-            Ok(text) => check_frontmatter(f, &format!("{rel}/SKILL.md"), &text, &name),
-            Err(e) => f.error(A, format!("{rel}/SKILL.md: {e}")),
+        if let Some(text) = read(f, &dir, "SKILL.md", &rel) {
+            check_frontmatter(f, &format!("{rel}/SKILL.md"), &text, &name);
         }
     }
-    // Subagents: agents/subagents/<name>.md with frontmatter name == file name.
-    let agents_dir = module_dir(cfg, "agents").unwrap_or_default();
-    let subagents = root.join(&agents_dir);
-    for name in entries(&subagents) {
+    // Subagents: <dir>/<name>.md with frontmatter name == file name.
+    let agents_dir = dir_of("agents");
+    for name in visible_entries(&root.join(&agents_dir)) {
         let rel = format!("{agents_dir}/{name}");
         let Some(stem) = name.strip_suffix(".md") else {
             f.error(A, format!("{rel}: a subagent is one .md file"));
@@ -501,50 +605,41 @@ fn lint_modules(root: &Path, cfg: &Value, f: &mut Findings) {
         if !is_kebab(stem) {
             f.error(A, format!("{rel}: file name must be kebab-case"));
         }
-        match fs::read_to_string(subagents.join(&name)) {
-            Ok(text) => check_frontmatter(f, &rel, &text, stem),
-            Err(e) => f.error(A, format!("{rel}: {e}")),
+        if let Some(text) = read(f, &root.join(&agents_dir), &name, &rel) {
+            check_frontmatter(f, &rel, &text, stem);
         }
     }
-    // Rules: agents/rules/<name>.md, not empty.
-    let rules_dir = module_dir(cfg, "rules").unwrap_or_default();
-    let rules = root.join(&rules_dir);
-    for name in entries(&rules) {
+    // Rules: <dir>/<name>.md, not empty.
+    let rules_dir = dir_of("rules");
+    for name in visible_entries(&root.join(&rules_dir)) {
         let rel = format!("{rules_dir}/{name}");
         if !name.ends_with(".md") {
             f.error(A, format!("{rel}: a rule is one .md file"));
-            continue;
-        }
-        if fs::read_to_string(rules.join(&name)).map_or(true, |t| t.trim().is_empty()) {
-            f.error(A, format!("{rel}: empty or unreadable"));
+        } else if read(f, &root.join(&rules_dir), &name, &rel).is_some_and(|t| t.trim().is_empty())
+        {
+            f.error(A, format!("{rel}: empty"));
         }
     }
     // Connectors: one MCP server per json file in the neutral format.
-    let mcp_dir = module_dir(cfg, "connectors").unwrap_or_default();
-    for name in entries(&root.join(&mcp_dir)) {
+    let mcp_dir = dir_of("connectors");
+    for name in visible_entries(&root.join(&mcp_dir)) {
         let rel = format!("{mcp_dir}/{name}");
-        match fs::read_to_string(root.join(&mcp_dir).join(&name)) {
-            Ok(text) => lint_connector(f, &rel, &name, &text),
-            Err(e) => f.error(A, format!("{rel}: {e}")),
+        if let Some(text) = read(f, &root.join(&mcp_dir), &name, &rel) {
+            lint_connector(f, &rel, &name, &text);
         }
     }
-}
-
-/// Guides: hand-written `.md` sources, each with the `.pdf` that pla-build renders from it.
-fn lint_guides(root: &Path, cfg: &Value, f: &mut Findings) {
-    const A: &str = "modules";
-    let dir = module_dir(cfg, "guides").unwrap_or_default();
-    let names = entries(&root.join(&dir));
+    // Guides: .md sources, each with the .pdf that pla-build renders from it.
+    let guides_dir = dir_of("guides");
+    let names = visible_entries(&root.join(&guides_dir));
     for name in &names {
-        let rel = format!("{dir}/{name}");
+        let rel = format!("{guides_dir}/{name}");
         if let Some(stem) = name.strip_suffix(".pdf") {
             if !names.contains(&format!("{stem}.md")) {
                 f.error(A, format!("{rel}: no {stem}.md to build it from (pla-build renders guides from their .md)"));
             }
         } else if name.ends_with(".md") {
-            if fs::read_to_string(root.join(&dir).join(name)).map_or(true, |t| t.trim().is_empty())
-            {
-                f.error(A, format!("{rel}: empty or unreadable"));
+            if read(f, &root.join(&guides_dir), name, &rel).is_some_and(|t| t.trim().is_empty()) {
+                f.error(A, format!("{rel}: empty"));
             }
         } else {
             f.error(
@@ -577,10 +672,10 @@ fn lint_connector(f: &mut Findings, rel: &str, file: &str, text: &str) {
     }
     match str_of(&v, "transport") {
         Some("stdio") if str_of(&v, "command").is_none() => {
-            f.error(A, format!("{rel}: stdio transport needs `command`"))
+            f.error(A, format!("{rel}: stdio transport needs `command`"));
         }
         Some("http") if str_of(&v, "url").is_none() => {
-            f.error(A, format!("{rel}: http transport needs `url`"))
+            f.error(A, format!("{rel}: http transport needs `url`"));
         }
         Some("stdio" | "http") => {}
         Some(t) => f.error(
@@ -647,6 +742,14 @@ mod tests {
     use super::*;
     use serde_json::json;
 
+    fn messages(f: &Findings) -> String {
+        f.items
+            .iter()
+            .map(|(_, _, m)| m.as_str())
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
+
     #[test]
     fn kebab_case() {
         assert!(is_kebab("best-practices"));
@@ -686,13 +789,9 @@ mod tests {
             "---\nname: demo\ndescription: d\n---\n",
             "demo",
         );
-        let msgs: Vec<&str> = f.items.iter().map(|(_, _, m)| m.as_str()).collect();
         assert_eq!(
-            msgs,
-            vec![
-                "x: name `other` must be `demo`",
-                "y: frontmatter has no `description`"
-            ]
+            messages(&f),
+            "x: name `other` must be `demo`\ny: frontmatter has no `description`"
         );
     }
 
@@ -718,12 +817,7 @@ mod tests {
             r#"{"name":"x","transport":"ftp","env":{"KEY":"abc123"}}"#,
         );
         lint_connector(&mut f, "c", "y.json", "not json");
-        let all = f
-            .items
-            .iter()
-            .map(|(_, _, m)| m.as_str())
-            .collect::<Vec<_>>()
-            .join("\n");
+        let all = messages(&f);
         assert!(!all.contains("ok:"), "{all}");
         for expected in [
             "a: name `other` must be `web`",
@@ -737,18 +831,25 @@ mod tests {
     }
 
     #[test]
-    fn config_lint_finds_each_kind_of_problem() {
+    fn memory_lint_finds_each_kind_of_problem() {
+        // Assembled at runtime so pla-audit never sees a home path in this file.
+        let expanded = ["/", "Users", "/someone/plalast"].concat();
         let cfg = json!({
+            "params": {
+                "config": {"PLALAST_DIR": expanded},
+                "levers": {"doc": {"Bad_Id": "maybe", "ghost": "enabled"}}
+            },
             "primary": {
-                "docs": {"levers": {"doc": {"Bad_Id": "maybe", "ghost": "enabled"}}, "extra": 1},
-                "schema": {"keys": {"primary.docs": "", "primary.docs.levers": "", "primary.schema": "", "data.structure": ""},
+                "docs": {"extra": 1},
+                "schema": {"keys": {"primary.docs": "", "primary.docs.definition": "", "primary.schema": "", "data.structure": "", "params.config": ""},
                            "levers": {"enabled": ""}, "blocks": {"paragraph": ""}}
             },
             "data": {
                 "structure": [
                     {"path": "a.md", "type": "file", "build": "doc", "description": "A"},
                     {"path": "a.md", "type": "file", "build": "doc"},
-                    {"path": "dir", "type": "dir", "description": "D"}
+                    {"path": "dir", "type": "dir", "description": "D"},
+                    {"path_ref": "params.nowhere", "type": "dir", "description": "R"}
                 ],
                 "content": {"doc": {"head": [{"type": "nope"}, {"type": "list", "ref": "primary.nowhere"}], "sections": [
                     {"id": "Bad_Id", "title": "T", "blocks": []}
@@ -756,28 +857,27 @@ mod tests {
             }
         });
         let mut f = Findings::default();
-        lint_config(Path::new("/nonexistent"), &cfg, &mut f);
-        let all = f
-            .items
-            .iter()
-            .map(|(_, _, m)| m.as_str())
-            .collect::<Vec<_>>()
-            .join("\n");
+        lint_memory(Path::new("/nonexistent"), &cfg, &mut f);
+        let all = messages(&f);
         for expected in [
             "data.content is not documented",
+            "params.levers is not documented",
             "`a.md`: duplicate path",
             "`a.md`: missing description",
             "`dir`: only folders end with `/`",
+            "path_ref `params.nowhere` does not resolve",
             "block type `nope`",
             "id must be kebab-case",
             "missing `when`",
             "lever `maybe` is not in primary.schema.levers",
-            "primary.docs.levers.doc.ghost: no such section",
+            "params.levers.doc.ghost: no such section",
             "primary.docs.extra is not documented",
             "primary.log must be a list",
             "primary.index must be an object",
             "primary.zettelkasten is missing",
-            "config.paths.docs is empty",
+            "params.config.repository is missing",
+            "params.config.paths.docs is empty",
+            "must start with $HOME/",
             "data.content.doc.head: the second block must be `agent_note`",
             "list block ref `primary.nowhere` does not point",
         ] {

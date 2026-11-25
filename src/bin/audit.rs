@@ -9,10 +9,11 @@
 //! `repo`:    broken symlinks, links leaving the repo, large files, uncommitted changes and
 //!            branches out of sync (against the last fetch; it does not fetch).
 //!
-//! Exact strings listed in `config.audit.allow` are never reported.
+//! Exact strings listed in `params.config.audit.allow` are never reported.
 
 use plalast::{
-    arr, cargo, config, data, exit, open, primary, repo_files, run, str_of, strings, Findings,
+    arr, cargo, config, data, entry_path, exit, open, primary, repo_files, run, str_of, strings,
+    Findings,
 };
 use regex::Regex;
 use serde_json::Value;
@@ -121,10 +122,10 @@ fn audit_secrets(root: &Path, cfg: &Value, f: &mut Findings) -> Result<(), Strin
         if e.get("secret").and_then(Value::as_bool) != Some(true) {
             continue;
         }
-        let Some(dir) = str_of(e, "path") else {
+        let Some(dir) = entry_path(cfg, e) else {
             continue;
         };
-        let (_, out) = run(root, "git", &["ls-files", "--cached", "--", dir])?;
+        let (_, out) = run(root, "git", &["ls-files", "--cached", "--", &dir])?;
         for tracked in out.lines().filter(|l| !l.ends_with("/.gitkeep")) {
             f.error(
                 "secrets",
@@ -207,7 +208,7 @@ fn audit_repo(root: &Path, cfg: &Value, f: &mut Findings) -> Result<(), String> 
                 f.warn(
                     A,
                     format!(
-                        "{file}: {} KB, larger than config.audit.max_file_kb ({max_kb} KB)",
+                        "{file}: {} KB, larger than params.config.audit.max_file_kb ({max_kb} KB)",
                         meta.len() / 1024
                     ),
                 );
@@ -231,6 +232,17 @@ fn audit_repo(root: &Path, cfg: &Value, f: &mut Findings) -> Result<(), String> 
             {
                 f.warn(A, format!("commit {h} is not in primary.log"));
             }
+        }
+    }
+
+    // Hooks: git must run config.hooks.dir (pre-commit checks the docs are in sync).
+    if let Some(dir) = str_of(&config(cfg)["hooks"], "dir") {
+        let (_, current) = run(root, "git", &["config", "--get", "core.hooksPath"])?;
+        if current.trim().trim_end_matches('/') != dir.trim_end_matches('/') {
+            f.warn(
+                A,
+                format!("git core.hooksPath is not {dir}; run: git config core.hooksPath {dir}"),
+            );
         }
     }
 

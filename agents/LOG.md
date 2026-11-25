@@ -1,10 +1,11 @@
 # Log
-note for the agent: this file is generated via the brain (config.json) and binaries (build.rs)
+note for the agent: this file is generated via the brain (memory.json) and binaries (build.rs)
 
-Branches, commits and merges of this repo, newest first. Source: `primary.log` in `config.json`.
+Branches, commits and merges of this repo, newest first. Source: `primary.log` in `memory.json`.
 
 | Date | Branch | Commit | Kind | Description |
 |---|---|---|---|---|
+| 2026-11-25 | develop | `8892b72` | commit | Memory split into config, primary and data; AGENTS.md text in primary.agents-md; project log in LOG.md; features 1-3. |
 | 2026-11-25 | main | `95ba41f` | merge | Fast-forward merge of develop. |
 | 2026-11-25 | develop | `95ba41f` | commit | Agent note on the second line of every generated doc. |
 | 2026-11-25 | main | `d88be6f` | merge | Fast-forward merge of develop. |

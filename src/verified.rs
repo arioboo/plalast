@@ -9,6 +9,7 @@ verus! {
 /// `level` whenever `level` is already valid.
 // Explicit comparisons, not `u64::clamp`: Verus proves the `ensures` from these branches.
 #[allow(clippy::manual_clamp)]
+#[must_use]
 pub fn heading_hashes(level: u64) -> (n: u64)
     ensures
         1 <= n <= 6,
