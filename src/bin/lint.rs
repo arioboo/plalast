@@ -328,9 +328,12 @@ fn lint_modules_and_paths(root: &Path, cfg: &Value, f: &mut Findings) {
             f.error(M, format!("primary.modules.{name}: missing `definition`"));
         }
         let ctx = format!("params.config.paths.modules.{name}");
-        let link_dir = arr(data(cfg), "structure")
+        let link = arr(data(cfg), "structure")
             .iter()
-            .find(|e| str_of(e, "target_ref") == Some(ctx.as_str()))
+            .find(|e| str_of(e, "target_ref") == Some(ctx.as_str()));
+        // A `local` link is only built where the module exists, so its absence is expected.
+        let local = link.and_then(|e| e.get("local")).and_then(Value::as_bool) == Some(true);
+        let link_dir = link
             .and_then(|e| str_of(e, "path"))
             .and_then(|p| Path::new(p).parent())
             .map_or_else(|| root.to_path_buf(), |d| root.join(d));
@@ -342,7 +345,7 @@ fn lint_modules_and_paths(root: &Path, cfg: &Value, f: &mut Findings) {
                     format!("{ctx}: `{p}` must be relative to the folder of its link"),
                 );
             }
-            Some(p) if !link_dir.join(p).is_dir() => {
+            Some(p) if !local && !link_dir.join(p).is_dir() => {
                 f.warn(M, format!("{ctx}: `{p}` is not a folder on this machine"));
             }
             Some(_) => {}

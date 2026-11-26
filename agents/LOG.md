@@ -5,6 +5,8 @@ Branches, commits and merges of this repo, newest first. Source: `primary.log` i
 
 | Date | Branch | Commit | Kind | Description |
 |---|---|---|---|---|
+| 2026-11-26 | main | `1dbd6f9` | merge | Fast-forward merge of develop. |
+| 2026-11-26 | develop | `1dbd6f9` | commit | primary.modules added with the agent_zettelkasten module; its link moved to modules/agent-zettelkasten. |
 | 2026-11-26 | main | `4110686` | merge | Fast-forward merge of develop. |
 | 2026-11-26 | develop | `4110686` | commit | PLALAST_DIR is always $PWD (the repo root); the zettelkasten path documented as machine-independent. |
 | 2026-11-26 | main | `c23c6a7` | commit | Lean 4 and Dafny install guides, with their PDFs. |

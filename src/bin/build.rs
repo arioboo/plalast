@@ -321,7 +321,9 @@ fn render_gitignore(cfg: &Value) -> String {
         };
         if e.get("secret").and_then(Value::as_bool) == Some(true) {
             let _ = write!(out, "{path}*\n!{path}.gitkeep\n");
-        } else if str_of(e, "type") == Some("ignored") {
+        } else if str_of(e, "type") == Some("ignored")
+            || e.get("local").and_then(Value::as_bool) == Some(true)
+        {
             let _ = writeln!(out, "{path}");
         }
     }
@@ -334,6 +336,8 @@ enum Want {
     Dir(PathBuf),
     File(PathBuf, String),
     Link(PathBuf, String),
+    /// A `local` link whose target is not on this machine: must not exist.
+    NoLink(PathBuf),
 }
 
 /// Everything the brain says should exist on disk, in order.
@@ -371,7 +375,15 @@ fn wanted(root: &Path, cfg: &Value) -> Res<Vec<Want>> {
                         return Err(format!("{path}: symlink needs `target` or `target_ref`"))
                     }
                 };
-                out.push(Want::Link(full, target.to_string()));
+                // A `local` link depends on this machine's layout: it is git-ignored and only
+                // built where its target exists (a relative target resolves from the link's folder).
+                let local = e.get("local").and_then(Value::as_bool) == Some(true);
+                let resolves = full.parent().is_some_and(|d| d.join(target).exists());
+                if local && !resolves {
+                    out.push(Want::NoLink(full));
+                } else {
+                    out.push(Want::Link(full, target.to_string()));
+                }
             }
             "file" => match str_of(e, "build") {
                 None => {}
@@ -500,6 +512,18 @@ fn build(root: &Path, cfg: &Value, check: bool) -> Res<bool> {
                         fs::remove_file(&p).map_err(|e| e.to_string())?;
                     }
                     symlink(&target, &p).map_err(|e| format!("{}: {e}", rel(root, &p)))?;
+                }
+            }
+            Want::NoLink(p) => {
+                if !p.is_symlink() {
+                    continue;
+                }
+                drift.push(format!(
+                    "remove local link {} (its target is not on this machine)",
+                    rel(root, &p)
+                ));
+                if !check {
+                    fs::remove_file(&p).map_err(|e| format!("{}: {e}", rel(root, &p)))?;
                 }
             }
         }
@@ -777,12 +801,49 @@ mod tests {
     fn gitignore_covers_secrets_and_ignored_paths() {
         let c = json!({"data": {"structure": [
             {"path": ".secrets/", "type": "dir", "secret": true},
-            {"path": "target/", "type": "ignored"}
+            {"path": "target/", "type": "ignored"},
+            {"path": "modules/vault", "type": "symlink", "target": "../../vault", "local": true}
         ]}});
         assert_eq!(
             render_gitignore(&c),
-            ".secrets/*\n!.secrets/.gitkeep\ntarget/\n"
+            ".secrets/*\n!.secrets/.gitkeep\ntarget/\nmodules/vault\n"
         );
+    }
+
+    #[test]
+    fn local_links_are_built_only_where_their_target_exists() {
+        let root = env::temp_dir().join(format!("pla-local-links-{}", std::process::id()));
+        fs::create_dir_all(root.join("modules")).unwrap();
+        fs::create_dir_all(root.join("here")).unwrap();
+        let c = json!({"params": {"config": {}}, "primary": {}, "data": {"structure": [
+            {"path": "modules/found", "type": "symlink", "target": "../here", "local": true},
+            {"path": "modules/missing", "type": "symlink", "target": "../nowhere", "local": true},
+            {"path": "modules/shared", "type": "symlink", "target": "../nowhere"}
+        ]}});
+        let kinds: Vec<String> = wanted(&root, &c)
+            .unwrap()
+            .iter()
+            .map(|w| match w {
+                Want::Link(p, _) => format!("link {}", rel(&root, p)),
+                Want::NoLink(p) => format!("nolink {}", rel(&root, p)),
+                _ => "other".into(),
+            })
+            .collect();
+        assert_eq!(
+            kinds,
+            [
+                "link modules/found",
+                "nolink modules/missing",
+                "link modules/shared"
+            ]
+        );
+        // A stale local link is removed, and --check reports it until then.
+        symlink("../nowhere", root.join("modules/missing")).unwrap();
+        assert!(!build(&root, &c, true).unwrap());
+        assert!(build(&root, &c, false).unwrap());
+        assert!(root.join("modules/missing").symlink_metadata().is_err());
+        assert!(build(&root, &c, true).unwrap());
+        fs::remove_dir_all(&root).unwrap();
     }
 
     #[test]

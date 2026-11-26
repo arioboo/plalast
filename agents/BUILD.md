@@ -61,7 +61,7 @@ The brain is two files. `memory.json` has exactly `primary` (what makes the docs
 | `primary.schema` | This documentation of the memory and params format; `BUILD.md` renders its tables. |
 | `primary.commands` | The repo's commands, each `{cmd, summary, detail}`: AGENTS.md lists the summaries and BUILD.md the details. |
 | `data` | What gets built. |
-| `data.structure` | Every path, in order: `path`, `type`, `description`; optional `table` and `label` (its row in the Structure table), `gitkeep`, `secret`, `target` and `build`. |
+| `data.structure` | Every path, in order: `path`, `type`, `description`; optional `table` and `label` (its row in the Structure table), `gitkeep`, `secret`, `target`, `local` and `build`. |
 | `data.content` | One document per key: `head` (blocks before the first section) and `sections` (`id`, `title`, `when`, `blocks`). A `file` entry with `build: "<key>"` is rendered from it. |
 
 ## Memory levers (params.yaml)
@@ -81,8 +81,8 @@ Switching a section from `on_demand` to `disabled` leaves its old file behind: `
 | Type | Build action |
 |---|---|
 | `dir` | Creates the folder; `gitkeep: true` adds an empty `.gitkeep`; `secret: true` git-ignores its contents except `.gitkeep`. `path_ref` (a dotted path such as `params.config.paths.modules.skills.dir`) can replace `path`, and `label` may use `{path}`. |
-| `symlink` | Creates a link to `target`, relative to the link's folder; `target_ref` (a dotted config path such as `params.config.paths.modules.agent_zettelkasten`) can replace `target`. |
-| `file + build` | Renders `data.content.<build>`; `build: "gitignore"` renders `.gitignore` from the secret and ignored entries; `build: "claude_settings"` renders `.claude/settings.json` from `params.config.hooks.claude`. |
+| `symlink` | Creates a link to `target`, relative to the link's folder; `target_ref` (a dotted config path such as `params.config.paths.modules.agent_zettelkasten`) can replace `target`. `local: true` marks a link that depends on the machine's layout: it is git-ignored, built only where its target exists, and removed where it does not. |
+| `file + build` | Renders `data.content.<build>`; `build: "gitignore"` renders `.gitignore` from the secret, ignored and local entries; `build: "claude_settings"` renders `.claude/settings.json` from `params.config.hooks.claude`. |
 | `file + build: null` | Hand-written code such as `Cargo.toml` or `src/`; never an `.md` in the root or `agents/`. Left as is. |
 | `ignored` | Not created; listed in `.gitignore`. |
 | `planned` | Not created; listed as planned in the Structure table. |
