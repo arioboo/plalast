@@ -336,7 +336,8 @@ fn lint_modules_and_paths(root: &Path, cfg: &Value, f: &mut Findings) {
         let link_dir = link
             .and_then(|e| str_of(e, "path"))
             .and_then(|p| Path::new(p).parent())
-            .map_or_else(|| root.to_path_buf(), |d| root.join(d));
+            // With no link, the path is relative to `modules/`, as its schema key says.
+            .map_or_else(|| root.join("modules"), |d| root.join(d));
         match path {
             None => f.error(M, format!("{ctx}: missing (the path of the module)")),
             Some(p) if Path::new(p).is_absolute() => {

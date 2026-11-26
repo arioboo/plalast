@@ -1,4 +1,3 @@
 target/
 .secrets/*
 !.secrets/.gitkeep
-modules/agent-zettelkasten

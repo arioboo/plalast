@@ -335,6 +335,20 @@
         "commit": "1dbd6f9",
         "kind": "merge",
         "descr": "Fast-forward merge of develop."
+      },
+      {
+        "date": "2026-11-26",
+        "branch": "develop",
+        "commit": "5ba4b92",
+        "kind": "commit",
+        "descr": "modules/agent-zettelkasten made a local link: git-ignored and built only where the vault exists."
+      },
+      {
+        "date": "2026-11-26",
+        "branch": "main",
+        "commit": "5ba4b92",
+        "kind": "merge",
+        "descr": "Fast-forward merge of develop."
       }
     ],
     "index": {},
@@ -356,7 +370,7 @@
     },
     "modules": {
       "agent_zettelkasten": {
-        "definition": "The single zettelkasten vault the agents use: CDU-named markdown notes outside this repo. The `modules/agent-zettelkasten` link points to `params.config.paths.modules.agent_zettelkasten`."
+        "definition": "The single zettelkasten vault the agents use: CDU-named markdown notes outside this repo. Its path is `params.config.paths.modules.agent_zettelkasten`; the repo builds no link to it."
       }
     },
     "schema": {
@@ -372,7 +386,7 @@
         "params.config.paths": "Every path the tools use: `docs`, `on_demand` and `modules`.",
         "params.config.paths.docs": "Folders whose `.md` files are docs (`.` is the repo root). Every `.md` directly inside them must be generated.",
         "params.config.paths.on_demand": "Folder where `on_demand` sections are written as `<id>.md`.",
-        "params.config.paths.modules": "Per module kind (skills, agents, rules, connectors, guides): `dir` (where its modules are written) and `links` (provider -> folder that gets one symlink per module). Per external module of `primary.modules` (such as `agent_zettelkasten`): its path, relative to `modules/` (the folder of the link that targets it). Keep it relative: an absolute path leaks your home folder. It depends on where the repo and the module sit on the machine, so a machine with another layout changes the value.",
+        "params.config.paths.modules": "Per module kind (skills, agents, rules, connectors, guides): `dir` (where its modules are written) and `links` (provider -> folder that gets one symlink per module). Per external module of `primary.modules` (such as `agent_zettelkasten`): its path, relative to `modules/` (or to the folder of a structure symlink whose `target_ref` points at it). Keep it relative: an absolute path leaks your home folder. It depends on where the repo and the module sit on the machine, so a machine with another layout changes the value.",
         "params.levers": "Memory lever of every document section, as `<doc>` -> `<section id>` -> value (see Memory levers).",
         "primary": "What makes the docs: project identity, texts, definitions, commands, features, log, index and this schema.",
         "primary.project": "Identity: `name`, `title` and `plalast_logo` (path of the project logo).",
@@ -394,7 +408,7 @@
         "primary.rules": "Rules: `definition`; its folder and provider links are in `params.config.paths.modules`.",
         "primary.connectors": "MCP connectors: `definition`; its folder and provider links are in `params.config.paths.modules`. `pla-lint` checks each file's neutral format.",
         "primary.guides": "Guides: `definition` and `render` (`pdf`: each .md is rendered to a .pdf by `pla-build`); folder and links in `params.config.paths.modules.guides`.",
-        "primary.modules": "External modules that live outside this repo, by name (such as `agent_zettelkasten`): each has a `definition` (what it is, in words); its path is `params.config.paths.modules.<name>` and a symlink in `modules/` targets it.",
+        "primary.modules": "External modules that live outside this repo, by name (such as `agent_zettelkasten`): each has a `definition` (what it is, in words); its path is `params.config.paths.modules.<name>`. A symlink in `modules/` is built only if `data.structure` has one for it.",
         "primary.schema": "This documentation of the memory and params format; `BUILD.md` renders its tables.",
         "primary.commands": "The repo's commands, each `{cmd, summary, detail}`: AGENTS.md lists the summaries and BUILD.md the details.",
         "data": "What gets built.",
@@ -646,16 +660,8 @@
       {
         "path": "modules/",
         "type": "dir",
-        "table": "Links to the external modules of `primary.modules`, one symlink each",
+        "table": "Folder for links to the external modules of `primary.modules` (none is built now)",
         "description": "External modules, one symlink each."
-      },
-      {
-        "path": "modules/agent-zettelkasten",
-        "type": "symlink",
-        "target_ref": "params.config.paths.modules.agent_zettelkasten",
-        "local": true,
-        "table": "Symlink to the single zettelkasten vault (CDU-named notes), outside this repo; its target is `params.config.paths.modules.agent_zettelkasten`. Local: git-ignored and built only on machines where the vault exists",
-        "description": "The only link to the `agent_zettelkasten` module (primary.modules). It is `local`: git-ignored, and `pla-build` creates it only where the vault sits at that position relative to `modules/` (and removes it where it does not)."
       },
       {
         "path": "tmux.conf",

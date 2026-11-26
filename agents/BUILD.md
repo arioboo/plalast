@@ -35,7 +35,7 @@ The brain is two files. `memory.json` has exactly `primary` (what makes the docs
 | `params.config.paths` | Every path the tools use: `docs`, `on_demand` and `modules`. |
 | `params.config.paths.docs` | Folders whose `.md` files are docs (`.` is the repo root). Every `.md` directly inside them must be generated. |
 | `params.config.paths.on_demand` | Folder where `on_demand` sections are written as `<id>.md`. |
-| `params.config.paths.modules` | Per module kind (skills, agents, rules, connectors, guides): `dir` (where its modules are written) and `links` (provider -> folder that gets one symlink per module). Per external module of `primary.modules` (such as `agent_zettelkasten`): its path, relative to `modules/` (the folder of the link that targets it). Keep it relative: an absolute path leaks your home folder. It depends on where the repo and the module sit on the machine, so a machine with another layout changes the value. |
+| `params.config.paths.modules` | Per module kind (skills, agents, rules, connectors, guides): `dir` (where its modules are written) and `links` (provider -> folder that gets one symlink per module). Per external module of `primary.modules` (such as `agent_zettelkasten`): its path, relative to `modules/` (or to the folder of a structure symlink whose `target_ref` points at it). Keep it relative: an absolute path leaks your home folder. It depends on where the repo and the module sit on the machine, so a machine with another layout changes the value. |
 | `params.levers` | Memory lever of every document section, as `<doc>` -> `<section id>` -> value (see Memory levers). |
 | `primary` | What makes the docs: project identity, texts, definitions, commands, features, log, index and this schema. |
 | `primary.project` | Identity: `name`, `title` and `plalast_logo` (path of the project logo). |
@@ -57,7 +57,7 @@ The brain is two files. `memory.json` has exactly `primary` (what makes the docs
 | `primary.rules` | Rules: `definition`; its folder and provider links are in `params.config.paths.modules`. |
 | `primary.connectors` | MCP connectors: `definition`; its folder and provider links are in `params.config.paths.modules`. `pla-lint` checks each file's neutral format. |
 | `primary.guides` | Guides: `definition` and `render` (`pdf`: each .md is rendered to a .pdf by `pla-build`); folder and links in `params.config.paths.modules.guides`. |
-| `primary.modules` | External modules that live outside this repo, by name (such as `agent_zettelkasten`): each has a `definition` (what it is, in words); its path is `params.config.paths.modules.<name>` and a symlink in `modules/` targets it. |
+| `primary.modules` | External modules that live outside this repo, by name (such as `agent_zettelkasten`): each has a `definition` (what it is, in words); its path is `params.config.paths.modules.<name>`. A symlink in `modules/` is built only if `data.structure` has one for it. |
 | `primary.schema` | This documentation of the memory and params format; `BUILD.md` renders its tables. |
 | `primary.commands` | The repo's commands, each `{cmd, summary, detail}`: AGENTS.md lists the summaries and BUILD.md the details. |
 | `data` | What gets built. |

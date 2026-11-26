@@ -19,6 +19,5 @@ Paths are added here as they are created:
 | `agents/hooks/` | Hook scripts: `protect-generated.sh` (Claude Code) and `pre-commit` (git); their config is `params.config.hooks` |
 | `agents/mcp/<server>.json` | One MCP connector per file |
 | `.claude/` | Claude Code adapter: `pla-build` links each module of `agents/` one by one, as `params.config.paths.modules.<kind>.links` says |
-| `modules/` | Links to the external modules of `primary.modules`, one symlink each |
-| `modules/agent-zettelkasten` | Symlink to the single zettelkasten vault (CDU-named notes), outside this repo; its target is `params.config.paths.modules.agent_zettelkasten`. Local: git-ignored and built only on machines where the vault exists |
+| `modules/` | Folder for links to the external modules of `primary.modules` (none is built now) |
 | `tmux.conf` | tmux config for the `plalast` session, sourced on top of `~/.tmux.conf`; its header comments hold the commands to start it |
