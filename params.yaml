@@ -14,7 +14,6 @@ config:
       - "."
       - agents
     on_demand: agents
-    zettelkasten: "../zettelkasten"
     modules:
       skills:
         dir: agents/skills
@@ -34,6 +33,7 @@ config:
       guides:
         dir: agents/guides
         links: {}
+      agent_zettelkasten: "../../../Projects/agent_zettelkasten"
   lint:
     always_on:
       - agents/CLAUDE.md

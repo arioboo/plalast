@@ -108,7 +108,7 @@ fn recall_shows_every_part_of_the_memory() {
         "primary.log",
         "primary.index",
         "Config (params.config)",
-        "zettelkasten",
+        "(primary.modules)",
         "params.levers",
     ] {
         assert!(out.contains(part), "recall map lacks {part}:\n{out}");

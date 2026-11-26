@@ -307,6 +307,20 @@
         "commit": "c23c6a7",
         "kind": "commit",
         "descr": "Lean 4 and Dafny install guides, with their PDFs."
+      },
+      {
+        "date": "2026-11-26",
+        "branch": "develop",
+        "commit": "4110686",
+        "kind": "commit",
+        "descr": "PLALAST_DIR is always $PWD (the repo root); the zettelkasten path documented as machine-independent."
+      },
+      {
+        "date": "2026-11-26",
+        "branch": "main",
+        "commit": "4110686",
+        "kind": "merge",
+        "descr": "Fast-forward merge of develop."
       }
     ],
     "index": {},
@@ -326,8 +340,10 @@
       "definition": "Guides: short how-tos for humans and agents about the tools of this project. Each is a hand-written markdown source; `pla-build` renders it to a PDF next to it.",
       "render": "pdf"
     },
-    "zettelkasten": {
-      "definition": "The single zettelkasten vault the agents use: CDU-named markdown notes outside this repo. The `zettelkasten` link at the repo root points to `params.config.paths.zettelkasten`."
+    "modules": {
+      "agent_zettelkasten": {
+        "definition": "The single zettelkasten vault the agents use: CDU-named markdown notes outside this repo. The `modules/agent-zettelkasten` link points to `params.config.paths.modules.agent_zettelkasten`."
+      }
     },
     "schema": {
       "keys": {
@@ -339,11 +355,10 @@
         "params.config.audit": "Settings of `pla-audit`: `allow` (exact strings or repo paths that are never reported, such as a public contact email) and `max_file_kb` (larger files are reported).",
         "params.config.lint": "Settings of `pla-lint`: `always_on` (docs an agent loads every session) and `max_lines` (their combined line budget; over it, move sections to `on_demand`).",
         "params.config.hooks": "Hooks that enforce the rules: `dir` (scripts; also git's `core.hooksPath`, so `pre-commit` runs `pla-build --check`) and `claude` (Claude Code hooks, rendered into `.claude/settings.json`; the PreToolUse hook denies hand edits of generated files).",
-        "params.config.paths": "Every path the tools use: `docs`, `on_demand`, `zettelkasten` and `modules`.",
+        "params.config.paths": "Every path the tools use: `docs`, `on_demand` and `modules`.",
         "params.config.paths.docs": "Folders whose `.md` files are docs (`.` is the repo root). Every `.md` directly inside them must be generated.",
         "params.config.paths.on_demand": "Folder where `on_demand` sections are written as `<id>.md`.",
-        "params.config.paths.zettelkasten": "Path of the vault, relative to `PLALAST_DIR` (the repo root), the same on every machine: `../zettelkasten`, a folder next to the repo. Keep it relative: an absolute path leaks your home folder and ties the repo to one machine. The `zettelkasten` link targets it; on a machine whose vault lives elsewhere, put a link there to the vault (once, outside the repo) instead of changing this value.",
-        "params.config.paths.modules": "Per module kind (skills, agents, rules, connectors, guides): `dir` (where its modules are written) and `links` (provider -> folder that gets one symlink per module).",
+        "params.config.paths.modules": "Per module kind (skills, agents, rules, connectors, guides): `dir` (where its modules are written) and `links` (provider -> folder that gets one symlink per module). Per external module of `primary.modules` (such as `agent_zettelkasten`): its path, relative to `modules/` (the folder of the link that targets it). Keep it relative: an absolute path leaks your home folder. It depends on where the repo and the module sit on the machine, so a machine with another layout changes the value.",
         "params.levers": "Memory lever of every document section, as `<doc>` -> `<section id>` -> value (see Memory levers).",
         "primary": "What makes the docs: project identity, texts, definitions, commands, features, log, index and this schema.",
         "primary.project": "Identity: `name`, `title` and `plalast_logo` (path of the project logo).",
@@ -365,8 +380,7 @@
         "primary.rules": "Rules: `definition`; its folder and provider links are in `params.config.paths.modules`.",
         "primary.connectors": "MCP connectors: `definition`; its folder and provider links are in `params.config.paths.modules`. `pla-lint` checks each file's neutral format.",
         "primary.guides": "Guides: `definition` and `render` (`pdf`: each .md is rendered to a .pdf by `pla-build`); folder and links in `params.config.paths.modules.guides`.",
-        "primary.zettelkasten": "The zettelkasten vault to use: its `definition`; the path is `params.config.paths.zettelkasten`.",
-        "primary.zettelkasten.definition": "What the vault is, in words.",
+        "primary.modules": "External modules that live outside this repo, by name (such as `agent_zettelkasten`): each has a `definition` (what it is, in words); its path is `params.config.paths.modules.<name>` and a symlink in `modules/` targets it.",
         "primary.schema": "This documentation of the memory and params format; `BUILD.md` renders its tables.",
         "primary.commands": "The repo's commands, each `{cmd, summary, detail}`: AGENTS.md lists the summaries and BUILD.md the details.",
         "data": "What gets built.",
@@ -380,7 +394,7 @@
       },
       "entry_types": {
         "dir": "Creates the folder; `gitkeep: true` adds an empty `.gitkeep`; `secret: true` git-ignores its contents except `.gitkeep`. `path_ref` (a dotted path such as `params.config.paths.modules.skills.dir`) can replace `path`, and `label` may use `{path}`.",
-        "symlink": "Creates a link to `target`, relative to the link's folder; `target_ref` (a dotted config path such as `params.config.paths.zettelkasten`) can replace `target`.",
+        "symlink": "Creates a link to `target`, relative to the link's folder; `target_ref` (a dotted config path such as `params.config.paths.modules.agent_zettelkasten`) can replace `target`.",
         "file + build": "Renders `data.content.<build>`; `build: \"gitignore\"` renders `.gitignore` from the secret and ignored entries; `build: \"claude_settings\"` renders `.claude/settings.json` from `params.config.hooks.claude`.",
         "file + build: null": "Hand-written code such as `Cargo.toml` or `src/`; never an `.md` in the root or `agents/`. Left as is.",
         "ignored": "Not created; listed in `.gitignore`.",
@@ -616,11 +630,17 @@
         "description": "Generated from the structure entries marked secret."
       },
       {
-        "path": "zettelkasten",
+        "path": "modules/",
+        "type": "dir",
+        "table": "Links to the external modules of `primary.modules`, one symlink each",
+        "description": "External modules, one symlink each."
+      },
+      {
+        "path": "modules/agent-zettelkasten",
         "type": "symlink",
-        "table": "Symlink to the single zettelkasten vault (CDU-named notes), outside this repo",
-        "description": "Link to the zettelkasten vault; its target is params.config.paths.zettelkasten. It resolves only where the vault sits at that position relative to the repo.",
-        "target_ref": "params.config.paths.zettelkasten"
+        "target_ref": "params.config.paths.modules.agent_zettelkasten",
+        "table": "Symlink to the single zettelkasten vault (CDU-named notes), outside this repo; its target is `params.config.paths.modules.agent_zettelkasten`",
+        "description": "The only link to the `agent_zettelkasten` module (primary.modules). It resolves only where the vault sits at that position relative to `modules/`."
       },
       {
         "path": "tmux.conf",
@@ -826,7 +846,7 @@
             "blocks": [
               {
                 "type": "paragraph",
-                "text": "The brain is two files. `memory.json` has exactly `primary` (what makes the docs: identity, texts, definitions) and `data` (what gets built). `params.yaml` has exactly `config` (what the tools need to run: git, settings, paths) and `levers` (the memory levers). The tools join them as `params`, `primary` and `data`, so a dotted path such as `params.config.paths.zettelkasten` works everywhere. Any other top-level key is an error."
+                "text": "The brain is two files. `memory.json` has exactly `primary` (what makes the docs: identity, texts, definitions) and `data` (what gets built). `params.yaml` has exactly `config` (what the tools need to run: git, settings, paths) and `levers` (the memory levers). The tools join them as `params`, `primary` and `data`, so a dotted path such as `params.config.paths.modules.agent_zettelkasten` works everywhere. Any other top-level key is an error."
               },
               {
                 "type": "schema",

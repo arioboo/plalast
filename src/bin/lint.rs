@@ -8,9 +8,10 @@
 //! `rust`: `cargo fmt --check`, `cargo clippy -D warnings` and `cargo verus verify` pass.
 
 use plalast::{
-    arr, block_items, block_text, cargo, config, data, doc_dirs, entry_path, exit, is_doc_path,
-    lever, lookup, module_dir, open, paths, primary, run, str_of, visible_entries, Findings,
-    CONFIG_KEYS, LOG_FIELDS, LOG_KINDS, MEMORY, MODULE_KINDS, PARAMS, PRIMARY_KEYS, SPECIAL_BUILDS,
+    arr, block_items, block_text, cargo, config, data, doc_dirs, entry_path, exit,
+    external_modules, is_doc_path, lever, lookup, module_dir, open, paths, primary, run, str_of,
+    visible_entries, Findings, CONFIG_KEYS, LOG_FIELDS, LOG_KINDS, MEMORY, MODULE_KINDS, PARAMS,
+    PRIMARY_KEYS, SPECIAL_BUILDS,
 };
 use serde_json::Value;
 use std::env;
@@ -320,24 +321,32 @@ fn lint_modules_and_paths(root: &Path, cfg: &Value, f: &mut Findings) {
             }
         }
     }
-    // The zettelkasten path is relative (an absolute one leaks the home folder).
-    match str_of(paths(cfg), "zettelkasten") {
-        None => f.error(M, "params.config.paths: missing `zettelkasten`"),
-        Some(p) if Path::new(p).is_absolute() => {
-            f.error(
-                M,
-                format!(
-                    "params.config.paths.zettelkasten: `{p}` must be relative to the repo root"
-                ),
-            );
+    // External modules: a definition, and a path that is relative (an absolute one leaks the home
+    // folder) and, like any symlink target, read from the folder of the link that targets it.
+    for (name, path, definition) in external_modules(cfg) {
+        if blank(definition) {
+            f.error(M, format!("primary.modules.{name}: missing `definition`"));
         }
-        Some(p) if !root.join(p).is_dir() => {
-            f.warn(
-                M,
-                format!("params.config.paths.zettelkasten: `{p}` is not a folder on this machine"),
-            );
+        let ctx = format!("params.config.paths.modules.{name}");
+        let link_dir = arr(data(cfg), "structure")
+            .iter()
+            .find(|e| str_of(e, "target_ref") == Some(ctx.as_str()))
+            .and_then(|e| str_of(e, "path"))
+            .and_then(|p| Path::new(p).parent())
+            .map_or_else(|| root.to_path_buf(), |d| root.join(d));
+        match path {
+            None => f.error(M, format!("{ctx}: missing (the path of the module)")),
+            Some(p) if Path::new(p).is_absolute() => {
+                f.error(
+                    M,
+                    format!("{ctx}: `{p}` must be relative to the folder of its link"),
+                );
+            }
+            Some(p) if !link_dir.join(p).is_dir() => {
+                f.warn(M, format!("{ctx}: `{p}` is not a folder on this machine"));
+            }
+            Some(_) => {}
         }
-        Some(_) => {}
     }
     if blank(str_of(paths(cfg), "on_demand")) {
         f.error(M, "params.config.paths: missing `on_demand`");
@@ -875,7 +884,7 @@ mod tests {
             "primary.docs.extra is not documented",
             "primary.log must be a list",
             "primary.index must be an object",
-            "primary.zettelkasten is missing",
+            "primary.modules is missing",
             "params.config.repository is missing",
             "params.config.paths.docs is empty",
             "must be `$PWD`",

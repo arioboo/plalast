@@ -5,6 +5,8 @@ Branches, commits and merges of this repo, newest first. Source: `primary.log` i
 
 | Date | Branch | Commit | Kind | Description |
 |---|---|---|---|---|
+| 2026-11-26 | main | `4110686` | merge | Fast-forward merge of develop. |
+| 2026-11-26 | develop | `4110686` | commit | PLALAST_DIR is always $PWD (the repo root); the zettelkasten path documented as machine-independent. |
 | 2026-11-26 | main | `c23c6a7` | commit | Lean 4 and Dafny install guides, with their PDFs. |
 | 2026-11-25 | main | `c2381f5` | commit | Log entries for the previous log commit and the develop fast-forward. |
 | 2026-11-25 | develop | `b9292a9` | merge | Fast-forward merge of main. |

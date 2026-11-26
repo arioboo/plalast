@@ -1,7 +1,7 @@
 //! Shared helpers for the plalast tools. The brain of the repo is two files at its root:
 //! `memory.json` (`primary`, `data`) and `params.yaml` (`config`, `levers`). [`open`] joins them
 //! as one value, `{params, primary, data}`, so a dotted path such as
-//! `params.config.paths.zettelkasten` works the same everywhere.
+//! `params.config.paths.modules.agent_zettelkasten` works the same everywhere.
 
 pub mod pdf;
 pub mod verified;
@@ -108,7 +108,7 @@ pub fn lever<'a>(cfg: &'a Value, doc: &str, id: &str) -> Option<&'a str> {
     cfg["params"]["levers"][doc][id].as_str()
 }
 
-/// The value at a dotted path such as `params.config.paths.zettelkasten` (list items by index).
+/// The value at a dotted path such as `params.config.paths.modules.agent_zettelkasten` (list items by index).
 #[must_use]
 pub fn lookup<'a>(cfg: &'a Value, dotted: &str) -> Option<&'a Value> {
     cfg.pointer(&format!("/{}", dotted.replace('.', "/")))
@@ -150,7 +150,7 @@ pub const PRIMARY_KEYS: [(&str, &str); 14] = [
     ("rules", "build (links), recall, lint"),
     ("connectors", "build (links), recall, lint (format)"),
     ("guides", "build (links, pdf), recall, lint"),
-    ("zettelkasten", "build (link target), recall, lint"),
+    ("modules", "build (link target), recall, lint"),
     (
         "schema",
         "build (schema blocks, lever values), lint (coverage)",
@@ -170,6 +170,24 @@ pub const LOG_FIELDS: [&str; 5] = ["date", "branch", "commit", "kind", "descr"];
 /// Kinds of hand-written module: `primary.<kind>` holds the definition,
 /// `params.config.paths.modules.<kind>` the folder and the provider links.
 pub const MODULE_KINDS: [&str; 5] = ["skills", "agents", "rules", "connectors", "guides"];
+
+/// External modules (`primary.modules.<name>`), in file order: name, path
+/// (`params.config.paths.modules.<name>`, relative to the folder of its link) and definition.
+#[must_use]
+pub fn external_modules(cfg: &Value) -> Vec<(&str, Option<&str>, Option<&str>)> {
+    primary(cfg)["modules"]
+        .as_object()
+        .into_iter()
+        .flatten()
+        .map(|(name, m)| {
+            (
+                name.as_str(),
+                str_of(&paths(cfg)["modules"], name),
+                str_of(m, "definition"),
+            )
+        })
+        .collect()
+}
 
 // ---------- paths ----------
 

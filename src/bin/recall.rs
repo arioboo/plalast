@@ -4,8 +4,9 @@
 //! - `pla-recall <term>`   everything matching `term`, naming its file, section and lever.
 
 use plalast::{
-    arr, block_items, block_text, config, data, doc_dirs, docs, entry_path, exit, fill, lever,
-    module_dir, open, paths, primary, str_of, visible_entries, LOG_FIELDS, MEMORY, MODULE_KINDS,
+    arr, block_items, block_text, config, data, doc_dirs, docs, entry_path, exit, external_modules,
+    fill, lever, module_dir, open, paths, primary, str_of, visible_entries, LOG_FIELDS, MEMORY,
+    MODULE_KINDS,
 };
 use serde_json::Value;
 use std::env;
@@ -152,8 +153,12 @@ fn print_map(root: &Path, cfg: &Value) {
         };
         println!("{dir:<30} {kind:<10} {links}; modules: {names}");
     }
-    if let Some(z) = str_of(paths(cfg), "zettelkasten") {
-        println!("{z:<30} {:<10} the vault the agents use", "zettelkasten");
+    for (name, path, _) in external_modules(cfg) {
+        println!(
+            "{:<30} {:<10} {name} (primary.modules)",
+            path.unwrap_or("?"),
+            "external"
+        );
     }
     println!("\nFeatures (primary.features):");
     for (_, text) in plain_data(cfg)
@@ -210,10 +215,16 @@ fn search(cfg: &Value, q: &str) -> bool {
     if hit(definition) {
         show(format!("primary.docs: {definition}"));
     }
-    for kind in MODULE_KINDS.iter().copied().chain(["zettelkasten"]) {
+    for kind in MODULE_KINDS {
         let d = str_of(&primary(cfg)[kind], "definition").unwrap_or("");
         if hit(d) {
             show(format!("primary.{kind}: {d}"));
+        }
+    }
+    for (name, _, d) in external_modules(cfg) {
+        let d = d.unwrap_or("");
+        if hit(name) || hit(d) {
+            show(format!("primary.modules.{name}: {d}"));
         }
     }
     for (source, text) in plain_data(cfg).iter().filter(|(_, t)| hit(t)) {
