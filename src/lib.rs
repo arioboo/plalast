@@ -5,6 +5,7 @@
 //! `params.levers.agents_md.preferencias` works the same everywhere.
 
 pub mod calc;
+pub mod fantastic;
 pub mod pdf;
 pub mod verified;
 
@@ -300,40 +301,6 @@ pub fn problems(cfg: &Value) -> Vec<(&str, &Value)> {
         .into_iter()
         .flatten()
         .map(|(id, p)| (id.as_str(), p))
-        .collect()
-}
-
-/// The categories of AGENTS.md that hold rules, as `primary.agents-md.<key>.items`.
-pub const RULE_CATEGORIES: [&str; 5] = [
-    "static_rules",
-    "static_premises",
-    "dynamic_premises",
-    "good_practices",
-    "preferences",
-];
-
-/// Name of a rule: its text up to the first `:` or `. ` (such as `Pareto rule`).
-#[must_use]
-pub fn rule_name(text: &str) -> &str {
-    let end = [text.find(':'), text.find(". ")]
-        .into_iter()
-        .flatten()
-        .min()
-        .unwrap_or(text.len());
-    text[..end].trim_end_matches('.').trim()
-}
-
-/// Every rule of AGENTS.md as `(category, name)`, in order.
-#[must_use]
-pub fn rules(cfg: &Value) -> Vec<(&'static str, &str)> {
-    RULE_CATEGORIES
-        .iter()
-        .flat_map(|c| {
-            arr(&primary(cfg)["agents-md"][*c], "items")
-                .iter()
-                .filter_map(Value::as_str)
-                .map(move |t| (*c, rule_name(t)))
-        })
         .collect()
 }
 

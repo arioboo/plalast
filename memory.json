@@ -957,6 +957,13 @@
         "where": "agents/guides",
         "descr": "The guides were in English, but the Languages preference asks for Spanish; translated.",
         "status": "closed"
+      },
+      {
+        "date": "2026-11-28",
+        "level": "issue",
+        "where": "plalast::fantastic::CHECKS",
+        "descr": "The battery of tests for the 4 fantásticos has only its first checks (one kind, unique names, solves a problem, rendered); the rest are still to be defined.",
+        "status": "open"
       }
     ],
     "changes": [
@@ -1321,6 +1328,20 @@
         "date": "2026-11-28",
         "branch": "main",
         "commit": "9c2c8e5",
+        "change": "merge(main)",
+        "descr": "Fast-forward merge of develop."
+      },
+      {
+        "date": "2026-11-28",
+        "branch": "develop",
+        "commit": "e9e8dea",
+        "change": "feat(agents)",
+        "descr": "Dynamic premise All-to-all compatible, with the problem Contradicting rules."
+      },
+      {
+        "date": "2026-11-28",
+        "branch": "main",
+        "commit": "e9e8dea",
         "change": "merge(main)",
         "descr": "Fast-forward merge of develop."
       }
@@ -1837,14 +1858,14 @@
       },
       "src/": {
         "description": "Hand-edited Rust code.",
-        "table": "Rust code: `lib.rs` (shared memory access and checks), `calc.rs` (the pure calculator), `pdf.rs` (guide renderer), `verified.rs` (Verus-verified code), `bin/build.rs`, `bin/recall.rs`, `bin/lint.rs`, `bin/audit.rs`, `bin/verify.rs`, `bin/calc.rs`"
+        "table": "Rust code: `lib.rs` (shared memory access and checks), `calc.rs` (the pure calculator), `fantastic.rs` (the 4 fantásticos one by one, and their battery of checks), `pdf.rs` (guide renderer), `verified.rs` (Verus-verified code), `bin/build.rs`, `bin/recall.rs`, `bin/lint.rs`, `bin/audit.rs`, `bin/verify.rs`, `bin/calc.rs`"
       },
       "src/plalast.png": {
         "description": "Project logo, shown in README.md. Its path lives in primary.project.plalast_logo."
       },
       "tests/": {
         "description": "Hand-edited Rust integration tests (cargo test).",
-        "table": "Tests: `tests/wiring.rs` runs the tools against this repo's memory; `tests/logic.rs` checks at run time the contracts of `src/verified.rs` and the laws of arithmetic in the pure calculator"
+        "table": "Tests: `tests/wiring.rs` runs the tools against this repo's memory; `tests/logic.rs` checks at run time the contracts of `src/verified.rs` and the laws of arithmetic in the pure calculator; `tests/fantastic.rs` runs every category of AGENTS.md through the battery of `plalast::fantastic`"
       },
       "target/": {
         "description": "Cargo build output, git-ignored."

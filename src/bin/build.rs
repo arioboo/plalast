@@ -390,27 +390,6 @@ fn render_blocks(blocks: &[Value], cfg: &Value) -> Res<String> {
 
 // ---------- documents ----------
 
-/// ` (obligatory)` or ` (preferential)` when a block of `section` points at a category listed in
-/// `config.obligatory` or `config.preferential` (a memory path such as
-/// `primary.agents-md.static_rules`); nothing otherwise.
-fn rule_kind(cfg: &Value, section: &Value) -> String {
-    for kind in ["obligatory", "preferential"] {
-        let listed = strings(config(cfg), kind);
-        let hit = arr(section, "blocks")
-            .iter()
-            .filter_map(|b| str_of(b, "ref"))
-            .any(|r| {
-                listed
-                    .iter()
-                    .any(|p| r == p || r.starts_with(&format!("{p}.")))
-            });
-        if hit {
-            return format!(" ({kind})");
-        }
-    }
-    String::new()
-}
-
 /// Renders document `key`: its main text plus one `(path, text)` per `on_demand` section.
 fn render_doc(key: &str, doc: &Value, cfg: &Value) -> Res<(String, Vec<(String, String)>)> {
     let sections = arr(doc, "sections");
@@ -459,7 +438,10 @@ fn render_doc(key: &str, doc: &Value, cfg: &Value) -> Res<(String, Vec<(String, 
             }
         };
         match state {
-            "enabled" => parts.push(with_body(format!("## {title}{}", rule_kind(cfg, s)))),
+            "enabled" => parts.push(with_body(format!(
+                "## {title}{}",
+                plalast::fantastic::section_mark(cfg, s)
+            ))),
             "on_demand" => {
                 let dir = req(paths(cfg), "on_demand", "config.paths")?.trim_end_matches('/');
                 let path = format!("{dir}/{id}.md");
@@ -1025,18 +1007,6 @@ mod tests {
         let empty =
             json!({"primary": {"procedures": {"items": {"a": {"title": "A", "text": []}}}}});
         assert!(procedures_block(&empty).is_err());
-    }
-
-    #[test]
-    fn sections_are_titled_by_the_kind_of_their_category() {
-        let c = json!({"config": {"obligatory": ["primary.x.rules"], "preferential": ["primary.x.prefs"]}});
-        let s = |r: &str| json!({"blocks": [{"type": "list", "ref": r}]});
-        assert_eq!(rule_kind(&c, &s("primary.x.rules.items")), " (obligatory)");
-        assert_eq!(
-            rule_kind(&c, &s("primary.x.prefs.items")),
-            " (preferential)"
-        );
-        assert_eq!(rule_kind(&c, &s("primary.x.rulesets")), "");
     }
 
     #[test]

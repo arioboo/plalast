@@ -5,6 +5,7 @@ Warnings, errors and issues found in this repo, newest first, with their status.
 
 | Date | Level | Where | Status | Description |
 |---|---|---|---|---|
+| 2026-11-28 | issue | `plalast::fantastic::CHECKS` | open | The battery of tests for the 4 fantásticos has only its first checks (one kind, unique names, solves a problem, rendered); the rest are still to be defined. |
 | 2026-11-28 | issue | `agents/guides` | closed | The guides were in English, but the Languages preference asks for Spanish; translated. |
 | 2026-11-28 | issue | `primary.features.feature_3` | open | language support is too vague to know which problem it solves or when it is done (Problem-first). |
 | 2026-11-28 | warning | `pla-build --guard` | open | The Claude Code hook sees Edit, Write and NotebookEdit, not what a shell command writes; for those writes only the rule Write only inside the root protects the machine. |

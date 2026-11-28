@@ -3,7 +3,7 @@
 //! these keep them checked on machines without Verus. Precarious: they sample, they do not prove.
 
 use plalast::calc::{eval, Rational};
-use plalast::rule_name;
+use plalast::fantastic::rule_name;
 use plalast::verified::{heading_hashes, ordered_number};
 
 #[test]

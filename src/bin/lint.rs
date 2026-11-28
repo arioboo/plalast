@@ -81,7 +81,7 @@ fn lint_memory(root: &Path, cfg: &Value, f: &mut Findings) {
     lint_interruptors(root, cfg, f);
     lint_procedures(cfg, f);
     lint_problems(cfg, f);
-    lint_rule_kinds(cfg, f);
+    lint_fantastic(cfg, f);
     lint_texts(root, cfg, f);
     lint_modules_and_paths(root, cfg, f);
     lint_params(root, cfg, f);
@@ -496,15 +496,9 @@ fn lint_problems(cfg: &Value, f: &mut Findings) {
     if blank(str_of(&primary(cfg)["problems"], "definition")) {
         f.error(M, "primary.problems: missing `definition`");
     }
-    let rules = plalast::rules(cfg);
-    for (i, (_, name)) in rules.iter().enumerate() {
-        if rules[..i].iter().any(|(_, n)| n == name) {
-            f.error(M, format!("rule name `{name}` is used twice in primary.agents-md; problems could not tell them apart"));
-        }
-    }
+    let rules = plalast::fantastic::rules(cfg);
     let file_name =
         regex::Regex::new(r"\b[\w-]+\.(md|json|yaml|yml|rs|toml|sh|py)\b").expect("valid pattern");
-    let mut solved: Vec<&str> = Vec::new();
     for (id, p) in plalast::problems(cfg) {
         let ctx = format!("primary.problems.items.{id}");
         if !is_kebab(id) {
@@ -524,9 +518,7 @@ fn lint_problems(cfg: &Value, f: &mut Findings) {
             f.error(M, format!("{ctx}: `solved_by` must name at least one rule"));
         }
         for n in names.iter().filter_map(Value::as_str) {
-            if rules.iter().any(|(_, r)| *r == n) {
-                solved.push(n);
-            } else {
+            if !rules.iter().any(|(_, r)| *r == n) {
                 f.error(
                     M,
                     format!("{ctx}: `{n}` is not the name of a rule in primary.agents-md"),
@@ -534,42 +526,16 @@ fn lint_problems(cfg: &Value, f: &mut Findings) {
             }
         }
     }
-    for (category, name) in &rules {
-        if !solved.contains(name) {
-            f.error(M, format!("primary.agents-md.{category}: `{name}` solves no problem in primary.problems (Lean memory)"));
-        }
-    }
 }
 
-/// `config.obligatory` and `config.preferential` together name every category of AGENTS.md
-/// (`primary.agents-md.<category>`) exactly once.
-fn lint_rule_kinds(cfg: &Value, f: &mut Findings) {
-    let mut seen: Vec<String> = Vec::new();
-    for kind in ["obligatory", "preferential"] {
-        for p in plalast::strings(config(cfg), kind) {
-            let ok = plalast::RULE_CATEGORIES
-                .iter()
-                .any(|c| p == format!("primary.agents-md.{c}"));
-            if !ok {
-                f.error(M, format!("config.{kind}: `{p}` is not a category of AGENTS.md (primary.agents-md.<category>)"));
-            }
-            if seen.contains(&p) {
-                f.error(
-                    M,
-                    format!("config.{kind}: `{p}` is already obligatory or preferential"),
-                );
-            }
-            seen.push(p);
-        }
+/// The 4 fantásticos, one by one, through the battery of `plalast::fantastic::CHECKS`; and the
+/// params that list a category that does not exist.
+fn lint_fantastic(cfg: &Value, f: &mut Findings) {
+    for (kind, p) in plalast::fantastic::unknown_kinds(cfg) {
+        f.error(M, format!("config.{kind}: `{p}` is not a category of AGENTS.md (primary.agents-md.<category>)"));
     }
-    for c in plalast::RULE_CATEGORIES {
-        let p = format!("primary.agents-md.{c}");
-        if !seen.contains(&p) {
-            f.error(
-                M,
-                format!("`{p}` is neither in config.obligatory nor in config.preferential"),
-            );
-        }
+    for (key, check, msg) in plalast::fantastic::check(cfg) {
+        f.error(M, format!("primary.agents-md.{key} [{check}]: {msg}"));
     }
 }
 
