@@ -190,6 +190,21 @@ fn brain_keys(cfg: &Value) -> Res<String> {
     Ok(md_table(&header, &rows))
 }
 
+/// The `procedures` block: `## <title>` and the paragraphs of every procedure.
+fn procedures_block(cfg: &Value) -> Res<String> {
+    let mut parts = Vec::new();
+    for (id, p) in plalast::procedures(cfg) {
+        let ctx = format!("primary.procedures.items.{id}");
+        let title = req(p, "title", &ctx)?;
+        let text: Vec<&str> = arr(p, "text").iter().filter_map(Value::as_str).collect();
+        if text.is_empty() {
+            return Err(format!("{ctx}: needs a non-empty `text` list"));
+        }
+        parts.push(format!("## {title}\n\n{}", text.join("\n\n")));
+    }
+    Ok(parts.join("\n\n"))
+}
+
 /// Rules of a mode (`primary.mode.<name>.rules`), or an error naming the mode.
 fn mode_rules<'a>(name: &str, m: &'a Value) -> Res<Vec<&'a str>> {
     let rules: Vec<&str> = arr(m, "rules").iter().filter_map(Value::as_str).collect();
@@ -288,6 +303,7 @@ fn render_blocks(blocks: &[Value], cfg: &Value) -> Res<String> {
             "agent_note" => agent_note(cfg)?.to_string(),
             "modes" => modes_block(cfg)?,
             "brain_keys" => brain_keys(cfg)?,
+            "procedures" => procedures_block(cfg)?,
             other => return Err(format!("unknown content block type `{other}`")),
         };
         // A block with nothing to show (such as `modes` with every mode disabled) adds no lines.
@@ -821,6 +837,21 @@ mod tests {
         );
         c["data"] = json!({"descr_+": "only half"});
         assert!(brain_keys(&c).unwrap_err().contains("descr_-"));
+    }
+
+    #[test]
+    fn procedures_render_as_titled_paragraphs() {
+        let c = json!({"primary": {"procedures": {"items": {
+            "a": {"title": "Doing A", "text": ["First.", "Second."]},
+            "b": {"title": "Doing B", "text": ["Only."]}
+        }}}});
+        assert_eq!(
+            procedures_block(&c).unwrap(),
+            "## Doing A\n\nFirst.\n\nSecond.\n\n## Doing B\n\nOnly."
+        );
+        let empty =
+            json!({"primary": {"procedures": {"items": {"a": {"title": "A", "text": []}}}}});
+        assert!(procedures_block(&empty).is_err());
     }
 
     #[test]

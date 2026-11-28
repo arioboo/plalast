@@ -51,7 +51,7 @@ The brain is `memory.json`, with exactly three primary keys: `config` (what the 
 | `primary.agents-md.intro` | Paragraphs under the title. |
 | `primary.agents-md.static_premises` | Fixed premises: what the repo is, how it is built and the Pareto rule (the Premisas - estáticas section). |
 | `primary.agents-md.brain_keys_intro` | Intro of the table of primary keys (the `brain_keys` block) in the Premisas - estáticas section. |
-| `primary.agents-md.dynamic_premises` | Texts of the Premisas - dinámicas section (`brain`, `write_order`, `intro`, `map`, `tools_intro`, `candidates_intro`, `modes_intro`); its lists are `commands`, `tools_and_languages`, `candidates` and the `modes` block. |
+| `primary.agents-md.dynamic_premises` | Texts of the Premisas - dinámicas section (`brain`, `write_order`, `problem_first`, `procedures`, `intro`, `map`, `tools_intro`, `candidates_intro`, `modes_intro`); its lists are `commands`, `tools_and_languages`, `candidates` and the `modes` block. |
 | `primary.agents-md.commands` | Commands of the Premisas - dinámicas section: intros (`tool_intro`, `code_intro`) and the `code` commands; the tool commands come from `primary.commands`. |
 | `primary.agents-md.tools_and_languages` | Languages and verifiers in use. |
 | `primary.agents-md.candidates` | Languages that may be used later. |
@@ -67,6 +67,7 @@ The brain is `memory.json`, with exactly three primary keys: `config` (what the 
 | `primary.guides` | Guides: `definition` and `render` (`pdf`: each .md is rendered to a .pdf by `pla-build`); folder and links in `config.paths.modules.guides`. |
 | `primary.modules` | External modules that live outside this repo, by name (such as `agent_zettelkasten`): each has a `definition` (what it is, in words); its path is `config.paths.modules.<name>`. A symlink in `modules/` is built only if `data.structure` has one for it. |
 | `primary.mode` | Modes, by name (such as `ultra_conservative`): `title`, `when` and `rules` (a list of strings). Its interruptor is `params.levers.mode.<name>`: `enabled` writes the rules into the `modes` block, `on_demand` writes them to `<config.paths.on_demand>/mode-<name>.md` and leaves a pointer, `disabled` drops them. |
+| `primary.procedures` | Procedures: `definition` and `items` (by id: `title` and `text`, a list of paragraphs in human language, with no backticks or file names; `pla-lint` checks it). Rendered into `agents/PROCEDURES.md` by the `procedures` block. |
 | `primary.schema` | This documentation of the memory and params format; `BUILD.md` renders its tables. |
 | `primary.commands` | The repo's commands, each `{cmd, summary, detail}`: AGENTS.md lists the summaries and BUILD.md the details. |
 | `data` | What gets built. Its `descr_+` and `descr_-` say what it is and is not. |
@@ -114,6 +115,7 @@ Switching a section from `on_demand` to `disabled` leaves its old file behind: `
 | `agent_note` | the text of `primary.docs.agent_note`, on the line right after the first one (no blank line); every doc has it as the second block of its `head`, unless the doc sets `agent_note: false` |
 | `modes` | one `- Mode` line per mode of `primary.mode` that is not `disabled`: its rules when `enabled`, a pointer to `mode-<name>.md` when `on_demand`; nothing when every mode is disabled |
 | `brain_keys` | a table `Key | Is (descr_+) | Is not (descr_-)` with one row per primary key of the memory (`config`, `primary`, `data`) |
+| `procedures` | one `## <title>` per procedure of `primary.procedures.items`, followed by its paragraphs |
 
 Each section is rendered as `## <title>` followed by its blocks. Blocks are separated by one blank line, except `agent_note`, which goes right under the first line; every file ends with one newline.
 

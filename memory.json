@@ -99,12 +99,16 @@
         "Specific formats: markdown for information, json for the memory (`memory.json`), yaml for the interruptores (`params.yaml`), bash for system scripts (setup, links, servers) and Rust for everything else (see Premisas - dinámicas).",
         "No duplication. Only one way of functional working, one memory file and one params file, symbolic links where matters, only one zettelkasten vault, etc.",
         "Open source: everyone can collaborate with it (see `README.md` at the repo root for the contribution flow)",
-        "Pareto rule: 20% of the effort gives 80% of the result; when unsure, assume a similar split. Propose that 20% first, and more when it is for best practices. It also rules every description: `descr_+` (what a key is, the positive way) and `descr_-` (what it is not, the negative way) each say the essential 20% that carries 80% of the meaning."
+        "Pareto rule: 20% of the effort gives 80% of the result; when unsure, assume a similar split. Propose that 20% first, and more when it is for best practices. It also rules every description: `descr_+` (what a key is, the positive way) and `descr_-` (what it is not, the negative way) each say the essential 20% that carries 80% of the meaning.",
+        "Conservative, in general: prefer what exists and is known to work over what is new; change little at a time, keep every step reversible, and when in doubt ask instead of acting. The mode `ultra_conservative` makes this stricter when it is on.",
+        "Only small diff steps: this is not about git diffs but about knowledge. What the machine generates or learns on its own grows in small steps, and each step should ideally pass a verification process at several levels before it becomes part of the memory: consistent with what is already known, checked by machines (tests, linters, formal proofs) and reviewed by a human."
       ],
       "brain_keys_intro": "The memory (`memory.json`) has exactly three primary keys, each saying what it is (`descr_+`) and what it is not (`descr_-`):",
       "dynamic_premises": {
         "brain": "Brain: `memory.json` is the brain of plalast, the place everything is read from and written to. Everything in this file, and every other generated file (every `.md` in the root and in `agents/`, `.gitignore`, `.claude/settings.json`), is rebuilt from it byte by byte, with the interruptores of `params.yaml`.",
         "write_order": "Write order: delete > modify/edit > add. Before adding anything, first delete what is no longer needed, then modify or edit what exists, and add only what neither covers. This forces a kind of autonomous retraining of the memory, as long as the Pareto rule holds in each case.",
+        "problem_first": "Problem-first: say, in plain human language, the problem that a tool or a set of tools solves, before naming any tool. Do not get carried away by proper names: names change, the problem stays. Follow \"All models are wrong, but some are useful\": every tool and every description is a model, judged by how useful it is and not by how true it is. This is the pragmatic philosophy the Pareto rule installs in our learning by reinforcement.",
+        "procedures": "Procedures: short instructions in human language for recurring situations, in `agents/PROCEDURES.md` (from `primary.procedures`). Read the one that fits before acting.",
         "intro": "The current state of the repo: it changes as the repo grows, so check it against the repo when in doubt.",
         "map": "Map: `agents/structure.md` (where each path lives) and `cargo run --release --bin pla-recall -- [term]`.",
         "tools_intro": "Tools and languages in use:",
@@ -122,12 +126,12 @@
         ]
       },
       "tools_and_languages": [
-        "Rust: Default language for all programs and tools, with possibility to add Verus for verification.",
-        "Lean 4: For formal verification and expandable fact base.",
-        "Dafny: For software verification and default LLM-programming"
+        "Programs that must be fast, safe with memory and easy for an LLM to read and write, some of them proven correct: Rust, the default for every program and tool, with Verus for the proofs.",
+        "Proving that a statement is true, and keeping a growing base of checked facts: Lean 4.",
+        "Writing software together with the proof that it does what it says, in a form LLMs program well: Dafny, the default for LLM-programming."
       ],
       "candidates": [
-        "Typescript: Best for web, UI and web scripting/crawling"
+        "Building web pages and user interfaces, and scripting or crawling the web: TypeScript."
       ],
       "good_practices": [
         "Interruptor: every document section and every mode has one in `params.levers` (also called a memory lever), with three values: `enabled` (always in the agent's memory), `on_demand` (its own file, read when needed; the default when none is set) or `disabled` (not built). Every new section or mode gets one when its default is not the right one.",
@@ -473,6 +477,13 @@
         "commit": "cffb150",
         "kind": "merge",
         "descr": "Fast-forward merge of develop."
+      },
+      {
+        "date": "2026-11-28",
+        "branch": "develop",
+        "commit": "5c96678",
+        "kind": "commit",
+        "descr": "memory.json is the brain with config, primary and data (descr_+ / descr_-); params.yaml holds only the interruptores; Pareto a static premise; brain and write_order premises; mode ultra_conservative; rebuild test."
       }
     ],
     "index": {},
@@ -508,6 +519,46 @@
         ]
       }
     },
+    "procedures": {
+      "definition": "Procedures: mini-instructions of one or a few paragraphs, in human and not very concrete language, with no references to code or to the repo, readable by humans and machines alike. Each one has a `title` and `text` (a list of paragraphs).",
+      "items": {
+        "solve-a-problem": {
+          "title": "Solving a problem",
+          "text": [
+            "Start by saying the problem in plain words, as if to someone who knows none of the tools. If it cannot be said simply, it is not understood yet: keep asking until it can.",
+            "Then look for the smallest useful answer. Every answer is a model and every model is wrong somewhere; pick the one that is useful enough, try it, and keep it only while it keeps being useful."
+          ]
+        },
+        "change-something": {
+          "title": "Changing something",
+          "text": [
+            "Before adding, look for what can be removed; before writing something new, look for what can be changed. Add only what neither covers.",
+            "Stop when the change gives most of its value. The last details cost the most and are worth the least; leave them for when they are needed."
+          ]
+        },
+        "describe-something": {
+          "title": "Describing something",
+          "text": [
+            "Say what it is and what it is not, in a few words each. The two together draw its edge better than a long text on either side.",
+            "Keep only what carries most of the meaning. If a reader would lose nothing without a sentence, the sentence goes."
+          ]
+        },
+        "learn-from-a-mistake": {
+          "title": "Learning from a mistake",
+          "text": [
+            "When the same mistake happens twice, write the smallest rule that would have prevented it, and put it where it will be read at the right moment.",
+            "Rules age. A rule that no longer prevents anything is noise: remove it, so the ones that matter stay visible."
+          ]
+        },
+        "act-under-doubt": {
+          "title": "Acting under doubt",
+          "text": [
+            "When a step cannot be undone, or it reaches other people, ask first. When it can be undone, prefer doing it and showing the result over asking.",
+            "Say plainly what was done, what was not, and why. A clear partial result is more useful than an unclear complete one."
+          ]
+        }
+      }
+    },
     "schema": {
       "keys": {
         "config": "What the tools need to run the repo: git, tool settings and every path. Its `descr_+` and `descr_-` say what it is and is not.",
@@ -537,7 +588,7 @@
         "primary.agents-md.intro": "Paragraphs under the title.",
         "primary.agents-md.static_premises": "Fixed premises: what the repo is, how it is built and the Pareto rule (the Premisas - estáticas section).",
         "primary.agents-md.brain_keys_intro": "Intro of the table of primary keys (the `brain_keys` block) in the Premisas - estáticas section.",
-        "primary.agents-md.dynamic_premises": "Texts of the Premisas - dinámicas section (`brain`, `write_order`, `intro`, `map`, `tools_intro`, `candidates_intro`, `modes_intro`); its lists are `commands`, `tools_and_languages`, `candidates` and the `modes` block.",
+        "primary.agents-md.dynamic_premises": "Texts of the Premisas - dinámicas section (`brain`, `write_order`, `problem_first`, `procedures`, `intro`, `map`, `tools_intro`, `candidates_intro`, `modes_intro`); its lists are `commands`, `tools_and_languages`, `candidates` and the `modes` block.",
         "primary.agents-md.commands": "Commands of the Premisas - dinámicas section: intros (`tool_intro`, `code_intro`) and the `code` commands; the tool commands come from `primary.commands`.",
         "primary.agents-md.tools_and_languages": "Languages and verifiers in use.",
         "primary.agents-md.candidates": "Languages that may be used later.",
@@ -553,6 +604,7 @@
         "primary.guides": "Guides: `definition` and `render` (`pdf`: each .md is rendered to a .pdf by `pla-build`); folder and links in `config.paths.modules.guides`.",
         "primary.modules": "External modules that live outside this repo, by name (such as `agent_zettelkasten`): each has a `definition` (what it is, in words); its path is `config.paths.modules.<name>`. A symlink in `modules/` is built only if `data.structure` has one for it.",
         "primary.mode": "Modes, by name (such as `ultra_conservative`): `title`, `when` and `rules` (a list of strings). Its interruptor is `params.levers.mode.<name>`: `enabled` writes the rules into the `modes` block, `on_demand` writes them to `<config.paths.on_demand>/mode-<name>.md` and leaves a pointer, `disabled` drops them.",
+        "primary.procedures": "Procedures: `definition` and `items` (by id: `title` and `text`, a list of paragraphs in human language, with no backticks or file names; `pla-lint` checks it). Rendered into `agents/PROCEDURES.md` by the `procedures` block.",
         "primary.schema": "This documentation of the memory and params format; `BUILD.md` renders its tables.",
         "primary.commands": "The repo's commands, each `{cmd, summary, detail}`: AGENTS.md lists the summaries and BUILD.md the details.",
         "data": "What gets built. Its `descr_+` and `descr_-` say what it is and is not.",
@@ -586,7 +638,8 @@
         "image": "`![alt](src)`, or an HTML `<img>` when `width` is set; `ref` (a dotted config path such as `primary.project.plalast_logo`) can replace `src`",
         "agent_note": "the text of `primary.docs.agent_note`, on the line right after the first one (no blank line); every doc has it as the second block of its `head`, unless the doc sets `agent_note: false`",
         "modes": "one `- Mode` line per mode of `primary.mode` that is not `disabled`: its rules when `enabled`, a pointer to `mode-<name>.md` when `on_demand`; nothing when every mode is disabled",
-        "brain_keys": "a table `Key | Is (descr_+) | Is not (descr_-)` with one row per primary key of the memory (`config`, `primary`, `data`)"
+        "brain_keys": "a table `Key | Is (descr_+) | Is not (descr_-)` with one row per primary key of the memory (`config`, `primary`, `data`)",
+        "procedures": "one `## <title>` per procedure of `primary.procedures.items`, followed by its paragraphs"
       }
     }
   },
@@ -655,7 +708,7 @@
       {
         "path": "agents/",
         "type": "dir",
-        "table": "Single, provider-neutral source. Its `.md` files (`AGENTS.md`, `CLAUDE.md`, `BUILD.md`, `FEATURES.md`, `LOG.md`, `INDEX.md`) are generated; its subfolders hold hand-written modules",
+        "table": "Single, provider-neutral source. Its `.md` files (`AGENTS.md`, `CLAUDE.md`, `PROCEDURES.md`, `BUILD.md`, `FEATURES.md`, `LOG.md`, `INDEX.md`) are generated; its subfolders hold hand-written modules",
         "description": "Neutral source of all agent documentation and modules. Providers get symlinks into it."
       },
       {
@@ -669,6 +722,12 @@
         "type": "file",
         "build": "claude_md",
         "description": "Claude Code entry point; only imports AGENTS.md. Generated from content.claude_md."
+      },
+      {
+        "path": "agents/PROCEDURES.md",
+        "type": "file",
+        "build": "procedures_md",
+        "description": "Procedures doc: mini-instructions in human language. Generated from data.content.procedures_md and primary.procedures."
       },
       {
         "path": "agents/BUILD.md",
@@ -876,6 +935,14 @@
               },
               {
                 "type": "paragraph",
+                "ref": "primary.agents-md.dynamic_premises.problem_first"
+              },
+              {
+                "type": "paragraph",
+                "ref": "primary.agents-md.dynamic_premises.procedures"
+              },
+              {
+                "type": "paragraph",
                 "ref": "primary.agents-md.dynamic_premises.intro"
               },
               {
@@ -947,6 +1014,26 @@
             ]
           }
         ]
+      },
+      "procedures_md": {
+        "head": [
+          {
+            "type": "heading",
+            "level": 1,
+            "text": "Procedures"
+          },
+          {
+            "type": "agent_note"
+          },
+          {
+            "type": "paragraph",
+            "ref": "primary.procedures.definition"
+          },
+          {
+            "type": "procedures"
+          }
+        ],
+        "sections": []
       },
       "claude_md": {
         "agent_note": false,

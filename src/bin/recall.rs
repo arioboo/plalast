@@ -66,6 +66,17 @@ fn plain_data(cfg: &Value) -> Vec<(String, String)> {
             format!("{k} [{status}] {descr}"),
         ));
     }
+    for (id, p) in plalast::procedures(cfg) {
+        let text: Vec<&str> = arr(p, "text").iter().filter_map(Value::as_str).collect();
+        out.push((
+            "primary.procedures".to_string(),
+            format!(
+                "{id}: {} | {}",
+                str_of(p, "title").unwrap_or(id),
+                text.join(" ")
+            ),
+        ));
+    }
     for c in arr(primary(cfg), "commands") {
         out.push(("primary.commands".to_string(), fill("{cmd}: {summary}", c)));
     }
@@ -191,7 +202,8 @@ fn print_map(root: &Path, cfg: &Value) {
         println!("  {text}");
     }
     println!(
-        "Commands (primary.commands): {}, log (primary.log): {}, index (primary.index): {} entries",
+        "Procedures (primary.procedures): {}, commands (primary.commands): {}, log (primary.log): {}, index (primary.index): {} entries",
+        count(&primary(cfg)["procedures"]["items"]),
         count(&primary(cfg)["commands"]),
         count(&primary(cfg)["log"]),
         count(&primary(cfg)["index"])

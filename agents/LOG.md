@@ -5,6 +5,7 @@ Branches, commits and merges of this repo, newest first. Source: `primary.log` i
 
 | Date | Branch | Commit | Kind | Description |
 |---|---|---|---|---|
+| 2026-11-28 | develop | `5c96678` | commit | memory.json is the brain with config, primary and data (descr_+ / descr_-); params.yaml holds only the interruptores; Pareto a static premise; brain and write_order premises; mode ultra_conservative; rebuild test. |
 | 2026-11-28 | main | `cffb150` | merge | Fast-forward merge of develop. |
 | 2026-11-28 | develop | `cffb150` | commit | CLAUDE.md made only an @AGENTS.md import: docs can opt out of the agent note with `agent_note: false`. |
 | 2026-11-28 | develop | `100bf95` | commit | AGENTS.md restructured into Premisas - estáticas, Premisas - dinámicas, Buenas prácticas and Preferencias; Structure moved to BUILD.md; modules/ gets a .gitkeep. |

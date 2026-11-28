@@ -140,6 +140,17 @@ pub fn modes(cfg: &Value) -> Vec<(&str, &Value, &str)> {
         .collect()
 }
 
+/// Procedures of `primary.procedures.items`, in file order: id and procedure (`title`, `text`).
+#[must_use]
+pub fn procedures(cfg: &Value) -> Vec<(&str, &Value)> {
+    primary(cfg)["procedures"]["items"]
+        .as_object()
+        .into_iter()
+        .flatten()
+        .map(|(id, p)| (id.as_str(), p))
+        .collect()
+}
+
 /// Path of the file an `on_demand` mode is rendered to: `<config.paths.on_demand>/mode-<name>.md`.
 #[must_use]
 pub fn mode_path(cfg: &Value, name: &str) -> Option<String> {
@@ -175,7 +186,7 @@ pub const CONFIG_KEYS: [(&str, &str); 9] = [
 ];
 
 /// Keys of `primary`, in file order, and the tools that handle each.
-pub const PRIMARY_KEYS: [(&str, &str); 17] = [
+pub const PRIMARY_KEYS: [(&str, &str); 18] = [
     ("descr_+", "build (brain_keys), recall, lint"),
     ("descr_-", "build (brain_keys), recall, lint"),
     ("project", "build (title, logo), recall"),
@@ -195,6 +206,7 @@ pub const PRIMARY_KEYS: [(&str, &str); 17] = [
     ("guides", "build (links, pdf), recall, lint"),
     ("modules", "build (link target), recall, lint"),
     ("mode", "build (modes block, on_demand files), recall, lint"),
+    ("procedures", "build (procedures block), recall, lint"),
     (
         "schema",
         "build (schema blocks, lever values), lint (coverage)",

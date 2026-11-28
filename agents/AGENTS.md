@@ -13,6 +13,8 @@ The servers will be 24/7 on. This is a personal project on autonomous coding and
 - No duplication. Only one way of functional working, one memory file and one params file, symbolic links where matters, only one zettelkasten vault, etc.
 - Open source: everyone can collaborate with it (see `README.md` at the repo root for the contribution flow)
 - Pareto rule: 20% of the effort gives 80% of the result; when unsure, assume a similar split. Propose that 20% first, and more when it is for best practices. It also rules every description: `descr_+` (what a key is, the positive way) and `descr_-` (what it is not, the negative way) each say the essential 20% that carries 80% of the meaning.
+- Conservative, in general: prefer what exists and is known to work over what is new; change little at a time, keep every step reversible, and when in doubt ask instead of acting. The mode `ultra_conservative` makes this stricter when it is on.
+- Only small diff steps: this is not about git diffs but about knowledge. What the machine generates or learns on its own grows in small steps, and each step should ideally pass a verification process at several levels before it becomes part of the memory: consistent with what is already known, checked by machines (tests, linters, formal proofs) and reviewed by a human.
 
 The memory (`memory.json`) has exactly three primary keys, each saying what it is (`descr_+`) and what it is not (`descr_-`):
 
@@ -27,6 +29,10 @@ The memory (`memory.json`) has exactly three primary keys, each saying what it i
 Brain: `memory.json` is the brain of plalast, the place everything is read from and written to. Everything in this file, and every other generated file (every `.md` in the root and in `agents/`, `.gitignore`, `.claude/settings.json`), is rebuilt from it byte by byte, with the interruptores of `params.yaml`.
 
 Write order: delete > modify/edit > add. Before adding anything, first delete what is no longer needed, then modify or edit what exists, and add only what neither covers. This forces a kind of autonomous retraining of the memory, as long as the Pareto rule holds in each case.
+
+Problem-first: say, in plain human language, the problem that a tool or a set of tools solves, before naming any tool. Do not get carried away by proper names: names change, the problem stays. Follow "All models are wrong, but some are useful": every tool and every description is a model, judged by how useful it is and not by how true it is. This is the pragmatic philosophy the Pareto rule installs in our learning by reinforcement.
+
+Procedures: short instructions in human language for recurring situations, in `agents/PROCEDURES.md` (from `primary.procedures`). Read the one that fits before acting.
 
 The current state of the repo: it changes as the repo grows, so check it against the repo when in doubt.
 
@@ -56,13 +62,13 @@ Code:
 
 Tools and languages in use:
 
-- Rust: Default language for all programs and tools, with possibility to add Verus for verification.
-- Lean 4: For formal verification and expandable fact base.
-- Dafny: For software verification and default LLM-programming
+- Programs that must be fast, safe with memory and easy for an LLM to read and write, some of them proven correct: Rust, the default for every program and tool, with Verus for the proofs.
+- Proving that a statement is true, and keeping a growing base of checked facts: Lean 4.
+- Writing software together with the proof that it does what it says, in a form LLMs program well: Dafny, the default for LLM-programming.
 
 Candidates (possible, not in use yet):
 
-- Typescript: Best for web, UI and web scripting/crawling
+- Building web pages and user interfaces, and scripting or crawling the web: TypeScript.
 
 ## Buenas prácticas
 

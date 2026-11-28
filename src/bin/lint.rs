@@ -76,6 +76,7 @@ fn lint_memory(root: &Path, cfg: &Value, f: &mut Findings) {
     lint_structure(root, cfg, f);
     lint_docs(cfg, f);
     lint_modes(cfg, f);
+    lint_procedures(cfg, f);
     lint_modules_and_paths(root, cfg, f);
     lint_params(root, cfg, f);
     lint_plain_data(root, cfg, f);
@@ -325,6 +326,38 @@ fn lint_modes(cfg: &Value, f: &mut Findings) {
                 M,
                 format!("{ctx}: `rules` must be a non-empty list of strings"),
             );
+        }
+    }
+}
+
+/// Procedures: a definition, and per procedure a title and paragraphs in human language, with
+/// no references to code or to the repo (no backticks, no file names).
+fn lint_procedures(cfg: &Value, f: &mut Findings) {
+    let root = &primary(cfg)["procedures"];
+    if blank(str_of(root, "definition")) {
+        f.error(M, "primary.procedures: missing `definition`");
+    }
+    let file_name =
+        regex::Regex::new(r"\b[\w-]+\.(md|json|yaml|yml|rs|toml|sh|py)\b").expect("valid pattern");
+    for (id, p) in plalast::procedures(cfg) {
+        let ctx = format!("primary.procedures.items.{id}");
+        if !is_kebab(id) {
+            f.error(M, format!("{ctx}: id must be kebab-case"));
+        }
+        if blank(str_of(p, "title")) {
+            f.error(M, format!("{ctx}: missing `title`"));
+        }
+        let text = arr(p, "text");
+        if text.is_empty() || !text.iter().all(Value::is_string) {
+            f.error(
+                M,
+                format!("{ctx}: `text` must be a non-empty list of paragraphs"),
+            );
+        }
+        for t in text.iter().filter_map(Value::as_str) {
+            if t.contains('`') || file_name.is_match(t) {
+                f.error(M, format!("{ctx}: a procedure is human language, with no references to code or to the repo: {t}"));
+            }
         }
     }
 }
