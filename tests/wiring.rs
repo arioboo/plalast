@@ -35,18 +35,20 @@ fn every_generated_doc_has_the_agent_note_on_line_two() {
     let note = cfg["primary"]["docs"]["agent_note"].as_str().unwrap();
     let mut checked = 0;
     for e in cfg["data"]["structure"].as_array().unwrap() {
-        let (Some(path), Some(_)) = (entry_path(&cfg, e), e["build"].as_str()) else {
+        let (Some(path), Some(key)) = (entry_path(&cfg, e), e["build"].as_str()) else {
             continue;
         };
-        // Only markdown docs carry the note (.gitignore and .claude/settings.json do not).
-        if !path.ends_with(".md") {
+        // Only markdown docs carry the note (.gitignore and .claude/settings.json do not),
+        // and a doc can opt out with `"agent_note": false` (CLAUDE.md is only `@AGENTS.md`).
+        let opted_out = cfg["data"]["content"][key]["agent_note"].as_bool() == Some(false);
+        if !path.ends_with(".md") || opted_out {
             continue;
         }
         let text = std::fs::read_to_string(root.join(&path)).unwrap();
         assert_eq!(text.lines().nth(1), Some(note), "{path} line 2");
         checked += 1;
     }
-    assert!(checked >= 7, "only {checked} docs checked");
+    assert!(checked >= 6, "only {checked} docs checked");
 }
 
 #[test]

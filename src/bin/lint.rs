@@ -220,8 +220,10 @@ fn lint_docs(cfg: &Value, f: &mut Findings) {
             &format!("data.content.{key}.head"),
             f,
         );
+        // `"agent_note": false` opts a doc out of the note (adapter files such as CLAUDE.md).
+        let wants_note = doc.get("agent_note").and_then(Value::as_bool) != Some(false);
         let second = arr(doc, "head").get(1).and_then(|b| str_of(b, "type"));
-        if second != Some("agent_note") {
+        if wants_note && second != Some("agent_note") {
             f.error(
                 M,
                 format!("data.content.{key}.head: the second block must be `agent_note`"),

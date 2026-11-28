@@ -65,7 +65,7 @@ The brain is two files. `memory.json` has exactly `primary` (what makes the docs
 | `primary.commands` | The repo's commands, each `{cmd, summary, detail}`: AGENTS.md lists the summaries and BUILD.md the details. |
 | `data` | What gets built. |
 | `data.structure` | Every path, in order: `path`, `type`, `description`; optional `table` and `label` (its row in the Structure table), `gitkeep`, `secret`, `target`, `local` and `build`. |
-| `data.content` | One document per key: `head` (blocks before the first section) and `sections` (`id`, `title`, `when`, `blocks`). A `file` entry with `build: "<key>"` is rendered from it. |
+| `data.content` | One document per key: `head` (blocks before the first section), `sections` (`id`, `title`, `when`, `blocks`) and optional `agent_note: false` (no agent note, for adapter files such as `CLAUDE.md`, which is only `@AGENTS.md`). A `file` entry with `build: "<key>"` is rendered from it. |
 
 ## Memory levers (params.yaml)
 
@@ -103,7 +103,7 @@ Switching a section from `on_demand` to `disabled` leaves its old file behind: `
 | `structure_table` | the Structure table, from the `data.structure` entries that have `table` |
 | `schema` | a table of `primary.schema.<part>` with the given `header` |
 | `image` | `![alt](src)`, or an HTML `<img>` when `width` is set; `ref` (a dotted config path such as `primary.project.plalast_logo`) can replace `src` |
-| `agent_note` | the text of `primary.docs.agent_note`, on the line right after the first one (no blank line); every doc has it as the second block of its `head` |
+| `agent_note` | the text of `primary.docs.agent_note`, on the line right after the first one (no blank line); every doc has it as the second block of its `head`, unless the doc sets `agent_note: false` |
 
 Each section is rendered as `## <title>` followed by its blocks. Blocks are separated by one blank line, except `agent_note`, which goes right under the first line; every file ends with one newline.
 

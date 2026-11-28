@@ -5,6 +5,7 @@ Branches, commits and merges of this repo, newest first. Source: `primary.log` i
 
 | Date | Branch | Commit | Kind | Description |
 |---|---|---|---|---|
+| 2026-11-28 | develop | `100bf95` | commit | AGENTS.md restructured into Premisas - estáticas, Premisas - dinámicas, Buenas prácticas and Preferencias; Structure moved to BUILD.md; modules/ gets a .gitkeep. |
 | 2026-11-26 | main | `5c85bd5` | merge | Fast-forward merge of develop. |
 | 2026-11-26 | develop | `5c85bd5` | commit | The agent-zettelkasten link is no longer built; modules/ only documents the external module. |
 | 2026-11-26 | main | `5ba4b92` | merge | Fast-forward merge of develop. |
