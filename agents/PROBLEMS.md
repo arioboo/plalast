@@ -31,7 +31,7 @@ Solved by: Params untouchable, Memory updatable; Conservative, in small verified
 
 A memory that only grows piles up stale and contradictory rules instead of getting better.
 
-Solved by: Write order; Lean memory; Log.
+Solved by: Write order; Lean memory; Changes.
 
 ## Unverified knowledge
 
@@ -116,3 +116,9 @@ Solved by: Only migrate UP!; Where things go.
 When a project mixes languages with no rule, orders to machines become ambiguous and explanations for the person become hard to follow.
 
 Solved by: Languages.
+
+## Forgotten warnings
+
+A warning seen once and not written down comes back later as a surprise, or is never fixed.
+
+Solved by: Log.

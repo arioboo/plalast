@@ -1,10 +1,10 @@
 # Dafny
 
-Dafny is a programming language with verification built in. Methods carry `requires` (preconditions), `ensures` (postconditions) and loop `invariant`s, and the verifier proves them with an SMT solver (Z3) before the program runs. Verified code can then be compiled to C#, Java, JavaScript, Go or Python (C++ is experimental; release 4.11 has no Rust backend). In this repo it is the default language for LLM programming: a model writes code and specs, and the verifier tells it exactly what does not hold.
+Dafny es un lenguaje de programación con la verificación incorporada. Los métodos llevan `requires` (precondiciones), `ensures` (postcondiciones) e `invariant` de bucle, y el verificador los demuestra con un solver SMT (Z3) antes de que el programa se ejecute. Después, el código verificado se puede compilar a C#, Java, JavaScript, Go o Python (C++ es experimental; la release 4.11 no tiene backend de Rust). En este repo es un candidato, sin uso mientras rija la premisa Rust-only, porque no es una herramienta de Rust ni de C/C++ (necesita .NET).
 
-## Install (Linux, x86_64)
+## Instalación (Linux, x86_64)
 
-The releases of dafny-lang/dafny are self-contained: each zip carries its own .NET runtime and Z3, so nothing else is needed to verify. Download the Ubuntu zip of the latest release, unpack it into `~/.local/dafny` and link the binary:
+Las releases de dafny-lang/dafny son autocontenidas: cada zip lleva su propio runtime de .NET y Z3, así que no hace falta nada más para verificar. Descarga el zip de Ubuntu de la última release, descomprímelo en `~/.local/dafny` y enlaza el binario:
 
 ```sh
 gh release download v4.11.0 --repo dafny-lang/dafny --pattern '*-x64-ubuntu-22.04.zip'
@@ -14,11 +14,11 @@ chmod +x ~/.local/dafny/{dafny,DafnyDriver,DafnyServer,createdump} ~/.local/dafn
 ln -sf ~/.local/dafny/dafny ~/.local/bin/dafny
 ```
 
-`python3 -m zipfile` does not keep the executable bit, hence the `chmod`; `unzip` keeps it. macOS and Windows have their own zips in the same release. Check the install with `dafny --version`.
+`python3 -m zipfile` no conserva el bit de ejecución, de ahí el `chmod`; `unzip` sí lo conserva. macOS y Windows tienen sus propios zips en la misma release. Comprueba la instalación con `dafny --version`.
 
-Compiling to a target language needs that language's toolchain (the .NET SDK for C#, a JDK for Java, `go` for Go); verifying does not.
+Compilar a un lenguaje destino necesita la toolchain de ese lenguaje (el SDK de .NET para C#, un JDK para Java, `go` para Go); verificar, no.
 
-## Commands
+## Comandos
 
 ```sh
 dafny verify file.dfy            # prove every spec in the file
@@ -27,9 +27,9 @@ dafny build --target py file.dfy # verify, then compile (cs, go, js, java, py; c
 dafny format file.dfy            # format the file
 ```
 
-A successful run ends with `Dafny program verifier finished with N verified, 0 errors`. A spec that does not hold points at the line and at the postcondition that could not be proved.
+Una ejecución correcta termina con `Dafny program verifier finished with N verified, 0 errors`. Una especificación que no se cumple señala la línea y la postcondición que no se pudo demostrar.
 
-## Writing verified code
+## Escribir código verificado
 
 ```dafny
 method HeadingHashes(level: nat) returns (n: nat)
@@ -40,13 +40,13 @@ method HeadingHashes(level: nat) returns (n: nat)
 }
 ```
 
-This is the same contract as `heading_hashes` in `src/verified.rs`, which Verus proves in Rust. Drop the `level < 1` branch and Dafny reports `a postcondition could not be proved on this return path` and points at `1 <= n`.
+Es el mismo contrato que `heading_hashes` en `src/verified.rs`, que Verus demuestra en Rust. Si quitas la rama `level < 1`, Dafny informa `a postcondition could not be proved on this return path` y señala `1 <= n`.
 
-Loops need an `invariant` that holds before and after every iteration, and a `decreases` clause when Dafny cannot guess why the loop ends. Functions (`function`) are pure and can be used inside specs; methods (`method`) can have effects.
+Los bucles necesitan un `invariant` que se cumpla antes y después de cada iteración, y una cláusula `decreases` cuando Dafny no adivina por qué termina el bucle. Las funciones (`function`) son puras y se pueden usar dentro de las especificaciones; los métodos (`method`) pueden tener efectos.
 
-## Sources
+## Fuentes
 
-- Install: https://dafny.org/latest/Installation
+- Instalación: https://dafny.org/latest/Installation
 - Releases: https://github.com/dafny-lang/dafny/releases
-- Reference manual: https://dafny.org/latest/DafnyRef/DafnyRef
-- Getting started: https://dafny.org/latest/OnlineTutorial/guide
+- Manual de referencia: https://dafny.org/latest/DafnyRef/DafnyRef
+- Primeros pasos: https://dafny.org/latest/OnlineTutorial/guide

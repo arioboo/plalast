@@ -11,7 +11,7 @@ Paths are added here as they are created:
 | `src/` | Rust code: `lib.rs` (shared memory access and checks), `calc.rs` (the pure calculator), `pdf.rs` (guide renderer), `verified.rs` (Verus-verified code), `bin/build.rs`, `bin/recall.rs`, `bin/lint.rs`, `bin/audit.rs`, `bin/verify.rs`, `bin/calc.rs` |
 | `tests/` | Tests: `tests/wiring.rs` runs the tools against this repo's memory; `tests/logic.rs` checks at run time the contracts of `src/verified.rs` and the laws of arithmetic in the pure calculator |
 | `.secrets/` | Secrets: git-ignored except `.gitkeep`; values are referenced by environment variables, never written in other files |
-| `agents/` | Single, provider-neutral source. Its `.md` files (`AGENTS.md`, `CLAUDE.md`, `PROCEDURES.md`, `PROBLEMS.md`, `BUILD.md`, `FEATURES.md`, `LOG.md`, `INDEX.md`) are generated; its subfolders hold hand-written modules and the agent's scratch (`workspace/`) |
+| `agents/` | Single, provider-neutral source. Its `.md` files (`AGENTS.md`, `CLAUDE.md`, `PROCEDURES.md`, `PROBLEMS.md`, `BUILD.md`, `FEATURES.md`, `LOG.md`, `CHANGES.md`, `INDEX.md`) are generated; its subfolders hold hand-written modules and the agent's scratch (`workspace/`) |
 | `agents/workspace/` | The assistant agent's own scratch: its scripts, reports, `.md` and `.pdf` files; git-ignored except `.gitkeep`, never part of the brain |
 | `agents/skills/<name>/SKILL.md` | Skills, one folder each |
 | `agents/subagents/<name>.md` | Subagents |

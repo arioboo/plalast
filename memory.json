@@ -133,6 +133,11 @@
         "build": "log_md"
       },
       {
+        "path": "agents/CHANGES.md",
+        "type": "file",
+        "build": "changes_md"
+      },
+      {
         "path": "agents/INDEX.md",
         "type": "file",
         "build": "index_md"
@@ -685,7 +690,7 @@
             },
             {
               "type": "paragraph",
-              "text": "Branches, commits and merges of this repo, newest first. Source: `primary.log` in `memory.json`."
+              "text": "Warnings, errors and issues found in this repo, newest first, with their status. Source: `primary.log` in `memory.json`."
             },
             {
               "type": "table",
@@ -693,17 +698,51 @@
               "reverse": true,
               "header": [
                 "Date",
+                "Level",
+                "Where",
+                "Status",
+                "Description"
+              ],
+              "row": [
+                "{date}",
+                "{level}",
+                "`{where}`",
+                "{status}",
+                "{descr}"
+              ]
+            }
+          ],
+          "sections": []
+        },
+        "changes_md": {
+          "head": [
+            {
+              "type": "heading",
+              "level": 1,
+              "text": "Changes"
+            },
+            {
+              "type": "agent_note"
+            },
+            {
+              "type": "paragraph",
+              "text": "What happened in each commit, merge and branch of this repo, newest first, as `type(scope): description`. Source: `primary.changes` in `memory.json`."
+            },
+            {
+              "type": "table",
+              "ref": "primary.changes",
+              "reverse": true,
+              "header": [
+                "Date",
                 "Branch",
                 "Commit",
-                "Kind",
-                "Description"
+                "Change"
               ],
               "row": [
                 "{date}",
                 "{branch}",
                 "`{commit}`",
-                "{kind}",
-                "{descr}"
+                "{change}: {descr}"
               ]
             }
           ],
@@ -808,7 +847,8 @@
       "good_practices": {
         "items": [
           "Interruptor: every doc section, every whole doc and every mode can have one in `params.yaml`, after `#---INTERRUPTORS---`, named by the path of its field (`primary.docs.content.<doc>.sections.<id>`, `primary.docs.content.<doc>`, `primary.mode.<name>`), with three values: `enabled` (always in the agent's memory), `on_demand` (its own file, read when needed; the default when none is set) or `disabled` (not built). A new section, doc or mode works with the default; when another value fits better, propose it to the user, who sets it.",
-          "Log: after every commit, merge or new branch, add an entry `{date, branch, commit, kind, descr}` to `primary.log` (a commit cannot hold its own hash, so it goes in the next commit) and rebuild; `agents/LOG.md` shows it.",
+          "Changes: after every commit, merge or new branch, add an entry `{date, branch, commit, change, descr}` to `primary.changes`, with `change` in the notation `type(scope)` (type: feat, fix, docs, refactor, test, chore, merge or branch); a commit cannot hold its own hash, so it goes in the next commit. `agents/CHANGES.md` shows them.",
+          "Log: write in `primary.log` every warning, error or issue found (by a tool or a person) that is not fixed in the same step: `{date, level, where, descr, status}`, with `level` warning, error or issue and `status` open or closed; close it when it is solved. `agents/LOG.md` shows them.",
           "Zettelkasten markdown spirit. A lot of things in the web are garbage, so notes in the agent-zettelkasten use CDU (Universal Decimal Classification) notation: the file name starts with the CDU code, then a kebab-case title, e.g. `004.8-llm-agents.md` (004.8 = artificial intelligence). The infrastructure will be up.",
           "Where things go: before saving anything in the memory, find the field whose `descr_+` fits it and whose `descr_-` does not exclude it (`primary.schema.keys`, or the three primary keys); if none fits, propose a new field with both, Pareto-short."
         ]
@@ -890,339 +930,383 @@
     },
     "log": [
       {
+        "date": "2026-11-28",
+        "level": "warning",
+        "where": "config.paths.modules.agent_zettelkasten",
+        "descr": "The zettelkasten vault does not exist on this machine, so pla-lint warns about its path.",
+        "status": "open"
+      },
+      {
+        "date": "2026-11-28",
+        "level": "warning",
+        "where": "pla-build --guard",
+        "descr": "The Claude Code hook sees Edit, Write and NotebookEdit, not what a shell command writes; for those writes only the rule Write only inside the root protects the machine.",
+        "status": "open"
+      },
+      {
+        "date": "2026-11-28",
+        "level": "issue",
+        "where": "primary.features.feature_3",
+        "descr": "language support is too vague to know which problem it solves or when it is done (Problem-first).",
+        "status": "open"
+      },
+      {
+        "date": "2026-11-28",
+        "level": "issue",
+        "where": "agents/guides",
+        "descr": "The guides were in English, but the Languages preference asks for Spanish; translated.",
+        "status": "closed"
+      }
+    ],
+    "changes": [
+      {
         "date": "2026-11-25",
         "branch": "main",
         "commit": "5087984",
-        "kind": "commit",
+        "change": "chore(init)",
         "descr": "Initial commit: AGENTS.md, CLAUDE.md and an empty README.md."
       },
       {
         "date": "2026-11-25",
         "branch": "main",
         "commit": "53759df",
-        "kind": "commit",
+        "change": "docs(agents)",
         "descr": "Expanded AGENTS.md (structure, commands), wrote README.md and linked the zettelkasten vault."
       },
       {
         "date": "2026-11-25",
         "branch": "develop",
         "commit": "53759df",
-        "kind": "branch",
+        "change": "branch(develop)",
         "descr": "Created develop from main as the integration branch."
       },
       {
         "date": "2026-11-25",
         "branch": "develop",
         "commit": "e27d46f",
-        "kind": "commit",
+        "change": "docs(readme)",
         "descr": "Contribution flow points to develop; added an empty config.json."
       },
       {
         "date": "2026-11-25",
         "branch": "main",
         "commit": "e27d46f",
-        "kind": "merge",
+        "change": "merge(main)",
         "descr": "Fast-forward merge of develop."
       },
       {
         "date": "2026-11-25",
         "branch": "develop",
         "commit": "cfe9d64",
-        "kind": "commit",
+        "change": "feat(build)",
         "descr": "config.json becomes the brain: docs moved to agents/ and generated by a Rust CLI (build, recall); .claude/ symlinks; module folders; .gitignore."
       },
       {
         "date": "2026-11-25",
         "branch": "main",
         "commit": "cfe9d64",
-        "kind": "merge",
+        "change": "merge(main)",
         "descr": "Fast-forward merge of develop."
       },
       {
         "date": "2026-11-25",
         "branch": "develop",
         "commit": "beafd54",
-        "kind": "commit",
+        "change": "refactor(memory)",
         "descr": "config.json split into primary and data; memory levers (enabled, on_demand, disabled) per doc section; build and recall as separate binaries."
       },
       {
         "date": "2026-11-25",
         "branch": "develop",
         "commit": "469ea65",
-        "kind": "commit",
+        "change": "feat(readme)",
         "descr": "Project logo in README.md via primary.project.plalast_logo and a new image block."
       },
       {
         "date": "2026-11-25",
         "branch": "main",
         "commit": "469ea65",
-        "kind": "merge",
+        "change": "merge(main)",
         "descr": "Fast-forward merge of develop."
       },
       {
         "date": "2026-11-25",
         "branch": "develop",
         "commit": "ed60c7e",
-        "kind": "commit",
+        "change": "feat(tools)",
         "descr": "Added pla-lint and pla-audit; tools renamed to pla-*; naming and file-change rules in AGENTS.md."
       },
       {
         "date": "2026-11-25",
         "branch": "main",
         "commit": "ed60c7e",
-        "kind": "merge",
+        "change": "merge(main)",
         "descr": "Fast-forward merge of develop."
       },
       {
         "date": "2026-11-25",
         "branch": "develop",
         "commit": "d88be6f",
-        "kind": "commit",
+        "change": "feat(memory)",
         "descr": "Whole memory wired into the tools: docs, features, log, index, module kinds, zettelkasten and config keys; secrets moved to .secrets/; Verus; PDF guides; wiring tests."
       },
       {
         "date": "2026-11-25",
         "branch": "main",
         "commit": "d88be6f",
-        "kind": "merge",
+        "change": "merge(main)",
         "descr": "Fast-forward merge of develop."
       },
       {
         "date": "2026-11-25",
         "branch": "develop",
         "commit": "95ba41f",
-        "kind": "commit",
+        "change": "feat(docs)",
         "descr": "Agent note on the second line of every generated doc."
       },
       {
         "date": "2026-11-25",
         "branch": "main",
         "commit": "95ba41f",
-        "kind": "merge",
+        "change": "merge(main)",
         "descr": "Fast-forward merge of develop."
       },
       {
         "date": "2026-11-25",
         "branch": "develop",
         "commit": "8892b72",
-        "kind": "commit",
+        "change": "refactor(memory)",
         "descr": "Memory split into config, primary and data; AGENTS.md text in primary.agents-md; project log in LOG.md; features 1-3."
       },
       {
         "date": "2026-11-25",
         "branch": "develop",
         "commit": "1c45670",
-        "kind": "commit",
+        "change": "refactor(memory)",
         "descr": "Brain moved to memory.json + params.yaml, deduplicated and cleaned up."
       },
       {
         "date": "2026-11-25",
         "branch": "main",
         "commit": "31ef9f3",
-        "kind": "commit",
+        "change": "feat(tmux)",
         "descr": "Added tmux.conf for the plalast session: agent, build and git windows plus a green status bar, scoped to the session."
       },
       {
         "date": "2026-11-25",
         "branch": "main",
         "commit": "75e8f40",
-        "kind": "commit",
+        "change": "fix(tmux)",
         "descr": "tmux start command made path-independent: it runs from the repo root and expands $PWD instead of a fixed folder."
       },
       {
         "date": "2026-11-25",
         "branch": "develop",
         "commit": "8141acb",
-        "kind": "commit",
+        "change": "docs(guides)",
         "descr": "Verus install on Linux written into its guide, with rustfmt and clippy for pla-lint; PLALAST_DIR and the zettelkasten path fixed for this machine."
       },
       {
         "date": "2026-11-25",
         "branch": "develop",
         "commit": "43cb824",
-        "kind": "commit",
+        "change": "chore(log)",
         "descr": "Log entries for the two tmux.conf commits."
       },
       {
         "date": "2026-11-25",
         "branch": "main",
         "commit": "1fdc5fd",
-        "kind": "commit",
+        "change": "chore(log)",
         "descr": "Log entries for the Verus guide commit and the previous log commit."
       },
       {
         "date": "2026-11-25",
         "branch": "main",
         "commit": "f12be87",
-        "kind": "commit",
+        "change": "docs(audit)",
         "descr": "cargo-audit documented as a once-per-machine install, so `pla-audit deps` no longer skips the dependency check unnoticed."
       },
       {
         "date": "2026-11-25",
         "branch": "main",
         "commit": "b9292a9",
-        "kind": "commit",
+        "change": "chore(log)",
         "descr": "Log entries for the cargo-audit commit and the previous log commit."
       },
       {
         "date": "2026-11-25",
         "branch": "develop",
         "commit": "b9292a9",
-        "kind": "merge",
+        "change": "merge(develop)",
         "descr": "Fast-forward merge of main."
       },
       {
         "date": "2026-11-25",
         "branch": "main",
         "commit": "c2381f5",
-        "kind": "commit",
+        "change": "chore(log)",
         "descr": "Log entries for the previous log commit and the develop fast-forward."
       },
       {
         "date": "2026-11-26",
         "branch": "main",
         "commit": "c23c6a7",
-        "kind": "commit",
+        "change": "docs(guides)",
         "descr": "Lean 4 and Dafny install guides, with their PDFs."
       },
       {
         "date": "2026-11-26",
         "branch": "develop",
         "commit": "4110686",
-        "kind": "commit",
+        "change": "fix(config)",
         "descr": "PLALAST_DIR is always $PWD (the repo root); the zettelkasten path documented as machine-independent."
       },
       {
         "date": "2026-11-26",
         "branch": "main",
         "commit": "4110686",
-        "kind": "merge",
+        "change": "merge(main)",
         "descr": "Fast-forward merge of develop."
       },
       {
         "date": "2026-11-26",
         "branch": "develop",
         "commit": "1dbd6f9",
-        "kind": "commit",
+        "change": "feat(modules)",
         "descr": "primary.modules added with the agent_zettelkasten module; its link moved to modules/agent-zettelkasten."
       },
       {
         "date": "2026-11-26",
         "branch": "main",
         "commit": "1dbd6f9",
-        "kind": "merge",
+        "change": "merge(main)",
         "descr": "Fast-forward merge of develop."
       },
       {
         "date": "2026-11-26",
         "branch": "develop",
         "commit": "5ba4b92",
-        "kind": "commit",
+        "change": "fix(modules)",
         "descr": "modules/agent-zettelkasten made a local link: git-ignored and built only where the vault exists."
       },
       {
         "date": "2026-11-26",
         "branch": "main",
         "commit": "5ba4b92",
-        "kind": "merge",
+        "change": "merge(main)",
         "descr": "Fast-forward merge of develop."
       },
       {
         "date": "2026-11-26",
         "branch": "develop",
         "commit": "5c85bd5",
-        "kind": "commit",
+        "change": "refactor(modules)",
         "descr": "The agent-zettelkasten link is no longer built; modules/ only documents the external module."
       },
       {
         "date": "2026-11-26",
         "branch": "main",
         "commit": "5c85bd5",
-        "kind": "merge",
+        "change": "merge(main)",
         "descr": "Fast-forward merge of develop."
       },
       {
         "date": "2026-11-28",
         "branch": "develop",
         "commit": "100bf95",
-        "kind": "commit",
+        "change": "refactor(agents)",
         "descr": "AGENTS.md restructured into Premisas - estáticas, Premisas - dinámicas, Buenas prácticas and Preferencias; Structure moved to BUILD.md; modules/ gets a .gitkeep."
       },
       {
         "date": "2026-11-28",
         "branch": "develop",
         "commit": "cffb150",
-        "kind": "commit",
+        "change": "feat(claude)",
         "descr": "CLAUDE.md made only an @AGENTS.md import: docs can opt out of the agent note with `agent_note: false`."
       },
       {
         "date": "2026-11-28",
         "branch": "main",
         "commit": "cffb150",
-        "kind": "merge",
+        "change": "merge(main)",
         "descr": "Fast-forward merge of develop."
       },
       {
         "date": "2026-11-28",
         "branch": "develop",
         "commit": "5c96678",
-        "kind": "commit",
+        "change": "refactor(memory)",
         "descr": "memory.json is the brain with config, primary and data (descr_+ / descr_-); params.yaml holds only the interruptores; Pareto a static premise; brain and write_order premises; mode ultra_conservative; rebuild test."
       },
       {
         "date": "2026-11-28",
         "branch": "develop",
         "commit": "b508c52",
-        "kind": "commit",
+        "change": "feat(agents)",
         "descr": "Problem-first premise, primary.procedures (agents/PROCEDURES.md), and the static premises Conservative, in general and Only small diff steps."
       },
       {
         "date": "2026-11-28",
         "branch": "develop",
         "commit": "9ae9dfc",
-        "kind": "commit",
+        "change": "refactor(agents)",
         "descr": "primary.agents-md grouped by the four AGENTS.md categories; static premise Only one brain; params.agent_placeholder is the note on line 2 of every doc."
       },
       {
         "date": "2026-11-28",
         "branch": "develop",
         "commit": "93d8c62",
-        "kind": "commit",
+        "change": "refactor(memory)",
         "descr": "Only migrate UP! (data nearly empty: content to primary.docs.content, structure split into config.structure and primary.structure); params by memory path with #---INTERRUPTORS---; Reglas - estáticas and obligatory/preferential; problems; pla-verify, pla-calc; .claude only links; writes only inside the root."
       },
       {
         "date": "2026-11-28",
         "branch": "main",
         "commit": "93d8c62",
-        "kind": "merge",
+        "change": "merge(main)",
         "descr": "Fast-forward merge of develop."
       },
       {
         "date": "2026-11-28",
         "branch": "develop",
         "commit": "7dd47ba",
-        "kind": "commit",
+        "change": "chore(log)",
         "descr": "Log entries for 93d8c62 and the fast-forward of main."
       },
       {
         "date": "2026-11-28",
         "branch": "main",
         "commit": "7dd47ba",
-        "kind": "merge",
+        "change": "merge(main)",
         "descr": "Fast-forward merge of develop."
       },
       {
         "date": "2026-11-28",
         "branch": "develop",
         "commit": "67662dc",
-        "kind": "commit",
+        "change": "feat(memory)",
         "descr": "config.mem_level (low/mid/hard) with params by level; pla-recall --session (SessionStart hook) and --show; Verus and Lean 4 installed, formal level runs; features back to pending."
       },
       {
         "date": "2026-11-28",
         "branch": "main",
         "commit": "67662dc",
-        "kind": "merge",
+        "change": "merge(main)",
+        "descr": "Fast-forward merge of develop."
+      },
+      {
+        "date": "2026-11-28",
+        "branch": "develop",
+        "commit": "65799ea",
+        "change": "refactor(agents)",
+        "descr": "Overlapping premises squashed into the higher category; INDEX.md lists every field of the memory; Languages preference; second exception to Write only inside the root."
+      },
+      {
+        "date": "2026-11-28",
+        "branch": "main",
+        "commit": "65799ea",
+        "change": "merge(main)",
         "descr": "Fast-forward merge of develop."
       }
     ],
@@ -1350,7 +1434,7 @@
           "solved_by": [
             "Write order",
             "Lean memory",
-            "Log"
+            "Changes"
           ]
         },
         "unverified-knowledge": {
@@ -1459,6 +1543,13 @@
           "statement": "When a project mixes languages with no rule, orders to machines become ambiguous and explanations for the person become hard to follow.",
           "solved_by": [
             "Languages"
+          ]
+        },
+        "forgotten-warnings": {
+          "title": "Forgotten warnings",
+          "statement": "A warning seen once and not written down comes back later as a surprise, or is never fixed.",
+          "solved_by": [
+            "Log"
           ]
         }
       }
@@ -1591,11 +1682,15 @@
         },
         "primary.features": {
           "descr_+": "Features of the project, as `feature_<n>` -> `{descr, status}` (both strings).",
-          "descr_-": "Not a roadmap of ideas, not the log of what was done (`primary.log`)."
+          "descr_-": "Not a roadmap of ideas, not the record of what was done (`primary.changes`)."
         },
         "primary.log": {
-          "descr_+": "Project log: entries `{date, branch, commit, kind, descr}` in the order they happened; `kind` is `commit`, `merge` or `branch`. A commit cannot hold its own hash, so each one is logged in the next commit. LOG.md shows them newest first; `pla-audit` warns about commits missing from it.",
-          "descr_-": "Not a changelog of ideas or plans: only branches, commits and merges that happened."
+          "descr_+": "Warnings, errors and issues: entries `{date, level, where, descr, status}` with `level` warning, error or issue and `status` open or closed; LOG.md shows them newest first.",
+          "descr_-": "Not the history of commits (that is `primary.changes`), not a place for fixed things to stay open."
+        },
+        "primary.changes": {
+          "descr_+": "What happened in each commit, merge and branch: entries `{date, branch, commit, change, descr}` in the order they happened, `change` as `type(scope)`. A commit cannot hold its own hash, so each one is recorded in the next commit; `pla-audit` warns about commits missing from it.",
+          "descr_-": "Not warnings or issues (that is `primary.log`), not plans."
         },
         "primary.index": {
           "descr_+": "The index of the memory: its `definition`; `agents/INDEX.md` renders the three primary keys and every field of `primary.schema.keys` with their `descr_+` and `descr_-`.",
@@ -1737,7 +1832,7 @@
       },
       "agents/": {
         "description": "Neutral source of all agent documentation and modules. Providers get symlinks into it.",
-        "table": "Single, provider-neutral source. Its `.md` files (`AGENTS.md`, `CLAUDE.md`, `PROCEDURES.md`, `PROBLEMS.md`, `BUILD.md`, `FEATURES.md`, `LOG.md`, `INDEX.md`) are generated; its subfolders hold hand-written modules and the agent's scratch (`workspace/`)"
+        "table": "Single, provider-neutral source. Its `.md` files (`AGENTS.md`, `CLAUDE.md`, `PROCEDURES.md`, `PROBLEMS.md`, `BUILD.md`, `FEATURES.md`, `LOG.md`, `CHANGES.md`, `INDEX.md`) are generated; its subfolders hold hand-written modules and the agent's scratch (`workspace/`)"
       },
       "agents/workspace/": {
         "description": "Agent workspace: scratch output of any assistant agent, git-ignored except .gitkeep.",
@@ -1762,7 +1857,7 @@
         "description": "Features doc. Generated from primary.docs.content.features_md: a table of primary.features."
       },
       "agents/LOG.md": {
-        "description": "Log doc: branches, commits and merges, generated from primary.log."
+        "description": "Log doc: warnings, errors and issues with their status. Generated from primary.log."
       },
       "agents/INDEX.md": {
         "description": "Index doc: every field of the memory with what it is and is not. Generated from data in primary.schema.keys."
@@ -1843,6 +1938,9 @@
       },
       "agents/hooks/session-recall.sh": {
         "description": "Claude Code SessionStart hook: runs pla-recall --session, which checks the brain and lists what is on demand."
+      },
+      "agents/CHANGES.md": {
+        "description": "Changes doc: what happened in each commit, merge and branch. Generated from data in primary.changes."
       }
     }
   },

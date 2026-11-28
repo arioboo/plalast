@@ -1,10 +1,10 @@
-# Verus with Rust
+# Verus con Rust
 
-Verus checks that Rust code meets its specification. You write `requires` (what callers must guarantee) and `ensures` (what the function promises), and Verus proves them with an SMT solver (Z3) at build time. Specs and proofs are ghost code: they are erased from the compiled program, so verified code runs like plain Rust.
+Verus comprueba que el código Rust cumple su especificación. Escribes `requires` (lo que quien llama debe garantizar) y `ensures` (lo que la función promete), y Verus lo demuestra con un solver SMT (Z3) al compilar. Las especificaciones y las pruebas son código fantasma: se borran del programa compilado, así que el código verificado se ejecuta como Rust normal.
 
-## Install (macOS, Apple Silicon)
+## Instalación (macOS, Apple Silicon)
 
-Prebuilt releases exist for macOS, Linux and Windows on arm64 and x86. Download the one for your machine from the latest release of verus-lang/verus, unpack it, clear the macOS quarantine flag and put it on your PATH:
+Hay releases precompiladas para macOS, Linux y Windows, en arm64 y x86. Descarga la de tu máquina de la última release de verus-lang/verus, descomprímela, quita la marca de cuarentena de macOS y ponla en tu PATH:
 
 ```sh
 gh release download --repo verus-lang/verus --pattern '*-arm64-macos.zip'
@@ -15,17 +15,17 @@ ln -s ~/.local/verus/verus ~/.local/bin/verus
 ln -s ~/.local/verus/cargo-verus ~/.local/bin/cargo-verus
 ```
 
-The gatekeeper script only removes the `com.apple.quarantine` attribute from the Verus binaries; read it before running it. Each release needs one exact Rust toolchain. Run `verus --version`: if the toolchain is missing, Verus prints the command to install it, for example:
+El script de gatekeeper solo quita el atributo `com.apple.quarantine` de los binarios de Verus; léelo antes de ejecutarlo. Cada release necesita una toolchain exacta de Rust. Ejecuta `verus --version`: si falta la toolchain, Verus imprime el comando para instalarla, por ejemplo:
 
 ```sh
 rustup install 1.100.0-aarch64-apple-darwin
 ```
 
-Check the install with `verus --version` (version, platform and toolchain) and `cargo verus --help`.
+Comprueba la instalación con `verus --version` (versión, plataforma y toolchain) y `cargo verus --help`.
 
-## Install (Linux, x86_64 and arm64)
+## Instalación (Linux, x86_64 y arm64)
 
-Same shape: download the `*-x86-linux.zip` or `*-arm64-linux.zip` release, unpack it, put it in `~/.local/verus` and link the two binaries. `unzip` is not always installed; `python3 -m zipfile -e <zip> .` unpacks the same tree, but it does not keep the executable bit, so restore it by hand.
+Es igual: descarga la release `*-x86-linux.zip` o `*-arm64-linux.zip`, descomprímela, ponla en `~/.local/verus` y enlaza los dos binarios. `unzip` no siempre está instalado; `python3 -m zipfile -e <zip> .` descomprime el mismo árbol, pero no conserva el bit de ejecución, así que hay que restaurarlo a mano.
 
 ```sh
 gh release download --repo verus-lang/verus --pattern '*-x86-linux.zip'
@@ -36,7 +36,7 @@ ln -s ~/.local/verus/verus ~/.local/bin/verus
 ln -s ~/.local/verus/cargo-verus ~/.local/bin/cargo-verus
 ```
 
-Verus still needs `rustup` and its exact toolchain; `verus --version` prints the command when it is missing. On Linux, without a rustup yet:
+Verus sigue necesitando `rustup` y su toolchain exacta; `verus --version` imprime el comando cuando falta. En Linux, sin `rustup` todavía:
 
 ```sh
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs |
@@ -44,19 +44,19 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs |
 rustup component add rustfmt clippy --toolchain 1.100.0-x86_64-unknown-linux-gnu
 ```
 
-The second line is not optional for this repo: `pla-lint` runs `cargo fmt` and `cargo clippy`, so a bare toolchain fails its `rust` area. `cargo` must also be reachable from non-interactive shells, since the tools call it as a subprocess; either export `~/.cargo/bin` in the shell profile or link `cargo`, `rustc` and `rustup` into `~/.local/bin`, next to `verus`.
+La segunda línea no es opcional en este repo: `pla-lint` ejecuta `cargo fmt` y `cargo clippy`, así que con una toolchain pelada falla su área `rust`. `cargo` también tiene que estar accesible desde shells no interactivos, porque las herramientas lo llaman como subproceso: exporta `~/.cargo/bin` en el perfil del shell o enlaza `cargo`, `rustc` y `rustup` en `~/.local/bin`, junto a `verus`.
 
-The release must match the `vstd` pin in `Cargo.toml`: `cargo build` fails while the two disagree.
+La release tiene que coincidir con la versión fijada de `vstd` en `Cargo.toml`: `cargo build` falla mientras no coincidan.
 
-## How this repo uses it
+## Cómo lo usa este repo
 
-- `Cargo.toml` depends on `vstd`, the Verus standard library, pinned to the version that matches the installed release.
-- `[package.metadata.verus] verify = true` tells `cargo verus` to verify this crate.
-- `[lints.rust]` declares `cfg(verus_only)`, a flag Verus turns on while verifying.
-- `src/verified.rs` holds verified code. `heading_hashes` proves that a markdown heading always gets 1 to 6 `#`; `pla-build` and the PDF renderer use it.
-- `pla-verify` runs `cargo verus verify` in its `formal` level when `cargo-verus` is installed, and warns when it is not.
+- `Cargo.toml` depende de `vstd`, la biblioteca estándar de Verus, fijada a la versión que corresponde a la release instalada.
+- `[package.metadata.verus] verify = true` le dice a `cargo verus` que verifique este crate.
+- `[lints.rust]` declara `cfg(verus_only)`, una marca que Verus activa mientras verifica.
+- `src/verified.rs` guarda el código verificado. `heading_hashes` demuestra que un título de markdown siempre lleva de 1 a 6 `#`, y `ordered_number` que el número de un elemento de lista ordenada es su índice más uno; `pla-build` y el generador de PDF las usan.
+- `pla-verify` ejecuta `cargo verus verify` en su nivel `formal` cuando `cargo-verus` está instalado, y avisa cuando no lo está.
 
-## Commands
+## Comandos
 
 ```sh
 cargo verus verify   # verify the crate (runs cargo build under Verus)
@@ -66,11 +66,11 @@ verus file.rs        # verify one standalone file
 cargo build          # normal build: specs are erased, nothing is verified
 ```
 
-A successful run prints lines such as `verification results:: 1 verified, 0 errors`. A spec that does not hold fails the build with `postcondition not satisfied` and points at the failing `ensures`.
+Una ejecución correcta imprime líneas como `verification results:: 2 verified, 0 errors`. Una especificación que no se cumple hace fallar la compilación con `postcondition not satisfied` y señala el `ensures` que falla.
 
-## Writing verified code
+## Escribir código verificado
 
-Verified code lives inside the `verus!` macro, with the `vstd` prelude in scope. Name the return value to talk about it in `ensures`:
+El código verificado vive dentro de la macro `verus!`, con el preludio de `vstd` a mano. Pon nombre al valor de retorno para poder hablar de él en `ensures`:
 
 ```rust
 use vstd::prelude::*;
@@ -91,18 +91,18 @@ fn octuple(x1: i8) -> (x8: i8)
 } // verus!
 ```
 
-The `requires` clause is what makes the proof possible: without it, `x1 + x1` could overflow an `i8`, and Verus would reject the function. Callers must prove the precondition too, so `octuple(100)` does not verify.
+La cláusula `requires` es lo que hace posible la prueba: sin ella, `x1 + x1` podría desbordar un `i8` y Verus rechazaría la función. Quien llama también tiene que demostrar la precondición, así que `octuple(100)` no verifica.
 
-Keep verified code small and pure at first: integer arithmetic, bounds and simple data. Code outside `verus!` is not checked, so the rest of the crate keeps compiling as usual.
+Al principio, mantén el código verificado pequeño y puro: aritmética entera, límites y datos simples. El código fuera de `verus!` no se comprueba, así que el resto del crate sigue compilando como siempre.
 
-## New projects and upgrades
+## Proyectos nuevos y actualizaciones
 
-- `cargo verus new --lib <name>` (or `--bin <name>`) creates a project with `vstd`, the metadata and the lint already set up.
-- To upgrade, install the new release as above, then pin `vstd` in `Cargo.toml` to the version that `cargo verus new` writes for that release.
+- `cargo verus new --lib <name>` (o `--bin <name>`) crea un proyecto con `vstd`, los metadatos y el lint ya configurados.
+- Para actualizar, instala la release nueva como arriba y fija `vstd` en `Cargo.toml` a la versión que escribe `cargo verus new` para esa release.
 
-## Sources
+## Fuentes
 
-- Install: https://github.com/verus-lang/verus/blob/main/INSTALL.md
+- Instalación: https://github.com/verus-lang/verus/blob/main/INSTALL.md
 - Releases: https://github.com/verus-lang/verus/releases
-- Guide: https://verus-lang.github.io/verus/guide/
-- requires and ensures: https://verus-lang.github.io/verus/guide/requires_ensures.html
+- Guía: https://verus-lang.github.io/verus/guide/
+- requires y ensures: https://verus-lang.github.io/verus/guide/requires_ensures.html

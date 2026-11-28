@@ -18,48 +18,49 @@ endobj
 << /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 7 0 R >>
 endobj
 7 0 obj
-<< /Length 4238 >>
+<< /Length 4342 >>
 stream
-BT /F2 20.0 Tf 56.0 758.0 Td (Verus with Rust) Tj ET
-BT /F1 11.0 Tf 56.0 738.6 Td (Verus checks that Rust code meets its specification. You write requires \(what callers must) Tj ET
-BT /F1 11.0 Tf 56.0 723.2 Td (guarantee\) and ensures \(what the function promises\), and Verus proves them with an SMT) Tj ET
-BT /F1 11.0 Tf 56.0 707.8 Td (solver \(Z3\) at build time. Specs and proofs are ghost code: they are erased from the compiled) Tj ET
-BT /F1 11.0 Tf 56.0 692.4 Td (program, so verified code runs like plain Rust.) Tj ET
-BT /F2 15.0 Tf 56.0 656.4 Td (Install \(macOS, Apple Silicon\)) Tj ET
-BT /F1 11.0 Tf 56.0 637.0 Td (Prebuilt releases exist for macOS, Linux and Windows on arm64 and x86. Download the one for) Tj ET
-BT /F1 11.0 Tf 56.0 621.6 Td (your machine from the latest release of verus-lang/verus, unpack it, clear the macOS quarantine) Tj ET
-BT /F1 11.0 Tf 56.0 606.2 Td (flag and put it on your PATH:) Tj ET
+BT /F2 20.0 Tf 56.0 758.0 Td (Verus con Rust) Tj ET
+BT /F1 11.0 Tf 56.0 738.6 Td (Verus comprueba que el c\363digo Rust cumple su especificaci\363n. Escribes requires \(lo que quien) Tj ET
+BT /F1 11.0 Tf 56.0 723.2 Td (llama debe garantizar\) y ensures \(lo que la funci\363n promete\), y Verus lo demuestra con un solver) Tj ET
+BT /F1 11.0 Tf 56.0 707.8 Td (SMT \(Z3\) al compilar. Las especificaciones y las pruebas son c\363digo fantasma: se borran del) Tj ET
+BT /F1 11.0 Tf 56.0 692.4 Td (programa compilado, as\355 que el c\363digo verificado se ejecuta como Rust normal.) Tj ET
+BT /F2 15.0 Tf 56.0 656.4 Td (Instalaci\363n \(macOS, Apple Silicon\)) Tj ET
+BT /F1 11.0 Tf 56.0 637.0 Td (Hay releases precompiladas para macOS, Linux y Windows, en arm64 y x86. Descarga la de tu) Tj ET
+BT /F1 11.0 Tf 56.0 621.6 Td (m\341quina de la \372ltima release de verus-lang/verus, descompr\355mela, quita la marca de cuarentena) Tj ET
+BT /F1 11.0 Tf 56.0 606.2 Td (de macOS y ponla en tu PATH:) Tj ET
 BT /F3 9.0 Tf 68.0 585.6 Td (gh release download --repo verus-lang/verus --pattern '*-arm64-macos.zip') Tj ET
 BT /F3 9.0 Tf 68.0 573.0 Td (unzip verus-*-arm64-macos.zip) Tj ET
 BT /F3 9.0 Tf 68.0 560.4 Td (bash verus-arm64-macos/macos_allow_gatekeeper.sh) Tj ET
 BT /F3 9.0 Tf 68.0 547.8 Td (mv verus-arm64-macos ~/.local/verus) Tj ET
 BT /F3 9.0 Tf 68.0 535.2 Td (ln -s ~/.local/verus/verus ~/.local/bin/verus) Tj ET
 BT /F3 9.0 Tf 68.0 522.6 Td (ln -s ~/.local/verus/cargo-verus ~/.local/bin/cargo-verus) Tj ET
-BT /F1 11.0 Tf 56.0 499.2 Td (The gatekeeper script only removes the com.apple.quarantine attribute from the Verus binaries;) Tj ET
-BT /F1 11.0 Tf 56.0 483.8 Td (read it before running it. Each release needs one exact Rust toolchain. Run verus --version: if the) Tj ET
-BT /F1 11.0 Tf 56.0 468.4 Td (toolchain is missing, Verus prints the command to install it, for example:) Tj ET
+BT /F1 11.0 Tf 56.0 499.2 Td (El script de gatekeeper solo quita el atributo com.apple.quarantine de los binarios de Verus; l\351elo) Tj ET
+BT /F1 11.0 Tf 56.0 483.8 Td (antes de ejecutarlo. Cada release necesita una toolchain exacta de Rust. Ejecuta verus --version:) Tj ET
+BT /F1 11.0 Tf 56.0 468.4 Td (si falta la toolchain, Verus imprime el comando para instalarla, por ejemplo:) Tj ET
 BT /F3 9.0 Tf 68.0 447.8 Td (rustup install 1.100.0-aarch64-apple-darwin) Tj ET
-BT /F1 11.0 Tf 56.0 424.4 Td (Check the install with verus --version \(version, platform and toolchain\) and cargo verus --help.) Tj ET
-BT /F2 15.0 Tf 56.0 388.4 Td (Install \(Linux, x86_64 and arm64\)) Tj ET
-BT /F1 11.0 Tf 56.0 369.0 Td (Same shape: download the *-x86-linux.zip or *-arm64-linux.zip release, unpack it, put it in) Tj ET
-BT /F1 11.0 Tf 56.0 353.6 Td (~/.local/verus and link the two binaries. unzip is not always installed; python3 -m zipfile -e <zip> .) Tj ET
-BT /F1 11.0 Tf 56.0 338.2 Td (unpacks the same tree, but it does not keep the executable bit, so restore it by hand.) Tj ET
-BT /F3 9.0 Tf 68.0 317.6 Td (gh release download --repo verus-lang/verus --pattern '*-x86-linux.zip') Tj ET
-BT /F3 9.0 Tf 68.0 305.0 Td (python3 -m zipfile -e verus-*-x86-linux.zip .) Tj ET
-BT /F3 9.0 Tf 68.0 292.4 Td (mv verus-x86-linux ~/.local/verus) Tj ET
-BT /F3 9.0 Tf 68.0 279.8 Td (chmod +x ~/.local/verus/{verus,cargo-verus,rust_verify,z3}) Tj ET
-BT /F3 9.0 Tf 68.0 267.2 Td (ln -s ~/.local/verus/verus ~/.local/bin/verus) Tj ET
-BT /F3 9.0 Tf 68.0 254.6 Td (ln -s ~/.local/verus/cargo-verus ~/.local/bin/cargo-verus) Tj ET
-BT /F1 11.0 Tf 56.0 231.2 Td (Verus still needs rustup and its exact toolchain; verus --version prints the command when it is) Tj ET
-BT /F1 11.0 Tf 56.0 215.8 Td (missing. On Linux, without a rustup yet:) Tj ET
-BT /F3 9.0 Tf 68.0 195.2 Td (curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs |) Tj ET
-BT /F3 9.0 Tf 68.0 182.6 Td (    sh -s -- -y --profile minimal --default-toolchain 1.100.0-x86_64-unknown-linux-gnu) Tj ET
-BT /F3 9.0 Tf 68.0 170.0 Td (rustup component add rustfmt clippy --toolchain 1.100.0-x86_64-unknown-linux-gnu) Tj ET
-BT /F1 11.0 Tf 56.0 146.6 Td (The second line is not optional for this repo: pla-lint runs cargo fmt and cargo clippy, so a bare) Tj ET
-BT /F1 11.0 Tf 56.0 131.2 Td (toolchain fails its rust area. cargo must also be reachable from non-interactive shells, since the) Tj ET
-BT /F1 11.0 Tf 56.0 115.8 Td (tools call it as a subprocess; either export ~/.cargo/bin in the shell profile or link cargo, rustc and) Tj ET
-BT /F1 11.0 Tf 56.0 100.4 Td (rustup into ~/.local/bin, next to verus.) Tj ET
-BT /F1 11.0 Tf 56.0 79.0 Td (The release must match the vstd pin in Cargo.toml: cargo build fails while the two disagree.) Tj ET
+BT /F1 11.0 Tf 56.0 424.4 Td (Comprueba la instalaci\363n con verus --version \(versi\363n, plataforma y toolchain\) y cargo verus) Tj ET
+BT /F1 11.0 Tf 56.0 409.0 Td (--help.) Tj ET
+BT /F2 15.0 Tf 56.0 373.0 Td (Instalaci\363n \(Linux, x86_64 y arm64\)) Tj ET
+BT /F1 11.0 Tf 56.0 353.6 Td (Es igual: descarga la release *-x86-linux.zip o *-arm64-linux.zip, descompr\355mela, ponla en) Tj ET
+BT /F1 11.0 Tf 56.0 338.2 Td (~/.local/verus y enlaza los dos binarios. unzip no siempre est\341 instalado; python3 -m zipfile -e) Tj ET
+BT /F1 11.0 Tf 56.0 322.8 Td (<zip> . descomprime el mismo \341rbol, pero no conserva el bit de ejecuci\363n, as\355 que hay que) Tj ET
+BT /F1 11.0 Tf 56.0 307.4 Td (restaurarlo a mano.) Tj ET
+BT /F3 9.0 Tf 68.0 286.8 Td (gh release download --repo verus-lang/verus --pattern '*-x86-linux.zip') Tj ET
+BT /F3 9.0 Tf 68.0 274.2 Td (python3 -m zipfile -e verus-*-x86-linux.zip .) Tj ET
+BT /F3 9.0 Tf 68.0 261.6 Td (mv verus-x86-linux ~/.local/verus) Tj ET
+BT /F3 9.0 Tf 68.0 249.0 Td (chmod +x ~/.local/verus/{verus,cargo-verus,rust_verify,z3}) Tj ET
+BT /F3 9.0 Tf 68.0 236.4 Td (ln -s ~/.local/verus/verus ~/.local/bin/verus) Tj ET
+BT /F3 9.0 Tf 68.0 223.8 Td (ln -s ~/.local/verus/cargo-verus ~/.local/bin/cargo-verus) Tj ET
+BT /F1 11.0 Tf 56.0 200.4 Td (Verus sigue necesitando rustup y su toolchain exacta; verus --version imprime el comando) Tj ET
+BT /F1 11.0 Tf 56.0 185.0 Td (cuando falta. En Linux, sin rustup todav\355a:) Tj ET
+BT /F3 9.0 Tf 68.0 164.4 Td (curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs |) Tj ET
+BT /F3 9.0 Tf 68.0 151.8 Td (    sh -s -- -y --profile minimal --default-toolchain 1.100.0-x86_64-unknown-linux-gnu) Tj ET
+BT /F3 9.0 Tf 68.0 139.2 Td (rustup component add rustfmt clippy --toolchain 1.100.0-x86_64-unknown-linux-gnu) Tj ET
+BT /F1 11.0 Tf 56.0 115.8 Td (La segunda l\355nea no es opcional en este repo: pla-lint ejecuta cargo fmt y cargo clippy, as\355 que) Tj ET
+BT /F1 11.0 Tf 56.0 100.4 Td (con una toolchain pelada falla su \341rea rust. cargo tambi\351n tiene que estar accesible desde shells) Tj ET
+BT /F1 11.0 Tf 56.0 85.0 Td (no interactivos, porque las herramientas lo llaman como subproceso: exporta ~/.cargo/bin en el) Tj ET
+BT /F1 11.0 Tf 56.0 69.6 Td (perfil del shell o enlaza cargo, rustc y rustup en ~/.local/bin, junto a verus.) Tj ET
 BT /F1 9.0 Tf 288.0 28.0 Td (1 / 3) Tj ET
 endstream
 endobj
@@ -67,57 +68,56 @@ endobj
 << /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 9 0 R >>
 endobj
 9 0 obj
-<< /Length 3785 >>
+<< /Length 3842 >>
 stream
-BT /F2 15.0 Tf 56.0 765.0 Td (How this repo uses it) Tj ET
-BT /F1 11.0 Tf 78.0 745.6 Td (Cargo.toml depends on vstd, the Verus standard library, pinned to the version that matches) Tj ET
-BT /F1 11.0 Tf 62.0 745.6 Td (\225) Tj ET
-BT /F1 11.0 Tf 78.0 730.2 Td (the installed release.) Tj ET
-BT /F1 11.0 Tf 78.0 711.8 Td ([package.metadata.verus] verify = true tells cargo verus to verify this crate.) Tj ET
-BT /F1 11.0 Tf 62.0 711.8 Td (\225) Tj ET
-BT /F1 11.0 Tf 78.0 693.4 Td ([lints.rust] declares cfg\(verus_only\), a flag Verus turns on while verifying.) Tj ET
-BT /F1 11.0 Tf 62.0 693.4 Td (\225) Tj ET
-BT /F1 11.0 Tf 78.0 675.0 Td (src/verified.rs holds verified code. heading_hashes proves that a markdown heading always) Tj ET
-BT /F1 11.0 Tf 62.0 675.0 Td (\225) Tj ET
-BT /F1 11.0 Tf 78.0 659.6 Td (gets 1 to 6 #; pla-build and the PDF renderer use it.) Tj ET
-BT /F1 11.0 Tf 78.0 641.2 Td (pla-verify runs cargo verus verify in its formal level when cargo-verus is installed, and warns) Tj ET
-BT /F1 11.0 Tf 62.0 641.2 Td (\225) Tj ET
-BT /F1 11.0 Tf 78.0 625.8 Td (when it is not.) Tj ET
-BT /F2 15.0 Tf 56.0 592.8 Td (Commands) Tj ET
-BT /F3 9.0 Tf 68.0 574.2 Td (cargo verus verify   # verify the crate \(runs cargo build under Verus\)) Tj ET
-BT /F3 9.0 Tf 68.0 561.6 Td (cargo verus focus    # verify only this crate, not its dependencies) Tj ET
-BT /F3 9.0 Tf 68.0 549.0 Td (cargo verus build    # verify, then build) Tj ET
-BT /F3 9.0 Tf 68.0 536.4 Td (verus file.rs        # verify one standalone file) Tj ET
-BT /F3 9.0 Tf 68.0 523.8 Td (cargo build          # normal build: specs are erased, nothing is verified) Tj ET
-BT /F1 11.0 Tf 56.0 500.4 Td (A successful run prints lines such as verification results:: 1 verified, 0 errors. A spec that does) Tj ET
-BT /F1 11.0 Tf 56.0 485.0 Td (not hold fails the build with postcondition not satisfied and points at the failing ensures.) Tj ET
-BT /F2 15.0 Tf 56.0 449.0 Td (Writing verified code) Tj ET
-BT /F1 11.0 Tf 56.0 429.6 Td (Verified code lives inside the verus! macro, with the vstd prelude in scope. Name the return value) Tj ET
-BT /F1 11.0 Tf 56.0 414.2 Td (to talk about it in ensures:) Tj ET
-BT /F3 9.0 Tf 68.0 393.6 Td (use vstd::prelude::*;) Tj ET
-BT /F3 9.0 Tf 68.0 381.0 Td () Tj ET
-BT /F3 9.0 Tf 68.0 368.4 Td (verus! {) Tj ET
-BT /F3 9.0 Tf 68.0 355.8 Td () Tj ET
-BT /F3 9.0 Tf 68.0 343.2 Td (fn octuple\(x1: i8\) -> \(x8: i8\)) Tj ET
-BT /F3 9.0 Tf 68.0 330.6 Td (    requires) Tj ET
-BT /F3 9.0 Tf 68.0 318.0 Td (        -16 <= x1 < 16,) Tj ET
-BT /F3 9.0 Tf 68.0 305.4 Td (    ensures) Tj ET
-BT /F3 9.0 Tf 68.0 292.8 Td (        x8 == 8 * x1,) Tj ET
-BT /F3 9.0 Tf 68.0 280.2 Td ({) Tj ET
-BT /F3 9.0 Tf 68.0 267.6 Td (    let x2 = x1 + x1;) Tj ET
-BT /F3 9.0 Tf 68.0 255.0 Td (    let x4 = x2 + x2;) Tj ET
-BT /F3 9.0 Tf 68.0 242.4 Td (    x4 + x4) Tj ET
-BT /F3 9.0 Tf 68.0 229.8 Td (}) Tj ET
-BT /F3 9.0 Tf 68.0 217.2 Td () Tj ET
-BT /F3 9.0 Tf 68.0 204.6 Td (} // verus!) Tj ET
-BT /F1 11.0 Tf 56.0 181.2 Td (The requires clause is what makes the proof possible: without it, x1 + x1 could overflow an i8,) Tj ET
-BT /F1 11.0 Tf 56.0 165.8 Td (and Verus would reject the function. Callers must prove the precondition too, so octuple\(100\)) Tj ET
-BT /F1 11.0 Tf 56.0 150.4 Td (does not verify.) Tj ET
-BT /F1 11.0 Tf 56.0 129.0 Td (Keep verified code small and pure at first: integer arithmetic, bounds and simple data. Code) Tj ET
-BT /F1 11.0 Tf 56.0 113.6 Td (outside verus! is not checked, so the rest of the crate keeps compiling as usual.) Tj ET
-BT /F2 15.0 Tf 56.0 77.6 Td (New projects and upgrades) Tj ET
-BT /F1 11.0 Tf 78.0 58.2 Td (cargo verus new --lib <name> \(or --bin <name>\) creates a project with vstd, the metadata) Tj ET
-BT /F1 11.0 Tf 62.0 58.2 Td (\225) Tj ET
+BT /F1 11.0 Tf 56.0 770.6 Td (La release tiene que coincidir con la versi\363n fijada de vstd en Cargo.toml: cargo build falla) Tj ET
+BT /F1 11.0 Tf 56.0 755.2 Td (mientras no coincidan.) Tj ET
+BT /F2 15.0 Tf 56.0 719.2 Td (C\363mo lo usa este repo) Tj ET
+BT /F1 11.0 Tf 78.0 699.8 Td (Cargo.toml depende de vstd, la biblioteca est\341ndar de Verus, fijada a la versi\363n que) Tj ET
+BT /F1 11.0 Tf 62.0 699.8 Td (\225) Tj ET
+BT /F1 11.0 Tf 78.0 684.4 Td (corresponde a la release instalada.) Tj ET
+BT /F1 11.0 Tf 78.0 666.0 Td ([package.metadata.verus] verify = true le dice a cargo verus que verifique este crate.) Tj ET
+BT /F1 11.0 Tf 62.0 666.0 Td (\225) Tj ET
+BT /F1 11.0 Tf 78.0 647.6 Td ([lints.rust] declara cfg\(verus_only\), una marca que Verus activa mientras verifica.) Tj ET
+BT /F1 11.0 Tf 62.0 647.6 Td (\225) Tj ET
+BT /F1 11.0 Tf 78.0 629.2 Td (src/verified.rs guarda el c\363digo verificado. heading_hashes demuestra que un t\355tulo de) Tj ET
+BT /F1 11.0 Tf 62.0 629.2 Td (\225) Tj ET
+BT /F1 11.0 Tf 78.0 613.8 Td (markdown siempre lleva de 1 a 6 #, y ordered_number que el n\372mero de un elemento de lista) Tj ET
+BT /F1 11.0 Tf 78.0 598.4 Td (ordenada es su \355ndice m\341s uno; pla-build y el generador de PDF las usan.) Tj ET
+BT /F1 11.0 Tf 78.0 580.0 Td (pla-verify ejecuta cargo verus verify en su nivel formal cuando cargo-verus est\341 instalado, y) Tj ET
+BT /F1 11.0 Tf 62.0 580.0 Td (\225) Tj ET
+BT /F1 11.0 Tf 78.0 564.6 Td (avisa cuando no lo est\341.) Tj ET
+BT /F2 15.0 Tf 56.0 531.6 Td (Comandos) Tj ET
+BT /F3 9.0 Tf 68.0 513.0 Td (cargo verus verify   # verify the crate \(runs cargo build under Verus\)) Tj ET
+BT /F3 9.0 Tf 68.0 500.4 Td (cargo verus focus    # verify only this crate, not its dependencies) Tj ET
+BT /F3 9.0 Tf 68.0 487.8 Td (cargo verus build    # verify, then build) Tj ET
+BT /F3 9.0 Tf 68.0 475.2 Td (verus file.rs        # verify one standalone file) Tj ET
+BT /F3 9.0 Tf 68.0 462.6 Td (cargo build          # normal build: specs are erased, nothing is verified) Tj ET
+BT /F1 11.0 Tf 56.0 439.2 Td (Una ejecuci\363n correcta imprime l\355neas como verification results:: 2 verified, 0 errors. Una) Tj ET
+BT /F1 11.0 Tf 56.0 423.8 Td (especificaci\363n que no se cumple hace fallar la compilaci\363n con postcondition not satisfied y) Tj ET
+BT /F1 11.0 Tf 56.0 408.4 Td (se\361ala el ensures que falla.) Tj ET
+BT /F2 15.0 Tf 56.0 372.4 Td (Escribir c\363digo verificado) Tj ET
+BT /F1 11.0 Tf 56.0 353.0 Td (El c\363digo verificado vive dentro de la macro verus!, con el preludio de vstd a mano. Pon nombre) Tj ET
+BT /F1 11.0 Tf 56.0 337.6 Td (al valor de retorno para poder hablar de \351l en ensures:) Tj ET
+BT /F3 9.0 Tf 68.0 317.0 Td (use vstd::prelude::*;) Tj ET
+BT /F3 9.0 Tf 68.0 304.4 Td () Tj ET
+BT /F3 9.0 Tf 68.0 291.8 Td (verus! {) Tj ET
+BT /F3 9.0 Tf 68.0 279.2 Td () Tj ET
+BT /F3 9.0 Tf 68.0 266.6 Td (fn octuple\(x1: i8\) -> \(x8: i8\)) Tj ET
+BT /F3 9.0 Tf 68.0 254.0 Td (    requires) Tj ET
+BT /F3 9.0 Tf 68.0 241.4 Td (        -16 <= x1 < 16,) Tj ET
+BT /F3 9.0 Tf 68.0 228.8 Td (    ensures) Tj ET
+BT /F3 9.0 Tf 68.0 216.2 Td (        x8 == 8 * x1,) Tj ET
+BT /F3 9.0 Tf 68.0 203.6 Td ({) Tj ET
+BT /F3 9.0 Tf 68.0 191.0 Td (    let x2 = x1 + x1;) Tj ET
+BT /F3 9.0 Tf 68.0 178.4 Td (    let x4 = x2 + x2;) Tj ET
+BT /F3 9.0 Tf 68.0 165.8 Td (    x4 + x4) Tj ET
+BT /F3 9.0 Tf 68.0 153.2 Td (}) Tj ET
+BT /F3 9.0 Tf 68.0 140.6 Td () Tj ET
+BT /F3 9.0 Tf 68.0 128.0 Td (} // verus!) Tj ET
+BT /F1 11.0 Tf 56.0 104.6 Td (La cl\341usula requires es lo que hace posible la prueba: sin ella, x1 + x1 podr\355a desbordar un i8 y) Tj ET
+BT /F1 11.0 Tf 56.0 89.2 Td (Verus rechazar\355a la funci\363n. Quien llama tambi\351n tiene que demostrar la precondici\363n, as\355 que) Tj ET
+BT /F1 11.0 Tf 56.0 73.8 Td (octuple\(100\) no verifica.) Tj ET
 BT /F1 9.0 Tf 288.0 28.0 Td (2 / 3) Tj ET
 endstream
 endobj
@@ -125,21 +125,27 @@ endobj
 << /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 11 0 R >>
 endobj
 11 0 obj
-<< /Length 975 >>
+<< /Length 1562 >>
 stream
-BT /F1 11.0 Tf 78.0 770.6 Td (and the lint already set up.) Tj ET
-BT /F1 11.0 Tf 78.0 752.2 Td (To upgrade, install the new release as above, then pin vstd in Cargo.toml to the version that) Tj ET
-BT /F1 11.0 Tf 62.0 752.2 Td (\225) Tj ET
-BT /F1 11.0 Tf 78.0 736.8 Td (cargo verus new writes for that release.) Tj ET
-BT /F2 15.0 Tf 56.0 703.8 Td (Sources) Tj ET
-BT /F1 11.0 Tf 78.0 684.4 Td (Install: https://github.com/verus-lang/verus/blob/main/INSTALL.md) Tj ET
+BT /F1 11.0 Tf 56.0 770.6 Td (Al principio, mant\351n el c\363digo verificado peque\361o y puro: aritm\351tica entera, l\355mites y datos) Tj ET
+BT /F1 11.0 Tf 56.0 755.2 Td (simples. El c\363digo fuera de verus! no se comprueba, as\355 que el resto del crate sigue compilando) Tj ET
+BT /F1 11.0 Tf 56.0 739.8 Td (como siempre.) Tj ET
+BT /F2 15.0 Tf 56.0 703.8 Td (Proyectos nuevos y actualizaciones) Tj ET
+BT /F1 11.0 Tf 78.0 684.4 Td (cargo verus new --lib <name> \(o --bin <name>\) crea un proyecto con vstd, los metadatos y el) Tj ET
 BT /F1 11.0 Tf 62.0 684.4 Td (\225) Tj ET
-BT /F1 11.0 Tf 78.0 666.0 Td (Releases: https://github.com/verus-lang/verus/releases) Tj ET
-BT /F1 11.0 Tf 62.0 666.0 Td (\225) Tj ET
-BT /F1 11.0 Tf 78.0 647.6 Td (Guide: https://verus-lang.github.io/verus/guide/) Tj ET
-BT /F1 11.0 Tf 62.0 647.6 Td (\225) Tj ET
-BT /F1 11.0 Tf 78.0 629.2 Td (requires and ensures: https://verus-lang.github.io/verus/guide/requires_ensures.html) Tj ET
-BT /F1 11.0 Tf 62.0 629.2 Td (\225) Tj ET
+BT /F1 11.0 Tf 78.0 669.0 Td (lint ya configurados.) Tj ET
+BT /F1 11.0 Tf 78.0 650.6 Td (Para actualizar, instala la release nueva como arriba y fija vstd en Cargo.toml a la versi\363n) Tj ET
+BT /F1 11.0 Tf 62.0 650.6 Td (\225) Tj ET
+BT /F1 11.0 Tf 78.0 635.2 Td (que escribe cargo verus new para esa release.) Tj ET
+BT /F2 15.0 Tf 56.0 602.2 Td (Fuentes) Tj ET
+BT /F1 11.0 Tf 78.0 582.8 Td (Instalaci\363n: https://github.com/verus-lang/verus/blob/main/INSTALL.md) Tj ET
+BT /F1 11.0 Tf 62.0 582.8 Td (\225) Tj ET
+BT /F1 11.0 Tf 78.0 564.4 Td (Releases: https://github.com/verus-lang/verus/releases) Tj ET
+BT /F1 11.0 Tf 62.0 564.4 Td (\225) Tj ET
+BT /F1 11.0 Tf 78.0 546.0 Td (Gu\355a: https://verus-lang.github.io/verus/guide/) Tj ET
+BT /F1 11.0 Tf 62.0 546.0 Td (\225) Tj ET
+BT /F1 11.0 Tf 78.0 527.6 Td (requires y ensures: https://verus-lang.github.io/verus/guide/requires_ensures.html) Tj ET
+BT /F1 11.0 Tf 62.0 527.6 Td (\225) Tj ET
 BT /F1 9.0 Tf 288.0 28.0 Td (3 / 3) Tj ET
 endstream
 endobj
@@ -153,12 +159,12 @@ xref
 0000000327 00000 n 
 0000000422 00000 n 
 0000000568 00000 n 
-0000004857 00000 n 
-0000005003 00000 n 
-0000008839 00000 n 
-0000008987 00000 n 
+0000004961 00000 n 
+0000005107 00000 n 
+0000009000 00000 n 
+0000009148 00000 n 
 trailer
 << /Size 12 /Root 1 0 R >>
 startxref
-10013
+10762
 %%EOF

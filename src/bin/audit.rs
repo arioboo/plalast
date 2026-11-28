@@ -232,7 +232,7 @@ fn audit_repo(root: &Path, cfg: &Value, f: &mut Findings) -> Result<(), String> 
 
     // Log: every commit of the integration and stable branches is in primary.log, except HEAD
     // (a commit cannot hold its own hash, so it is logged by the next one).
-    let logged: Vec<String> = arr(primary(cfg), "log")
+    let logged: Vec<String> = arr(primary(cfg), "changes")
         .iter()
         .filter_map(|e| str_of(e, "commit").map(String::from))
         .collect();
@@ -244,7 +244,7 @@ fn audit_repo(root: &Path, cfg: &Value, f: &mut Findings) -> Result<(), String> 
                 .iter()
                 .any(|l| h.starts_with(l.as_str()) || l.starts_with(h))
             {
-                f.warn(A, format!("commit {h} is not in primary.log"));
+                f.warn(A, format!("commit {h} is not in primary.changes"));
             }
         }
     }

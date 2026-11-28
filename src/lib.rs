@@ -388,7 +388,7 @@ pub const CONFIG_KEYS: [(&str, &str); 13] = [
 ];
 
 /// Keys of `primary`, in file order, and the tools that handle each.
-pub const PRIMARY_KEYS: [(&str, &str); 20] = [
+pub const PRIMARY_KEYS: [(&str, &str); 21] = [
     ("descr_+", "build (brain_keys), recall, lint"),
     ("descr_-", "build (brain_keys), recall, lint"),
     ("project", "build (title, logo), recall"),
@@ -396,9 +396,10 @@ pub const PRIMARY_KEYS: [(&str, &str); 20] = [
     ("agents-md", "build (AGENTS.md text via refs), recall, lint"),
     ("commands", "build (AGENTS.md list, BUILD.md table), recall"),
     ("features", "recall, lint"),
+    ("log", "build (LOG.md), recall, lint (levels, status)"),
     (
-        "log",
-        "build (LOG.md), recall, lint, audit (unlogged commits)",
+        "changes",
+        "build (CHANGES.md), recall, lint (notation), audit (unrecorded commits)",
     ),
     ("index", "recall, lint"),
     ("skills", "build (links), recall, lint"),
@@ -427,11 +428,22 @@ pub const PRIMARY_KEYS: [(&str, &str); 20] = [
 /// `.gitignore` (from structure) and the Claude Code settings (from `config.hooks.claude`).
 pub const SPECIAL_BUILDS: [&str; 2] = ["gitignore", "claude_settings"];
 
-/// Kinds of log entry in `primary.log`.
-pub const LOG_KINDS: [&str; 3] = ["commit", "merge", "branch"];
+/// Types of the `type(scope)` notation of a `primary.changes` entry.
+pub const CHANGE_TYPES: [&str; 8] = [
+    "feat", "fix", "docs", "refactor", "test", "chore", "merge", "branch",
+];
+
+/// Fields of every `primary.changes` entry, in display order.
+pub const CHANGE_FIELDS: [&str; 5] = ["date", "branch", "commit", "change", "descr"];
+
+/// Levels of a `primary.log` entry, from the mildest to the one that needs work.
+pub const LOG_LEVELS: [&str; 3] = ["warning", "error", "issue"];
+
+/// Status of a `primary.log` entry.
+pub const LOG_STATUS: [&str; 2] = ["open", "closed"];
 
 /// Fields of every `primary.log` entry, in display order.
-pub const LOG_FIELDS: [&str; 5] = ["date", "branch", "commit", "kind", "descr"];
+pub const LOG_FIELDS: [&str; 5] = ["date", "level", "where", "descr", "status"];
 
 /// Kinds of hand-written module: `primary.<kind>` holds the definition,
 /// `config.paths.modules.<kind>` the folder and the provider links.

@@ -18,49 +18,49 @@ endobj
 << /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 7 0 R >>
 endobj
 7 0 obj
-<< /Length 4030 >>
+<< /Length 4087 >>
 stream
 BT /F2 20.0 Tf 56.0 758.0 Td (Dafny) Tj ET
-BT /F1 11.0 Tf 56.0 738.6 Td (Dafny is a programming language with verification built in. Methods carry requires \(preconditions\),) Tj ET
-BT /F1 11.0 Tf 56.0 723.2 Td (ensures \(postconditions\) and loop invariants, and the verifier proves them with an SMT solver) Tj ET
-BT /F1 11.0 Tf 56.0 707.8 Td (\(Z3\) before the program runs. Verified code can then be compiled to C#, Java, JavaScript, Go or) Tj ET
-BT /F1 11.0 Tf 56.0 692.4 Td (Python \(C++ is experimental; release 4.11 has no Rust backend\). In this repo it is the default) Tj ET
-BT /F1 11.0 Tf 56.0 677.0 Td (language for LLM programming: a model writes code and specs, and the verifier tells it exactly) Tj ET
-BT /F1 11.0 Tf 56.0 661.6 Td (what does not hold.) Tj ET
-BT /F2 15.0 Tf 56.0 625.6 Td (Install \(Linux, x86_64\)) Tj ET
-BT /F1 11.0 Tf 56.0 606.2 Td (The releases of dafny-lang/dafny are self-contained: each zip carries its own .NET runtime and) Tj ET
-BT /F1 11.0 Tf 56.0 590.8 Td (Z3, so nothing else is needed to verify. Download the Ubuntu zip of the latest release, unpack it) Tj ET
-BT /F1 11.0 Tf 56.0 575.4 Td (into ~/.local/dafny and link the binary:) Tj ET
+BT /F1 11.0 Tf 56.0 738.6 Td (Dafny es un lenguaje de programaci\363n con la verificaci\363n incorporada. Los m\351todos llevan) Tj ET
+BT /F1 11.0 Tf 56.0 723.2 Td (requires \(precondiciones\), ensures \(postcondiciones\) e invariant de bucle, y el verificador los) Tj ET
+BT /F1 11.0 Tf 56.0 707.8 Td (demuestra con un solver SMT \(Z3\) antes de que el programa se ejecute. Despu\351s, el c\363digo) Tj ET
+BT /F1 11.0 Tf 56.0 692.4 Td (verificado se puede compilar a C#, Java, JavaScript, Go o Python \(C++ es experimental; la) Tj ET
+BT /F1 11.0 Tf 56.0 677.0 Td (release 4.11 no tiene backend de Rust\). En este repo es un candidato, sin uso mientras rija la) Tj ET
+BT /F1 11.0 Tf 56.0 661.6 Td (premisa Rust-only, porque no es una herramienta de Rust ni de C/C++ \(necesita .NET\).) Tj ET
+BT /F2 15.0 Tf 56.0 625.6 Td (Instalaci\363n \(Linux, x86_64\)) Tj ET
+BT /F1 11.0 Tf 56.0 606.2 Td (Las releases de dafny-lang/dafny son autocontenidas: cada zip lleva su propio runtime de .NET y) Tj ET
+BT /F1 11.0 Tf 56.0 590.8 Td (Z3, as\355 que no hace falta nada m\341s para verificar. Descarga el zip de Ubuntu de la \372ltima) Tj ET
+BT /F1 11.0 Tf 56.0 575.4 Td (release, descompr\355melo en ~/.local/dafny y enlaza el binario:) Tj ET
 BT /F3 9.0 Tf 68.0 554.8 Td (gh release download v4.11.0 --repo dafny-lang/dafny --pattern '*-x64-ubuntu-22.04.zip') Tj ET
 BT /F3 9.0 Tf 68.0 542.2 Td (python3 -m zipfile -e dafny-4.11.0-x64-ubuntu-22.04.zip .) Tj ET
 BT /F3 9.0 Tf 68.0 529.6 Td (mv dafny ~/.local/dafny) Tj ET
 BT /F3 9.0 Tf 68.0 517.0 Td (chmod +x ~/.local/dafny/{dafny,DafnyDriver,DafnyServer,createdump} ~/.local/dafny/z3/bi) Tj ET
 BT /F3 9.0 Tf 68.0 504.4 Td (n/*) Tj ET
 BT /F3 9.0 Tf 68.0 491.8 Td (ln -sf ~/.local/dafny/dafny ~/.local/bin/dafny) Tj ET
-BT /F1 11.0 Tf 56.0 468.4 Td (python3 -m zipfile does not keep the executable bit, hence the chmod; unzip keeps it. macOS and) Tj ET
-BT /F1 11.0 Tf 56.0 453.0 Td (Windows have their own zips in the same release. Check the install with dafny --version.) Tj ET
-BT /F1 11.0 Tf 56.0 431.6 Td (Compiling to a target language needs that language's toolchain \(the .NET SDK for C#, a JDK for) Tj ET
-BT /F1 11.0 Tf 56.0 416.2 Td (Java, go for Go\); verifying does not.) Tj ET
-BT /F2 15.0 Tf 56.0 380.2 Td (Commands) Tj ET
-BT /F3 9.0 Tf 68.0 361.6 Td (dafny verify file.dfy            # prove every spec in the file) Tj ET
-BT /F3 9.0 Tf 68.0 349.0 Td (dafny run file.dfy               # verify, then run Main) Tj ET
-BT /F3 9.0 Tf 68.0 336.4 Td (dafny build --target py file.dfy # verify, then compile \(cs, go, js, java, py; cpp expe) Tj ET
-BT /F3 9.0 Tf 68.0 323.8 Td (rimental\)) Tj ET
-BT /F3 9.0 Tf 68.0 311.2 Td (dafny format file.dfy            # format the file) Tj ET
-BT /F1 11.0 Tf 56.0 287.8 Td (A successful run ends with Dafny program verifier finished with N verified, 0 errors. A spec that) Tj ET
-BT /F1 11.0 Tf 56.0 272.4 Td (does not hold points at the line and at the postcondition that could not be proved.) Tj ET
-BT /F2 15.0 Tf 56.0 236.4 Td (Writing verified code) Tj ET
-BT /F3 9.0 Tf 68.0 217.8 Td (method HeadingHashes\(level: nat\) returns \(n: nat\)) Tj ET
-BT /F3 9.0 Tf 68.0 205.2 Td (  ensures 1 <= n <= 6) Tj ET
-BT /F3 9.0 Tf 68.0 192.6 Td (  ensures 1 <= level <= 6 ==> n == level) Tj ET
-BT /F3 9.0 Tf 68.0 180.0 Td ({) Tj ET
-BT /F3 9.0 Tf 68.0 167.4 Td (  if level < 1 { n := 1; } else if level > 6 { n := 6; } else { n := level; }) Tj ET
-BT /F3 9.0 Tf 68.0 154.8 Td (}) Tj ET
-BT /F1 11.0 Tf 56.0 131.4 Td (This is the same contract as heading_hashes in src/verified.rs, which Verus proves in Rust. Drop) Tj ET
-BT /F1 11.0 Tf 56.0 116.0 Td (the level < 1 branch and Dafny reports a postcondition could not be proved on this return path and) Tj ET
-BT /F1 11.0 Tf 56.0 100.6 Td (points at 1 <= n.) Tj ET
-BT /F1 11.0 Tf 56.0 79.2 Td (Loops need an invariant that holds before and after every iteration, and a decreases clause when) Tj ET
-BT /F1 11.0 Tf 56.0 63.8 Td (Dafny cannot guess why the loop ends. Functions \(function\) are pure and can be used inside) Tj ET
+BT /F1 11.0 Tf 56.0 468.4 Td (python3 -m zipfile no conserva el bit de ejecuci\363n, de ah\355 el chmod; unzip s\355 lo conserva. macOS) Tj ET
+BT /F1 11.0 Tf 56.0 453.0 Td (y Windows tienen sus propios zips en la misma release. Comprueba la instalaci\363n con dafny) Tj ET
+BT /F1 11.0 Tf 56.0 437.6 Td (--version.) Tj ET
+BT /F1 11.0 Tf 56.0 416.2 Td (Compilar a un lenguaje destino necesita la toolchain de ese lenguaje \(el SDK de .NET para C#, un) Tj ET
+BT /F1 11.0 Tf 56.0 400.8 Td (JDK para Java, go para Go\); verificar, no.) Tj ET
+BT /F2 15.0 Tf 56.0 364.8 Td (Comandos) Tj ET
+BT /F3 9.0 Tf 68.0 346.2 Td (dafny verify file.dfy            # prove every spec in the file) Tj ET
+BT /F3 9.0 Tf 68.0 333.6 Td (dafny run file.dfy               # verify, then run Main) Tj ET
+BT /F3 9.0 Tf 68.0 321.0 Td (dafny build --target py file.dfy # verify, then compile \(cs, go, js, java, py; cpp expe) Tj ET
+BT /F3 9.0 Tf 68.0 308.4 Td (rimental\)) Tj ET
+BT /F3 9.0 Tf 68.0 295.8 Td (dafny format file.dfy            # format the file) Tj ET
+BT /F1 11.0 Tf 56.0 272.4 Td (Una ejecuci\363n correcta termina con Dafny program verifier finished with N verified, 0 errors. Una) Tj ET
+BT /F1 11.0 Tf 56.0 257.0 Td (especificaci\363n que no se cumple se\361ala la l\355nea y la postcondici\363n que no se pudo demostrar.) Tj ET
+BT /F2 15.0 Tf 56.0 221.0 Td (Escribir c\363digo verificado) Tj ET
+BT /F3 9.0 Tf 68.0 202.4 Td (method HeadingHashes\(level: nat\) returns \(n: nat\)) Tj ET
+BT /F3 9.0 Tf 68.0 189.8 Td (  ensures 1 <= n <= 6) Tj ET
+BT /F3 9.0 Tf 68.0 177.2 Td (  ensures 1 <= level <= 6 ==> n == level) Tj ET
+BT /F3 9.0 Tf 68.0 164.6 Td ({) Tj ET
+BT /F3 9.0 Tf 68.0 152.0 Td (  if level < 1 { n := 1; } else if level > 6 { n := 6; } else { n := level; }) Tj ET
+BT /F3 9.0 Tf 68.0 139.4 Td (}) Tj ET
+BT /F1 11.0 Tf 56.0 116.0 Td (Es el mismo contrato que heading_hashes en src/verified.rs, que Verus demuestra en Rust. Si) Tj ET
+BT /F1 11.0 Tf 56.0 100.6 Td (quitas la rama level < 1, Dafny informa a postcondition could not be proved on this return path y) Tj ET
+BT /F1 11.0 Tf 56.0 85.2 Td (se\361ala 1 <= n.) Tj ET
+BT /F1 11.0 Tf 56.0 63.8 Td (Los bucles necesitan un invariant que se cumpla antes y despu\351s de cada iteraci\363n, y una) Tj ET
 BT /F1 9.0 Tf 288.0 28.0 Td (1 / 2) Tj ET
 endstream
 endobj
@@ -68,18 +68,20 @@ endobj
 << /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 9 0 R >>
 endobj
 9 0 obj
-<< /Length 710 >>
+<< /Length 959 >>
 stream
-BT /F1 11.0 Tf 56.0 770.6 Td (specs; methods \(method\) can have effects.) Tj ET
-BT /F2 15.0 Tf 56.0 734.6 Td (Sources) Tj ET
-BT /F1 11.0 Tf 78.0 715.2 Td (Install: https://dafny.org/latest/Installation) Tj ET
-BT /F1 11.0 Tf 62.0 715.2 Td (\225) Tj ET
-BT /F1 11.0 Tf 78.0 696.8 Td (Releases: https://github.com/dafny-lang/dafny/releases) Tj ET
-BT /F1 11.0 Tf 62.0 696.8 Td (\225) Tj ET
-BT /F1 11.0 Tf 78.0 678.4 Td (Reference manual: https://dafny.org/latest/DafnyRef/DafnyRef) Tj ET
-BT /F1 11.0 Tf 62.0 678.4 Td (\225) Tj ET
-BT /F1 11.0 Tf 78.0 660.0 Td (Getting started: https://dafny.org/latest/OnlineTutorial/guide) Tj ET
-BT /F1 11.0 Tf 62.0 660.0 Td (\225) Tj ET
+BT /F1 11.0 Tf 56.0 770.6 Td (cl\341usula decreases cuando Dafny no adivina por qu\351 termina el bucle. Las funciones \(function\)) Tj ET
+BT /F1 11.0 Tf 56.0 755.2 Td (son puras y se pueden usar dentro de las especificaciones; los m\351todos \(method\) pueden tener) Tj ET
+BT /F1 11.0 Tf 56.0 739.8 Td (efectos.) Tj ET
+BT /F2 15.0 Tf 56.0 703.8 Td (Fuentes) Tj ET
+BT /F1 11.0 Tf 78.0 684.4 Td (Instalaci\363n: https://dafny.org/latest/Installation) Tj ET
+BT /F1 11.0 Tf 62.0 684.4 Td (\225) Tj ET
+BT /F1 11.0 Tf 78.0 666.0 Td (Releases: https://github.com/dafny-lang/dafny/releases) Tj ET
+BT /F1 11.0 Tf 62.0 666.0 Td (\225) Tj ET
+BT /F1 11.0 Tf 78.0 647.6 Td (Manual de referencia: https://dafny.org/latest/DafnyRef/DafnyRef) Tj ET
+BT /F1 11.0 Tf 62.0 647.6 Td (\225) Tj ET
+BT /F1 11.0 Tf 78.0 629.2 Td (Primeros pasos: https://dafny.org/latest/OnlineTutorial/guide) Tj ET
+BT /F1 11.0 Tf 62.0 629.2 Td (\225) Tj ET
 BT /F1 9.0 Tf 288.0 28.0 Td (2 / 2) Tj ET
 endstream
 endobj
@@ -93,10 +95,10 @@ xref
 0000000320 00000 n 
 0000000415 00000 n 
 0000000561 00000 n 
-0000004642 00000 n 
-0000004788 00000 n 
+0000004699 00000 n 
+0000004845 00000 n 
 trailer
 << /Size 10 /Root 1 0 R >>
 startxref
-5548
+5854
 %%EOF

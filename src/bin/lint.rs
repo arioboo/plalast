@@ -10,8 +10,9 @@
 use plalast::{
     arr, block_items, block_text, cargo, config, data, doc_dirs, entry_path, exit,
     external_modules, is_doc_path, lever_set, lookup, modes, module_dir, open, paths, primary, run,
-    str_of, visible_entries, Findings, BRAIN_KEYS, CONFIG_KEYS, DESCR_KEYS, INTERRUPTORS_MARK,
-    LOG_FIELDS, LOG_KINDS, MEMORY, MODULE_KINDS, PARAMS, PRIMARY_KEYS, SPECIAL_BUILDS,
+    str_of, visible_entries, Findings, BRAIN_KEYS, CHANGE_FIELDS, CHANGE_TYPES, CONFIG_KEYS,
+    DESCR_KEYS, INTERRUPTORS_MARK, LOG_FIELDS, LOG_LEVELS, LOG_STATUS, MEMORY, MODULE_KINDS,
+    PARAMS, PRIMARY_KEYS, SPECIAL_BUILDS,
 };
 use serde_json::Value;
 use std::env;
@@ -933,6 +934,38 @@ fn lint_plain_data(root: &Path, cfg: &Value, f: &mut Findings) {
             }
         }
     }
+    // primary.changes: one entry per commit, merge or branch, with its `type(scope)` notation.
+    let notation = regex::Regex::new(r"^([a-z]+)\(([a-z0-9-]+)\)$").expect("valid pattern");
+    match primary(cfg)["changes"].as_array() {
+        None => f.error(M, "primary.changes must be a list of entries"),
+        Some(entries) => {
+            for (i, e) in entries.iter().enumerate() {
+                for k in CHANGE_FIELDS {
+                    if blank(str_of(e, k)) {
+                        f.error(M, format!("primary.changes[{i}]: missing `{k}`"));
+                    }
+                }
+                if let Some(ch) = str_of(e, "change") {
+                    let ok = notation
+                        .captures(ch)
+                        .is_some_and(|c| CHANGE_TYPES.contains(&&c[1]));
+                    if !ok {
+                        f.error(M, format!("primary.changes[{i}]: change `{ch}` must be `type(scope)` with type one of {CHANGE_TYPES:?}"));
+                    }
+                }
+                if let Some(h) = str_of(e, "commit") {
+                    let obj = format!("{h}^{{commit}}");
+                    if !matches!(run(root, "git", &["cat-file", "-e", &obj]), Ok((true, _))) {
+                        f.error(
+                            M,
+                            format!("primary.changes[{i}]: commit `{h}` is not in git"),
+                        );
+                    }
+                }
+            }
+        }
+    }
+    // primary.log: warnings, errors and issues, each with a level and a status.
     match primary(cfg)["log"].as_array() {
         None => f.error(M, "primary.log must be a list of entries"),
         Some(entries) => {
@@ -942,18 +975,14 @@ fn lint_plain_data(root: &Path, cfg: &Value, f: &mut Findings) {
                         f.error(M, format!("primary.log[{i}]: missing `{k}`"));
                     }
                 }
-                if let Some(kind) = str_of(e, "kind") {
-                    if !LOG_KINDS.contains(&kind) {
-                        f.error(
-                            M,
-                            format!("primary.log[{i}]: kind `{kind}` must be one of {LOG_KINDS:?}"),
-                        );
-                    }
-                }
-                if let Some(h) = str_of(e, "commit") {
-                    let obj = format!("{h}^{{commit}}");
-                    if !matches!(run(root, "git", &["cat-file", "-e", &obj]), Ok((true, _))) {
-                        f.error(M, format!("primary.log[{i}]: commit `{h}` is not in git"));
+                for (k, allowed) in [("level", &LOG_LEVELS[..]), ("status", &LOG_STATUS[..])] {
+                    if let Some(v) = str_of(e, k) {
+                        if !allowed.contains(&v) {
+                            f.error(
+                                M,
+                                format!("primary.log[{i}]: {k} `{v}` must be one of {allowed:?}"),
+                            );
+                        }
                     }
                 }
             }

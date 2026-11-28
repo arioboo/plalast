@@ -201,6 +201,12 @@ fn plain_data(cfg: &Value) -> Vec<(String, String)> {
     for c in arr(primary(cfg), "commands") {
         out.push(("primary.commands".to_string(), fill("{cmd}: {summary}", c)));
     }
+    for (i, e) in arr(primary(cfg), "changes").iter().enumerate() {
+        let text = plalast::CHANGE_FIELDS
+            .map(|k| str_of(e, k).unwrap_or(""))
+            .join(" | ");
+        out.push((format!("primary.changes[{i}]"), text));
+    }
     for (i, e) in arr(primary(cfg), "log").iter().enumerate() {
         let text = LOG_FIELDS.map(|k| str_of(e, k).unwrap_or("")).join(" | ");
         out.push((format!("primary.log[{i}]"), text));
@@ -323,11 +329,12 @@ fn print_map(root: &Path, cfg: &Value) {
         println!("  {text}");
     }
     println!(
-        "Problems (primary.problems): {}, procedures (primary.procedures): {}, commands (primary.commands): {}, log (primary.log): {}, index (primary.index): {} entries",
+        "Problems (primary.problems): {}, procedures (primary.procedures): {}, commands (primary.commands): {}, log (primary.log): {}, changes (primary.changes): {}, index (primary.index): {} entries",
         count(&primary(cfg)["problems"]["items"]),
         count(&primary(cfg)["procedures"]["items"]),
         count(&primary(cfg)["commands"]),
         count(&primary(cfg)["log"]),
+        count(&primary(cfg)["changes"]),
         count(&primary(cfg)["index"])
     );
     let c = config(cfg);
