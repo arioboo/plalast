@@ -122,3 +122,9 @@ Solved by: Languages.
 A warning seen once and not written down comes back later as a surprise, or is never fixed.
 
 Solved by: Log.
+
+## Contradicting rules
+
+Rules written one at a time can contradict each other, and a system that learns from its own rules then amplifies the contradiction.
+
+Solved by: All-to-all compatible; Write order.

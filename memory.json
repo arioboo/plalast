@@ -812,6 +812,7 @@
           "LLM agent has his folder, but one repo brain: the agent's folder is `agents/`. Its scripts, reports, `.md` and `.pdf` files go to `agents/workspace/` (git-ignored except `.gitkeep`, never part of the brain), without touching the rest of the repo; everything else follows AGENTS.md.",
           "Memory level: `config.mem_level` (`low`, `mid` or `hard`, set in `params.yaml`) chooses how much of the memory is always in context; `hard` holds most of it. A param written as `{low: …, mid: …, hard: …}` takes the value of the current level, so each level has its own set of interruptors, and AGENTS.md is generated at that level. Every session starts with `pla-recall --session` (a Claude Code hook): it checks the brain at run time and lists what is on demand; anything else comes into context only through `pla-recall --show <id>` or `pla-recall <term>`.",
           "Write order: delete > modify/edit > add. Before adding anything, first delete what is no longer needed, then modify or edit what exists, and add only what neither covers. This forces a kind of autonomous retraining of the memory, as long as the Pareto rule holds in each case.",
+          "All-to-all compatible: every premise or rule added must be compatible with all the others (all_to_all) and, ideally, verified in software and formally, so the memory can feed back on itself in a wanted and controlled recursion.",
           "Problem-first: say, in plain human language, the problem that a tool or a set of tools solves, before naming any tool. Do not get carried away by proper names: names change, the problem stays. Follow \"All models are wrong, but some are useful\": every tool and every description is a model, judged by how useful it is and not by how true it is. This is the pragmatic philosophy the Pareto rule installs in our learning by reinforcement.",
           "Better deterministic and explained than interpreted: prefer a rule that a tool checks the same way every time, with its reason written next to it, over one that depends on how someone reads a text. When a rule can be a check, make it one: rules that must never bend (generated files, docs in sync with the brain) are hooks or checks, not just instructions; when a rule cannot be a check, explain it well enough to follow it without guessing.",
           "Rust-only: Rust for backend and scripts. TypeScript occasionally (web pages and user interfaces). Rust and C/C++ tools allowed. Something done in another language (a Python prototype, a one-off script) is ported to Rust before it stays in the repo.",
@@ -1308,6 +1309,20 @@
         "commit": "65799ea",
         "change": "merge(main)",
         "descr": "Fast-forward merge of develop."
+      },
+      {
+        "date": "2026-11-28",
+        "branch": "develop",
+        "commit": "9c2c8e5",
+        "change": "feat(memory)",
+        "descr": "primary.changes (CHANGES.md, type(scope) notation) and primary.log of warnings, errors and issues (LOG.md); guides translated to Spanish."
+      },
+      {
+        "date": "2026-11-28",
+        "branch": "main",
+        "commit": "9c2c8e5",
+        "change": "merge(main)",
+        "descr": "Fast-forward merge of develop."
       }
     ],
     "index": {
@@ -1550,6 +1565,14 @@
           "statement": "A warning seen once and not written down comes back later as a surprise, or is never fixed.",
           "solved_by": [
             "Log"
+          ]
+        },
+        "contradicting-rules": {
+          "title": "Contradicting rules",
+          "statement": "Rules written one at a time can contradict each other, and a system that learns from its own rules then amplifies the contradiction.",
+          "solved_by": [
+            "All-to-all compatible",
+            "Write order"
           ]
         }
       }

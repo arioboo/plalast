@@ -5,6 +5,8 @@ What happened in each commit, merge and branch of this repo, newest first, as `t
 
 | Date | Branch | Commit | Change |
 |---|---|---|---|
+| 2026-11-28 | main | `9c2c8e5` | merge(main): Fast-forward merge of develop. |
+| 2026-11-28 | develop | `9c2c8e5` | feat(memory): primary.changes (CHANGES.md, type(scope) notation) and primary.log of warnings, errors and issues (LOG.md); guides translated to Spanish. |
 | 2026-11-28 | main | `65799ea` | merge(main): Fast-forward merge of develop. |
 | 2026-11-28 | develop | `65799ea` | refactor(agents): Overlapping premises squashed into the higher category; INDEX.md lists every field of the memory; Languages preference; second exception to Write only inside the root. |
 | 2026-11-28 | main | `67662dc` | merge(main): Fast-forward merge of develop. |
