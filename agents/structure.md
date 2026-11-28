@@ -14,7 +14,7 @@ Paths are added here as they are created:
 | `agents/` | Single, provider-neutral source. Its `.md` files (`AGENTS.md`, `CLAUDE.md`, `PROCEDURES.md`, `PROBLEMS.md`, `BUILD.md`, `FEATURES.md`, `LOG.md`, `CHANGES.md`, `INDEX.md`) are generated; its subfolders hold hand-written modules and the agent's scratch (`workspace/`) |
 | `agents/workspace/` | The assistant agent's own scratch: its scripts, reports, `.md` and `.pdf` files; git-ignored except `.gitkeep`, never part of the brain |
 | `agents/skills/<name>/SKILL.md` | Skills, one folder each |
-| `agents/subagents/<name>.md` | Subagents |
+| `agents/subagents/<name>.md` | Subagents for the master architecture (`config.master_arch`): `brain-editor`, `rust-coder`, `guide-writer`, `verifier`, `git-keeper` |
 | `agents/rules/*.md` | Modular rules by topic |
 | `agents/guides/<name>.md` | Guides: hand-written .md sources and the .pdf that `pla-build` renders from each |
 | `agents/hooks/` | Hook scripts: `protect-generated.sh` and `session-recall.sh` (Claude Code), `pre-commit` (git), and the generated `claude-settings.json`; their config is `config.hooks` |

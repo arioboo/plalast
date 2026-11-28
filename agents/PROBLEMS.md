@@ -128,3 +128,9 @@ Solved by: Log.
 Rules written one at a time can contradict each other, and a system that learns from its own rules then amplifies the contradiction.
 
 Solved by: All-to-all compatible; Write order.
+
+## One agent for everything
+
+One agent doing every kind of task at once fills its attention with details of all of them, and mixes up work that should be checked apart.
+
+Solved by: Master architecture.

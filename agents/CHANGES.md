@@ -5,6 +5,8 @@ What happened in each commit, merge and branch of this repo, newest first, as `t
 
 | Date | Branch | Commit | Change |
 |---|---|---|---|
+| 2026-11-28 | main | `db499e4` | merge(main): Fast-forward merge of develop. |
+| 2026-11-28 | develop | `db499e4` | feat(lib): plalast::fantastic: the categories of AGENTS.md one by one, with a battery of checks run by pla-lint and tests/fantastic.rs. |
 | 2026-11-28 | main | `e9e8dea` | merge(main): Fast-forward merge of develop. |
 | 2026-11-28 | develop | `e9e8dea` | feat(agents): Dynamic premise All-to-all compatible, with the problem Contradicting rules. |
 | 2026-11-28 | main | `9c2c8e5` | merge(main): Fast-forward merge of develop. |

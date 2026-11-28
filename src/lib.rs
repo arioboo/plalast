@@ -320,7 +320,7 @@ pub fn lookup<'a>(cfg: &'a Value, dotted: &str) -> Option<&'a Value> {
 // ---------- registries: pla-lint fails when the brain and these drift apart ----------
 
 /// Keys of `config`, in file order, and the tools that handle each.
-pub const CONFIG_KEYS: [(&str, &str); 13] = [
+pub const CONFIG_KEYS: [(&str, &str); 14] = [
     ("descr_+", "build (brain_keys), recall, lint"),
     ("descr_-", "build (brain_keys), recall, lint"),
     (
@@ -338,6 +338,10 @@ pub const CONFIG_KEYS: [(&str, &str); 13] = [
     (
         "mem_level",
         "load (params by level), recall (--session), lint",
+    ),
+    (
+        "master_arch",
+        "recall (--session: alone or orchestrating the subagents)",
     ),
     ("branches", "audit (sync), recall"),
     (

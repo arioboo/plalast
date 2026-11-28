@@ -82,6 +82,18 @@ fn session(root: &Path, cfg: &Value) -> bool {
     }
     let level = str_of(config(cfg), "mem_level").unwrap_or("mid");
     println!("memory level: {level} (config.mem_level in params.yaml: low, mid or hard)");
+    let subagents: Vec<String> =
+        visible_entries(&root.join(module_dir(cfg, "agents").unwrap_or_default()))
+            .iter()
+            .filter_map(|n| n.strip_suffix(".md").map(String::from))
+            .collect();
+    match config(cfg)["master_arch"].as_bool() {
+        Some(true) => println!(
+            "master architecture: on (config.master_arch); orchestrate, delegating each task to its subagent: {}",
+            subagents.join(", ")
+        ),
+        _ => println!("master architecture: off (config.master_arch); work alone"),
+    }
     let mut always = plalast::strings(&config(cfg)["lint"], "always_on");
     always.extend(
         documents(cfg)
