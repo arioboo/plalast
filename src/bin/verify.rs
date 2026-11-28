@@ -1,5 +1,5 @@
 //! verify: checks a change at several levels before it becomes part of the repo
-//! (the static premise "Only small diff steps").
+//! (the static premise "Conservative, in small verified steps").
 //!
 //! - `pla-verify`                                 every level.
 //! - `pla-verify [consistency] [logic] [formal]`  only the given levels.

@@ -543,16 +543,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "The brain is `memory.json`, with exactly three primary keys: `config` (what the tools need to run: git, settings, paths), `primary` (what makes the docs: identity, texts, definitions) and `data` (what gets built); each starts with `descr_+` and `descr_-`, what it is and is not. `params.yaml` holds what only the user sets, every key named by the path of a field of the memory: a value `enabled`, `on_demand` or `disabled` is the interruptor of that field (after `#---INTERRUPTORS---`); any other value sets the field (such as `config.hooks.dir`), which then must not be in `memory.json` too. The tools join them as `config`, `primary`, `data` and `params` (`params.interruptors`), so a dotted path such as `config.paths.modules.agent_zettelkasten` works everywhere."
-                },
-                {
-                  "type": "schema",
-                  "part": "keys",
-                  "header": [
-                    "Key",
-                    "Is (descr_+)",
-                    "Is not (descr_-)"
-                  ]
+                  "text": "The brain is `memory.json`, with exactly three primary keys: `config` (what the tools need to run: git, settings, paths, the structure), `primary` (what makes the docs: identity, texts, definitions, the shape of every doc) and `data` (external memory, nearly empty; Only migrate UP!); each starts with `descr_+` and `descr_-`, what it is and is not. `params.yaml` holds what only the user sets, every key named by the path of a field of the memory: a value `enabled`, `on_demand` or `disabled` is the interruptor of that field (after `#---INTERRUPTORS---`); any other value sets the field (such as `config.hooks.dir`), which then must not be in `memory.json` too. The tools join them as `config`, `primary`, `data` and `params` (`params.interruptors`, `params.by_level`), so a dotted path such as `config.paths.modules.agent_zettelkasten` works everywhere. Every field, with what it is and is not, is in `agents/INDEX.md`."
                 }
               ]
             },
@@ -727,6 +718,22 @@
             },
             {
               "type": "agent_note"
+            },
+            {
+              "type": "paragraph",
+              "ref": "primary.index.definition"
+            },
+            {
+              "type": "brain_keys"
+            },
+            {
+              "type": "schema",
+              "part": "keys",
+              "header": [
+                "Field",
+                "Is (descr_+)",
+                "Is not (descr_-)"
+              ]
             }
           ],
           "sections": []
@@ -741,38 +748,37 @@
       "static_rules": {
         "items": [
           "Single source: every `.md` in the repo root and in `agents/` is generated from `memory.json` and `params.yaml`: change `memory.json` (and `params.yaml` only as Params untouchable allows), then run `cargo run --release --bin pla-build` (see `agents/BUILD.md`); never edit a generated file by hand. Hand-written: the Rust code, the scripts and the modules in `agents/` subfolders.",
-          "Write only inside the root: an agent has no write permission outside the plalast root folder (the one that holds `memory.json`). Never write outside it, in any case, even when the user, distracted, says yes to something that would do it implicitly: refuse and say why. The one exception: installing, in their standard system places, the tools the user explicitly asks for (such as Verus with its Rust toolchain, or Lean 4). The Claude Code hook (`pla-build --guard`) denies edits outside the root.",
+          "Write only inside the root: an agent has no write permission outside the plalast root folder (the one that holds `memory.json`). Never write outside it, in any case, even when the user, distracted, says yes to something that would do it implicitly: refuse and say why. Two exceptions, only on the user's explicit request: installing tools in their standard system places (such as Verus with its Rust toolchain, or Lean 4), and deleting files the agent itself created outside the root (such as its own memory notes). The Claude Code hook (`pla-build --guard`) denies edits outside the root.",
           "Params untouchable, Memory updatable: the params (`params.yaml`) are touched only by the user; an agent changes or redesigns anything in them only when the user says so explicitly. Every param is named by the path of the field of `memory.json` it sets or switches, nesting its json keys with `.` (such as `config.lint.max_lines` or `primary.docs.content.agents_md.sections.preferencias`). The memory is updatable: it follows those paths, it is switched on through the interruptors after `#---INTERRUPTORS---`, and it is read on demand through the recall library (`pla-recall`).",
           "Secrets: they live only in `.secrets/` at the repo root, which git ignores except its `.gitkeep`. Code and configs reference them by environment variable; their values never go into other files, the chat or external services."
         ]
       },
       "static_premises": {
         "items": [
-          "Only one brain: `memory.json`. There is no second memory, copy or parallel source of truth; everything else is built from it or points at it.",
+          "Only one brain: `memory.json`. There is no second memory, copy or parallel source of truth: everything is read from and written to it, and every generated file (every `.md` in the root and in `agents/`, `.gitignore`, the Claude Code settings) is rebuilt from it byte by byte with the params of `params.yaml` (a test rebuilds them all and compares).",
           "Only migrate UP!: information moves in one direction only, up, as it fits a higher field better: `data` > `primary` > `config` (config on top). `data` is external memory, nearly empty, where what is not yet placed lands; nothing moves down. Every move is well delimited (`descr_+`, `descr_-`), follows the Pareto rule and logical and formal rules; `pla-lint` refuses a field in `data` without a planned destination.",
           "One folder for every assistant: `agents/` is the folder of any assistant agent. `.claude/` holds only symlinks into `agents/`; any other assistant with its own folders may read `agents/` or link to its files as it suits it. No assistant clutters the other folders, the root included.",
           "Specific formats: markdown for information, json for the memory (`memory.json`), yaml for the params (`params.yaml`), Rust for programs and scripts, and bash only for the thin launchers a system calls by path, such as the git and Claude Code hooks (see Premisas - dinámicas).",
           "No duplication. Only one way of functional working, one memory file and one params file, symbolic links where matters, only one zettelkasten vault, etc.",
           "Open source: everyone can collaborate with it (see `README.md` at the repo root for the contribution flow)",
           "Pareto rule: 20% of the effort gives 80% of the result; when unsure, assume a similar split. Propose that 20% first, and more when it is for best practices. It also rules every description: `descr_+` (what a key is, the positive way) and `descr_-` (what it is not, the negative way) each say the essential 20% that carries 80% of the meaning.",
-          "Conservative, in general: prefer what exists and is known to work over what is new; change little at a time, keep every step reversible, and when in doubt ask instead of acting. The mode `ultra_conservative` makes this stricter when it is on.",
-          "Only small diff steps: this is not about git diffs but about knowledge. What the machine generates or learns on its own grows in small steps, and each step should ideally pass a verification process at several levels before it becomes part of the memory: consistent with what is already known, checked by machines (tests, linters, formal proofs) and reviewed by a human."
+          "Conservative, in small verified steps: prefer what exists and is known to work over what is new; change little at a time, keep every step reversible, and when in doubt ask instead of acting. Knowledge too, not only git diffs: what the machine generates or learns on its own grows in small steps, and each step should pass a verification at several levels before it becomes part of the memory: consistent with what is already known, checked by machines (tests, linters, formal proofs) and reviewed by a human. The mode `ultra_conservative` makes this stricter when it is on.",
+          "Lean memory: always-on docs hold only what an agent cannot learn by reading the repo, within `config.lint.max_lines`; maps, overviews and reference material are on demand. A rule is added only when an agent repeats a mistake it could not avoid by reading the repo, and every rule solves a problem of `primary.problems`; `pla-lint` checks both."
         ],
         "brain_keys_intro": "The memory (`memory.json`) has exactly three primary keys, each saying what it is (`descr_+`) and what it is not (`descr_-`):"
       },
       "dynamic_premises": {
         "intro": "Dynamic premises are still to be verified: each one is the current state of how we solve a concrete problem (`primary.problems`, in `agents/PROBLEMS.md`), and it changes when a better solution is verified.",
         "items": [
-          "Brain: everything is read from and written to `memory.json`. This file and every other generated file (every `.md` in the root and in `agents/`, `.gitignore`, the Claude Code settings) are rebuilt from it byte by byte, with the params of `params.yaml`; a test rebuilds them all and compares.",
           "LLM agent has his folder, but one repo brain: the agent's folder is `agents/`. Its scripts, reports, `.md` and `.pdf` files go to `agents/workspace/` (git-ignored except `.gitkeep`, never part of the brain), without touching the rest of the repo; everything else follows AGENTS.md.",
           "Memory level: `config.mem_level` (`low`, `mid` or `hard`, set in `params.yaml`) chooses how much of the memory is always in context; `hard` holds most of it. A param written as `{low: …, mid: …, hard: …}` takes the value of the current level, so each level has its own set of interruptors, and AGENTS.md is generated at that level. Every session starts with `pla-recall --session` (a Claude Code hook): it checks the brain at run time and lists what is on demand; anything else comes into context only through `pla-recall --show <id>` or `pla-recall <term>`.",
           "Write order: delete > modify/edit > add. Before adding anything, first delete what is no longer needed, then modify or edit what exists, and add only what neither covers. This forces a kind of autonomous retraining of the memory, as long as the Pareto rule holds in each case.",
           "Problem-first: say, in plain human language, the problem that a tool or a set of tools solves, before naming any tool. Do not get carried away by proper names: names change, the problem stays. Follow \"All models are wrong, but some are useful\": every tool and every description is a model, judged by how useful it is and not by how true it is. This is the pragmatic philosophy the Pareto rule installs in our learning by reinforcement.",
-          "Better deterministic and explained than interpreted: prefer a rule that a tool checks the same way every time, with its reason written next to it, over one that depends on how someone reads a text. When a rule can be a check, make it one (Enforce, don't ask); when it cannot, explain it well enough to follow it without guessing.",
-          "Rust-only: Rust for backend and scripts. TypeScript occasionally (web pages and user interfaces). Rust and C/C++ tools allowed.",
-          "Pure calculator: use it to isolate calculation. `plalast::calc` (the library, `src/calc.rs`) and `pla-calc <expression>` (the command) evaluate arithmetic exactly, as fractions, with no side effects: `+ - * /`, integer `^`, parentheses and decimals; division by zero and overflow are errors, never a wrong number.",
+          "Better deterministic and explained than interpreted: prefer a rule that a tool checks the same way every time, with its reason written next to it, over one that depends on how someone reads a text. When a rule can be a check, make it one: rules that must never bend (generated files, docs in sync with the brain) are hooks or checks, not just instructions; when a rule cannot be a check, explain it well enough to follow it without guessing.",
+          "Rust-only: Rust for backend and scripts. TypeScript occasionally (web pages and user interfaces). Rust and C/C++ tools allowed. Something done in another language (a Python prototype, a one-off script) is ported to Rust before it stays in the repo.",
+          "Pure calculator: use it to isolate calculation. `plalast::calc` (the library, `src/calc.rs`) and `pla-calc <expression>` (the command) evaluate arithmetic exactly, as fractions, with no side effects: `+ - * /`, integer `^`, parentheses and decimals; division by zero and overflow are errors, never a wrong number. Do not compute numbers in your head or in a free-form script: use its exact result.",
           "Procedures: short instructions in human language for recurring situations, in `agents/PROCEDURES.md` (from `primary.procedures`). Read the one that fits before acting.",
-          "Verification (precarious, growing): `pla-verify` checks a change at several levels: `consistency` (the repo agrees with the brain: `pla-build --check`, `pla-lint memory modules`), `logic` (`pla-lint rust`, that is fmt and clippy, then the logic tests: `cargo test`, with `tests/logic.rs` checking at run time the contracts that `src/verified.rs` proves), `formal` (`cargo verus verify`, skipped with a warning where Verus is not installed) and a last human level (it lists the changed files to review). There are still few proofs and few logic tests."
+          "Verification (precarious, growing): `pla-verify` checks a change at several levels: `consistency` (the repo agrees with the brain: `pla-build --check`, `pla-lint memory modules`), `logic` (`pla-lint rust`, that is fmt and clippy, then the logic tests: `cargo test`, with `tests/logic.rs` checking at run time the contracts that `src/verified.rs` proves), `formal` (`cargo verus verify`, skipped with a warning where Verus is not installed) and a last human level (it lists the changed files to review). There are still few proofs and few logic tests. Run it before every commit and say what each level said; a skipped level is said, never hidden. A new pure function with a clear contract goes in `src/verified.rs` with `requires`/`ensures` and gets a logic test in `tests/logic.rs` for the same contract; when a test or a proof fails, fix the code or the contract, never weaken the check."
         ],
         "state_intro": "The current state of the repo: it changes as the repo grows, so check it against the repo when in doubt.",
         "map": "Map: `agents/structure.md` (where each path lives) and `cargo run --release --bin pla-recall -- [term]`.",
@@ -802,15 +808,8 @@
       "good_practices": {
         "items": [
           "Interruptor: every doc section, every whole doc and every mode can have one in `params.yaml`, after `#---INTERRUPTORS---`, named by the path of its field (`primary.docs.content.<doc>.sections.<id>`, `primary.docs.content.<doc>`, `primary.mode.<name>`), with three values: `enabled` (always in the agent's memory), `on_demand` (its own file, read when needed; the default when none is set) or `disabled` (not built). A new section, doc or mode works with the default; when another value fits better, propose it to the user, who sets it.",
-          "File changes: when the user asks to touch any file, find the part of `memory.json` that builds it, change it there and rebuild with `pla-build`.",
           "Log: after every commit, merge or new branch, add an entry `{date, branch, commit, kind, descr}` to `primary.log` (a commit cannot hold its own hash, so it goes in the next commit) and rebuild; `agents/LOG.md` shows it.",
           "Zettelkasten markdown spirit. A lot of things in the web are garbage, so notes in the agent-zettelkasten use CDU (Universal Decimal Classification) notation: the file name starts with the CDU code, then a kebab-case title, e.g. `004.8-llm-agents.md` (004.8 = artificial intelligence). The infrastructure will be up.",
-          "Lean memory: always-on docs hold only what an agent cannot learn by reading the repo; maps, overviews and reference material are `on_demand`.",
-          "Every rule earns its place: add one only when an agent repeats a mistake, and only if the agent could not find it in the repo; `pla-lint` keeps always-on docs under `config.lint.max_lines`.",
-          "Enforce, don't ask: rules that must never bend (never edit generated files, docs in sync with `memory.json`) are hooks or checks, not just instructions.",
-          "Verification: run `pla-verify` before every commit and report what each level said; a skipped level is said, never hidden. A new pure function with a clear contract goes in `src/verified.rs` with `requires`/`ensures`, and gets a logic test in `tests/logic.rs` checking the same contract. When a test or a proof fails, fix the code or the contract, never weaken the check to make it pass.",
-          "Everything ends in Rust: something done in another language (a Python prototype, a one-off script) is ported to Rust before it stays in the repo.",
-          "Calculation isolation: do not compute numbers in your head or in a free-form script; pass the expression to `pla-calc` (or call `plalast::calc` from Rust) and use its exact result.",
           "Where things go: before saving anything in the memory, find the field whose `descr_+` fits it and whose `descr_-` does not exclude it (`primary.schema.keys`, or the three primary keys); if none fits, propose a new field with both, Pareto-short."
         ]
       },
@@ -818,7 +817,8 @@
         "items": [
           "Naming: when the user says \"la memoria\", \"el contexto\" or \"el json\" (memory, context, the json), they mean `memory.json`. \"Los 4 fantásticos\" are the sections of AGENTS.md (Reglas - estáticas, Premisas - estáticas, Premisas - dinámicas, Buenas prácticas, Preferencias): there are more than four, the name stays.",
           "LLM-friendly languages: desirable, Rust first (see Rust-only). Languages made for LLM programming are a tool to use with caution, but desirable at some point.",
-          "Formal verification: desirable, but very expensive. Watch out and connect to others' ideas instead of reinventing the wheel."
+          "Formal verification: desirable, but very expensive. Watch out and connect to others' ideas instead of reinventing the wheel.",
+          "Languages: English for code, the repo and orders to orchestrators (agents and tools); Spanish for guides and for talking with the user."
         ]
       }
     },
@@ -1210,9 +1210,25 @@
         "commit": "7dd47ba",
         "kind": "merge",
         "descr": "Fast-forward merge of develop."
+      },
+      {
+        "date": "2026-11-28",
+        "branch": "develop",
+        "commit": "67662dc",
+        "kind": "commit",
+        "descr": "config.mem_level (low/mid/hard) with params by level; pla-recall --session (SessionStart hook) and --show; Verus and Lean 4 installed, formal level runs; features back to pending."
+      },
+      {
+        "date": "2026-11-28",
+        "branch": "main",
+        "commit": "67662dc",
+        "kind": "merge",
+        "descr": "Fast-forward merge of develop."
       }
     ],
-    "index": {},
+    "index": {
+      "definition": "Index: every field of the memory and what it is and is not, Pareto-short: first the three primary keys, then every field documented in `primary.schema.keys`, those of `memory.json` and those set in `params.yaml`. Generated from the memory, never written by hand."
+    },
     "skills": {
       "definition": "Skills: reusable procedures an agent loads when its description matches the task. One folder per skill with an uppercase SKILL.md whose frontmatter has `name` (the folder name, kebab-case) and `description`. Hand-written."
     },
@@ -1300,9 +1316,7 @@
           "solved_by": [
             "Single source",
             "Only one brain",
-            "Brain",
-            "No duplication",
-            "File changes"
+            "No duplication"
           ]
         },
         "limited-attention": {
@@ -1319,7 +1333,6 @@
           "title": "Rules that bend",
           "statement": "Rules that live only as text are forgotten or bent, and nobody notices until the damage is done.",
           "solved_by": [
-            "Enforce, don't ask",
             "Better deterministic and explained than interpreted"
           ]
         },
@@ -1328,7 +1341,7 @@
           "statement": "An agent that changes the controls of a system on its own can steer it away from what its owner wants.",
           "solved_by": [
             "Params untouchable, Memory updatable",
-            "Conservative, in general"
+            "Conservative, in small verified steps"
           ]
         },
         "growing-without-learning": {
@@ -1336,7 +1349,7 @@
           "statement": "A memory that only grows piles up stale and contradictory rules instead of getting better.",
           "solved_by": [
             "Write order",
-            "Every rule earns its place",
+            "Lean memory",
             "Log"
           ]
         },
@@ -1344,9 +1357,8 @@
           "title": "Unverified knowledge",
           "statement": "What a machine produces by itself can be wrong in ways that look right.",
           "solved_by": [
-            "Only small diff steps",
+            "Conservative, in small verified steps",
             "Verification (precarious, growing)",
-            "Verification",
             "Formal verification"
           ]
         },
@@ -1364,7 +1376,6 @@
           "solved_by": [
             "Problem-first",
             "Rust-only",
-            "Everything ends in Rust",
             "Specific formats",
             "LLM-friendly languages"
           ]
@@ -1373,8 +1384,7 @@
           "title": "Wrong numbers",
           "statement": "Numbers worked out by guessing, or with rounding nobody sees, are silently wrong.",
           "solved_by": [
-            "Pure calculator",
-            "Calculation isolation"
+            "Pure calculator"
           ]
         },
         "leaked-secrets": {
@@ -1442,6 +1452,13 @@
           "solved_by": [
             "Only migrate UP!",
             "Where things go"
+          ]
+        },
+        "mixed-languages": {
+          "title": "Mixed languages",
+          "statement": "When a project mixes languages with no rule, orders to machines become ambiguous and explanations for the person become hard to follow.",
+          "solved_by": [
+            "Languages"
           ]
         }
       }
@@ -1581,8 +1598,8 @@
           "descr_-": "Not a changelog of ideas or plans: only branches, commits and merges that happened."
         },
         "primary.index": {
-          "descr_+": "Project index (empty for now; its format is not defined yet).",
-          "descr_-": "Not the map of paths (`config.structure`, `agents/structure.md`)."
+          "descr_+": "The index of the memory: its `definition`; `agents/INDEX.md` renders the three primary keys and every field of `primary.schema.keys` with their `descr_+` and `descr_-`.",
+          "descr_-": "Not the map of paths (`config.structure`, `agents/structure.md`), and not a second copy of the descriptions: it is generated from them."
         },
         "primary.skills": {
           "descr_+": "Skills: `definition`; its folder and provider links are in `config.paths.modules`.",
@@ -1748,7 +1765,7 @@
         "description": "Log doc: branches, commits and merges, generated from primary.log."
       },
       "agents/INDEX.md": {
-        "description": "Index doc. Generated from primary.docs.content.index_md (only its title and the agent note for now)."
+        "description": "Index doc: every field of the memory with what it is and is not. Generated from data in primary.schema.keys."
       },
       "agents/skills/": {
         "description": "One folder per skill with an uppercase SKILL.md.",

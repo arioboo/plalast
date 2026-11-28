@@ -490,7 +490,7 @@ fn lint_procedures(cfg: &Value, f: &mut Findings) {
 
 /// Problems: each has a title, a statement in human language and `solved_by` names that resolve
 /// to exactly one rule of AGENTS.md; and every rule solves at least one problem (the
-/// deterministic form of "Every rule earns its place").
+/// deterministic form of "Lean memory": every rule solves a problem).
 fn lint_problems(cfg: &Value, f: &mut Findings) {
     if blank(str_of(&primary(cfg)["problems"], "definition")) {
         f.error(M, "primary.problems: missing `definition`");
@@ -535,7 +535,7 @@ fn lint_problems(cfg: &Value, f: &mut Findings) {
     }
     for (category, name) in &rules {
         if !solved.contains(name) {
-            f.error(M, format!("primary.agents-md.{category}: `{name}` solves no problem in primary.problems (Every rule earns its place)"));
+            f.error(M, format!("primary.agents-md.{category}: `{name}` solves no problem in primary.problems (Lean memory)"));
         }
     }
 }

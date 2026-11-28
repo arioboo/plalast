@@ -5,6 +5,8 @@ Branches, commits and merges of this repo, newest first. Source: `primary.log` i
 
 | Date | Branch | Commit | Kind | Description |
 |---|---|---|---|---|
+| 2026-11-28 | main | `67662dc` | merge | Fast-forward merge of develop. |
+| 2026-11-28 | develop | `67662dc` | commit | config.mem_level (low/mid/hard) with params by level; pla-recall --session (SessionStart hook) and --show; Verus and Lean 4 installed, formal level runs; features back to pending. |
 | 2026-11-28 | main | `7dd47ba` | merge | Fast-forward merge of develop. |
 | 2026-11-28 | develop | `7dd47ba` | commit | Log entries for 93d8c62 and the fast-forward of main. |
 | 2026-11-28 | main | `93d8c62` | merge | Fast-forward merge of develop. |

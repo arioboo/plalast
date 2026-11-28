@@ -7,7 +7,7 @@ Problems: the concrete problems this project solves, each said in human language
 
 Knowledge about a project ends up spread over many files that drift apart, until nobody knows which version is right.
 
-Solved by: Single source; Only one brain; Brain; No duplication; File changes.
+Solved by: Single source; Only one brain; No duplication.
 
 ## Limited attention
 
@@ -19,25 +19,25 @@ Solved by: Interruptor; Lean memory; Procedures; Memory level.
 
 Rules that live only as text are forgotten or bent, and nobody notices until the damage is done.
 
-Solved by: Enforce, don't ask; Better deterministic and explained than interpreted.
+Solved by: Better deterministic and explained than interpreted.
 
 ## Who holds the controls
 
 An agent that changes the controls of a system on its own can steer it away from what its owner wants.
 
-Solved by: Params untouchable, Memory updatable; Conservative, in general.
+Solved by: Params untouchable, Memory updatable; Conservative, in small verified steps.
 
 ## Growing without learning
 
 A memory that only grows piles up stale and contradictory rules instead of getting better.
 
-Solved by: Write order; Every rule earns its place; Log.
+Solved by: Write order; Lean memory; Log.
 
 ## Unverified knowledge
 
 What a machine produces by itself can be wrong in ways that look right.
 
-Solved by: Only small diff steps; Verification (precarious, growing); Verification; Formal verification.
+Solved by: Conservative, in small verified steps; Verification (precarious, growing); Formal verification.
 
 ## Wasted effort
 
@@ -49,13 +49,13 @@ Solved by: Pareto rule; Problem-first.
 
 Tools chosen by their name or by fashion, instead of by the problem they solve, turn into a collection nobody masters.
 
-Solved by: Problem-first; Rust-only; Everything ends in Rust; Specific formats; LLM-friendly languages.
+Solved by: Problem-first; Rust-only; Specific formats; LLM-friendly languages.
 
 ## Wrong numbers
 
 Numbers worked out by guessing, or with rounding nobody sees, are silently wrong.
 
-Solved by: Pure calculator; Calculation isolation.
+Solved by: Pure calculator.
 
 ## Leaked secrets
 
@@ -110,3 +110,9 @@ Solved by: One folder for every assistant; No duplication.
 Information dropped in a temporary place stays there for good, and the project slowly runs on material nobody sorted.
 
 Solved by: Only migrate UP!; Where things go.
+
+## Mixed languages
+
+When a project mixes languages with no rule, orders to machines become ambiguous and explanations for the person become hard to follow.
+
+Solved by: Languages.
