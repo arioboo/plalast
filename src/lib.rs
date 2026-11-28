@@ -320,7 +320,7 @@ pub fn lookup<'a>(cfg: &'a Value, dotted: &str) -> Option<&'a Value> {
 // ---------- registries: pla-lint fails when the brain and these drift apart ----------
 
 /// Keys of `config`, in file order, and the tools that handle each.
-pub const CONFIG_KEYS: [(&str, &str); 14] = [
+pub const CONFIG_KEYS: [(&str, &str); 16] = [
     ("descr_+", "build (brain_keys), recall, lint"),
     ("descr_-", "build (brain_keys), recall, lint"),
     (
@@ -343,6 +343,11 @@ pub const CONFIG_KEYS: [(&str, &str); 14] = [
         "master_arch",
         "recall (--session: alone or orchestrating the subagents)",
     ),
+    (
+        "subagent_cycle",
+        "cycle (the subagents in order), recall (--session), lint",
+    ),
+    ("cycle_behavior", "recall (--session), lint"),
     ("branches", "audit (sync), recall"),
     (
         "hooks",
@@ -444,6 +449,19 @@ pub fn external_modules(cfg: &Value) -> Vec<(&str, Option<&str>, Option<&str>)> 
 #[must_use]
 pub fn module_dir(cfg: &Value, kind: &str) -> Option<String> {
     str_of(&paths(cfg)["modules"][kind], "dir").map(|d| d.trim_end_matches('/').to_string())
+}
+
+/// Subagents of the cycle, in order: `config.subagent_cycle` split on `-`,
+/// each name `x` becoming `plalast-x`; empty names are skipped, and no setting gives no cycle.
+#[must_use]
+pub fn cycle(cfg: &Value) -> Vec<String> {
+    str_of(config(cfg), "subagent_cycle")
+        .unwrap_or_default()
+        .split('-')
+        .map(str::trim)
+        .filter(|x| !x.is_empty())
+        .map(|x| format!("plalast-{x}"))
+        .collect()
 }
 
 /// `(module folder, link folder)` for every provider link of every module kind.
@@ -736,6 +754,16 @@ mod tests {
         assert_eq!(by_level(&v, "mid"), Some(&Value::Null));
         assert_eq!(by_level(&json!({"PreToolUse": []}), "mid"), None);
         assert_eq!(by_level(&json!("enabled"), "mid"), None);
+    }
+
+    #[test]
+    fn the_cycle_names_its_subagents_in_order() {
+        let cfg = json!({"config": {"subagent_cycle": "writer-verifier--debug "}});
+        assert_eq!(
+            cycle(&cfg),
+            ["plalast-writer", "plalast-verifier", "plalast-debug"]
+        );
+        assert!(cycle(&json!({"config": {}})).is_empty());
     }
 
     #[test]

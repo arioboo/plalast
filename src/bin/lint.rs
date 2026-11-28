@@ -82,6 +82,7 @@ fn lint_memory(root: &Path, cfg: &Value, f: &mut Findings) {
     lint_procedures(cfg, f);
     lint_problems(cfg, f);
     lint_fantastic(cfg, f);
+    lint_cycle(root, cfg, f);
     lint_texts(root, cfg, f);
     lint_modules_and_paths(root, cfg, f);
     lint_params(root, cfg, f);
@@ -536,6 +537,30 @@ fn lint_fantastic(cfg: &Value, f: &mut Findings) {
     }
     for (key, check, msg) in plalast::fantastic::check(cfg) {
         f.error(M, format!("primary.agents-md.{key} [{check}]: {msg}"));
+    }
+}
+
+/// The subagent cycle: every subagent it names has its file, and `cycle_behavior` is a switch.
+fn lint_cycle(root: &Path, cfg: &Value, f: &mut Findings) {
+    let c = config(cfg);
+    if c.get("subagent_cycle").is_none() && c.get("cycle_behavior").is_none() {
+        return;
+    }
+    let names = plalast::cycle(cfg);
+    if names.is_empty() {
+        f.error(M, "config.subagent_cycle: names no subagent; write them in order, `-`-separated (such as `writer-verifier-debug`)");
+    }
+    let dir = module_dir(cfg, "agents").unwrap_or_default();
+    for name in &names {
+        if !root.join(&dir).join(format!("{name}.md")).is_file() {
+            f.error(
+                M,
+                format!("config.subagent_cycle: `{name}` has no file {dir}/{name}.md"),
+            );
+        }
+    }
+    if !c["cycle_behavior"].is_boolean() {
+        f.error(M, "config.cycle_behavior: must be `true` or `false`");
     }
 }
 
