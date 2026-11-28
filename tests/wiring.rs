@@ -106,7 +106,7 @@ fn generated_files_rebuild_from_the_brain() {
 fn every_generated_doc_has_the_agent_note_on_line_two() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
     let cfg = load(root).unwrap();
-    let note = cfg["primary"]["docs"]["agent_note"].as_str().unwrap();
+    let note = cfg["params"]["agent_placeholder"].as_str().unwrap();
     let mut checked = 0;
     for e in cfg["data"]["structure"].as_array().unwrap() {
         let (Some(path), Some(key)) = (entry_path(&cfg, e), e["build"].as_str()) else {
@@ -176,7 +176,7 @@ fn agents_md_shows_the_three_primary_keys_and_params_holds_only_levers() {
         .keys()
         .map(String::as_str)
         .collect();
-    assert_eq!(params, ["levers"]);
+    assert_eq!(params, ["agent_placeholder", "levers"]);
 }
 
 #[test]

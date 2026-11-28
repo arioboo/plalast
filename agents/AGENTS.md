@@ -1,5 +1,5 @@
 # plalast - The Living Creature
-note for the agent: this file is generated via the brain (memory.json) and binaries (build.rs)
+note for agent: ...
 
 This repo is a public and living creature. Turn on your VPS or machine, connect your agents, code it, teach it something, and make a pull request on Github.
 
@@ -7,9 +7,10 @@ The servers will be 24/7 on. This is a personal project on autonomous coding and
 
 ## Premisas - estáticas
 
-- Single source: `memory.json` is the brain, with exactly three primary keys (`config`, `primary`, `data`; see the table below), and `params.yaml` holds only the interruptores. Every `.md` in the repo root and in `agents/` is generated from them: edit only those two files and run `cargo run --release --bin pla-build` (see `agents/BUILD.md`). Modules in `agents/` subfolders are hand-written. Never edit generated files by hand.
+- Single source: `memory.json` is the brain, with exactly three primary keys (`config`, `primary`, `data`; see the table below), and `params.yaml` holds the interruptores and the agent placeholder. Every `.md` in the repo root and in `agents/` is generated from them: edit only those two files and run `cargo run --release --bin pla-build` (see `agents/BUILD.md`). Modules in `agents/` subfolders are hand-written. Never edit generated files by hand.
+- Only one brain: `memory.json`. There is no second memory, copy or parallel source of truth; everything else is built from it or points at it.
 - Secrets: they live only in `.secrets/` at the repo root, which git ignores except its `.gitkeep`. Code and configs reference them by environment variable; their values never go into other files, the chat or external services.
-- Specific formats: markdown for information, json for the memory (`memory.json`), yaml for the interruptores (`params.yaml`), bash for system scripts (setup, links, servers) and Rust for everything else (see Premisas - dinámicas).
+- Specific formats: markdown for information, json for the memory (`memory.json`), yaml for the params (`params.yaml`), bash for system scripts (setup, links, servers) and Rust for everything else (see Premisas - dinámicas).
 - No duplication. Only one way of functional working, one memory file and one params file, symbolic links where matters, only one zettelkasten vault, etc.
 - Open source: everyone can collaborate with it (see `README.md` at the repo root for the contribution flow)
 - Pareto rule: 20% of the effort gives 80% of the result; when unsure, assume a similar split. Propose that 20% first, and more when it is for best practices. It also rules every description: `descr_+` (what a key is, the positive way) and `descr_-` (what it is not, the negative way) each say the essential 20% that carries 80% of the meaning.
@@ -20,13 +21,13 @@ The memory (`memory.json`) has exactly three primary keys, each saying what it i
 
 | Key | Is (descr_+) | Is not (descr_-) |
 |---|---|---|
-| `config` | What the tools need to run the repo: repository, branches, paths, audit, lint and hooks. | Not text for the docs (primary), not what gets built (data), not interruptores (`params.yaml`), not secrets (`.secrets/`). |
+| `config` | What the tools need to run the repo: repository, branches, paths, audit, lint and hooks. | Not text for the docs (primary), not what gets built (data), not interruptores or the agent placeholder (`params.yaml`), not secrets (`.secrets/`). |
 | `primary` | What makes the docs: identity, texts, definitions, commands, features, log, index, modes and the schema of the memory itself. | Not paths or tool settings (config), not what gets built on disk (data), not hand-written code or modules. |
 | `data` | What gets built: every path of the repo (`structure`) and the shape of every generated doc (`content`). | Not prose (texts live in primary and are pointed at with `ref`), not settings (config). |
 
 ## Premisas - dinámicas
 
-Brain: `memory.json` is the brain of plalast, the place everything is read from and written to. Everything in this file, and every other generated file (every `.md` in the root and in `agents/`, `.gitignore`, `.claude/settings.json`), is rebuilt from it byte by byte, with the interruptores of `params.yaml`.
+Brain: `memory.json` is the brain of plalast, the place everything is read from and written to. Everything in this file, and every other generated file (every `.md` in the root and in `agents/`, `.gitignore`, `.claude/settings.json`), is rebuilt from it byte by byte, with the params of `params.yaml` (interruptores and agent placeholder).
 
 Write order: delete > modify/edit > add. Before adding anything, first delete what is no longer needed, then modify or edit what exists, and add only what neither covers. This forces a kind of autonomous retraining of the memory, as long as the Pareto rule holds in each case.
 

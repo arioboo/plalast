@@ -1,5 +1,5 @@
 # Mode ultra_conservative
-note for the agent: this file is generated via the brain (memory.json) and binaries (build.rs)
+note for agent: ...
 
 - Without the user's explicit confirmation: no commit, push, merge, branch deletion or file deletion.
 - Without the user's explicit confirmation: no change outside `memory.json` and `params.yaml`.

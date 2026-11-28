@@ -1,7 +1,7 @@
 # BUILD
-note for the agent: this file is generated via the brain (memory.json) and binaries (build.rs)
+note for agent: ...
 
-Single source: `memory.json` is the brain, with exactly three primary keys (`config`, `primary`, `data`; see the table below), and `params.yaml` holds only the interruptores. Every `.md` in the repo root and in `agents/` is generated from them: edit only those two files and run `cargo run --release --bin pla-build` (see `agents/BUILD.md`). Modules in `agents/` subfolders are hand-written. Never edit generated files by hand.
+Single source: `memory.json` is the brain, with exactly three primary keys (`config`, `primary`, `data`; see the table below), and `params.yaml` holds the interruptores and the agent placeholder. Every `.md` in the repo root and in `agents/` is generated from them: edit only those two files and run `cargo run --release --bin pla-build` (see `agents/BUILD.md`). Modules in `agents/` subfolders are hand-written. Never edit generated files by hand.
 
 ## Commands
 
@@ -20,14 +20,15 @@ Run them from anywhere inside the repo: the tool walks up to the folder that hol
 
 ## memory.json and params.yaml
 
-The brain is `memory.json`, with exactly three primary keys: `config` (what the tools need to run: git, settings, paths), `primary` (what makes the docs: identity, texts, definitions) and `data` (what gets built); each starts with `descr_+` and `descr_-`, what it is and is not. `params.yaml` has exactly `levers`, the interruptores. The tools join them as `config`, `primary`, `data` and `params`, so a dotted path such as `config.paths.modules.agent_zettelkasten` or `params.levers.agents_md.preferencias` works everywhere. Any other top-level key is an error.
+The brain is `memory.json`, with exactly three primary keys: `config` (what the tools need to run: git, settings, paths), `primary` (what makes the docs: identity, texts, definitions) and `data` (what gets built); each starts with `descr_+` and `descr_-`, what it is and is not. `params.yaml` has exactly `agent_placeholder` (the note on line 2 of every doc) and `levers` (the interruptores). The tools join them as `config`, `primary`, `data` and `params`, so a dotted path such as `config.paths.modules.agent_zettelkasten` or `params.levers.agents_md.preferencias` works everywhere. Any other top-level key is an error.
 
 | Key | Meaning |
 |---|---|
 | `config` | What the tools need to run the repo: git, tool settings and every path. Its `descr_+` and `descr_-` say what it is and is not. |
 | `config.descr_+` | What `config` is (the positive way), in the essential 20% that carries 80% of the meaning (Pareto rule). |
 | `config.descr_-` | What `config` is not (the negative way), in the essential 20% that carries 80% of the meaning (Pareto rule). |
-| `params` | The interruptores, from `params.yaml`: only `levers`. |
+| `params` | The params, from `params.yaml`: `agent_placeholder` and `levers` (the interruptores). |
+| `params.agent_placeholder` | The note on the second line of every generated doc (the `agent_note` block, and every `on_demand` file), such as `note for agent: ...`. |
 | `config.PLALAST_DIR` | Where the repo lives: always `$PWD`, the repo root, which the tools find by walking up to `memory.json` and resolve at run time. No path is written, so the same value works on every machine and never leaks the user name. |
 | `config.repository` | Remote repository of the project. |
 | `config.branches` | `integration` (where work is committed) and `stable` (what receives merges); `pla-audit` checks they are in sync. |
@@ -45,18 +46,13 @@ The brain is `memory.json`, with exactly three primary keys: `config` (what the 
 | `primary.project` | Identity: `name`, `title` and `plalast_logo` (path of the project logo). |
 | `primary.docs` | Everything about the docs, the markdown files about this project and how it operates. |
 | `primary.docs.definition` | What counts as a doc, in words. |
-| `primary.docs.agent_note` | The note every generated doc carries on its second line, so an agent reading the file knows not to edit it by hand. Inserted by the `agent_note` block. |
 | `primary.docs.on_demand` | How `on_demand` sections are pointed at: the heading of the pointer list (`heading`) and the pointer line (`pointer`, with `{path}`, `{title}` and `{when}`). Their folder is `config.paths.on_demand`. |
-| `primary.agents-md` | The AGENTS.md text that no other key holds, split into fields; `data.content.agents_md` gives the doc its shape and points at them with `ref`. |
+| `primary.agents-md` | The AGENTS.md text, split by the four categories of the doc: `intro` (under the title), `static_premises`, `dynamic_premises`, `good_practices` and `preferences`, one per section; `data.content.agents_md` gives the doc its shape and points at them with `ref`. |
 | `primary.agents-md.intro` | Paragraphs under the title. |
-| `primary.agents-md.static_premises` | Fixed premises: what the repo is, how it is built and the Pareto rule (the Premisas - estáticas section). |
-| `primary.agents-md.brain_keys_intro` | Intro of the table of primary keys (the `brain_keys` block) in the Premisas - estáticas section. |
-| `primary.agents-md.dynamic_premises` | Texts of the Premisas - dinámicas section (`brain`, `write_order`, `problem_first`, `procedures`, `intro`, `map`, `tools_intro`, `candidates_intro`, `modes_intro`); its lists are `commands`, `tools_and_languages`, `candidates` and the `modes` block. |
-| `primary.agents-md.commands` | Commands of the Premisas - dinámicas section: intros (`tool_intro`, `code_intro`) and the `code` commands; the tool commands come from `primary.commands`. |
-| `primary.agents-md.tools_and_languages` | Languages and verifiers in use. |
-| `primary.agents-md.candidates` | Languages that may be used later. |
-| `primary.agents-md.good_practices` | How every agent works in the repo (the Buenas prácticas section). |
-| `primary.agents-md.preferences` | Preferences of the project owner (the Preferencias section). |
+| `primary.agents-md.static_premises` | The Premisas - estáticas section: `items` (the fixed premises: what the repo is, how it is built, the Pareto rule) and `brain_keys_intro` (intro of the table of primary keys, the `brain_keys` block). |
+| `primary.agents-md.dynamic_premises` | The Premisas - dinámicas section: texts (`brain`, `write_order`, `problem_first`, `procedures`, `intro`, `map`, `modes_intro`, `tools_intro`, `candidates_intro`) and lists (`commands`, with `tool_intro`, `code_intro` and `code`; `tools_and_languages`; `candidates`); the tool commands come from `primary.commands` and the modes from the `modes` block. |
+| `primary.agents-md.good_practices` | The Buenas prácticas section: `items`, how every agent works in the repo. |
+| `primary.agents-md.preferences` | The Preferencias section: `items`, preferences of the project owner. |
 | `primary.features` | Features of the project, as `feature_<n>` -> `{descr, status}` (both strings). |
 | `primary.log` | Project log: entries `{date, branch, commit, kind, descr}` in the order they happened; `kind` is `commit`, `merge` or `branch`. A commit cannot hold its own hash, so each one is logged in the next commit. LOG.md shows them newest first; `pla-audit` warns about commits missing from it. |
 | `primary.index` | Project index (empty for now; its format is not defined yet). |
@@ -112,7 +108,7 @@ Switching a section from `on_demand` to `disabled` leaves its old file behind: `
 | `structure_table` | the Structure table, from the `data.structure` entries that have `table` |
 | `schema` | a table of `primary.schema.<part>` with the given `header` |
 | `image` | `![alt](src)`, or an HTML `<img>` when `width` is set; `ref` (a dotted config path such as `primary.project.plalast_logo`) can replace `src` |
-| `agent_note` | the text of `primary.docs.agent_note`, on the line right after the first one (no blank line); every doc has it as the second block of its `head`, unless the doc sets `agent_note: false` |
+| `agent_note` | the text of `params.agent_placeholder`, on the line right after the first one (no blank line); every doc has it as the second block of its `head`, unless the doc sets `agent_note: false` |
 | `modes` | one `- Mode` line per mode of `primary.mode` that is not `disabled`: its rules when `enabled`, a pointer to `mode-<name>.md` when `on_demand`; nothing when every mode is disabled |
 | `brain_keys` | a table `Key | Is (descr_+) | Is not (descr_-)` with one row per primary key of the memory (`config`, `primary`, `data`) |
 | `procedures` | one `## <title>` per procedure of `primary.procedures.items`, followed by its paragraphs |

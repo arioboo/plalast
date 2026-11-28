@@ -1,5 +1,5 @@
 # plalast - The Living Creature
-note for the agent: this file is generated via the brain (memory.json) and binaries (build.rs)
+note for agent: ...
 
 <img src="src/plalast.png" alt="plalast logo" width="200">
 

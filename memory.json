@@ -1,7 +1,7 @@
 {
   "config": {
     "descr_+": "What the tools need to run the repo: repository, branches, paths, audit, lint and hooks.",
-    "descr_-": "Not text for the docs (primary), not what gets built (data), not interruptores (`params.yaml`), not secrets (`.secrets/`).",
+    "descr_-": "Not text for the docs (primary), not what gets built (data), not interruptores or the agent placeholder (`params.yaml`), not secrets (`.secrets/`).",
     "PLALAST_DIR": "$PWD",
     "repository": "github.com/arioboo/plalast",
     "branches": {
@@ -82,7 +82,6 @@
     },
     "docs": {
       "definition": "Docs are all the markdown files about this project and how it operates. Every `.md` directly inside a folder of `config.paths.docs` is a doc, and every doc is generated from `data.content` by `pla-build`; a stray one fails the build.",
-      "agent_note": "note for the agent: this file is generated via the brain (memory.json) and binaries (build.rs)",
       "on_demand": {
         "heading": "On demand",
         "pointer": "`{path}`: {title}. Read it when {when}."
@@ -93,60 +92,67 @@
         "This repo is a public and living creature. Turn on your VPS or machine, connect your agents, code it, teach it something, and make a pull request on Github.",
         "The servers will be 24/7 on. This is a personal project on autonomous coding and living information systems, but everyone is welcome in."
       ],
-      "static_premises": [
-        "Single source: `memory.json` is the brain, with exactly three primary keys (`config`, `primary`, `data`; see the table below), and `params.yaml` holds only the interruptores. Every `.md` in the repo root and in `agents/` is generated from them: edit only those two files and run `cargo run --release --bin pla-build` (see `agents/BUILD.md`). Modules in `agents/` subfolders are hand-written. Never edit generated files by hand.",
-        "Secrets: they live only in `.secrets/` at the repo root, which git ignores except its `.gitkeep`. Code and configs reference them by environment variable; their values never go into other files, the chat or external services.",
-        "Specific formats: markdown for information, json for the memory (`memory.json`), yaml for the interruptores (`params.yaml`), bash for system scripts (setup, links, servers) and Rust for everything else (see Premisas - dinámicas).",
-        "No duplication. Only one way of functional working, one memory file and one params file, symbolic links where matters, only one zettelkasten vault, etc.",
-        "Open source: everyone can collaborate with it (see `README.md` at the repo root for the contribution flow)",
-        "Pareto rule: 20% of the effort gives 80% of the result; when unsure, assume a similar split. Propose that 20% first, and more when it is for best practices. It also rules every description: `descr_+` (what a key is, the positive way) and `descr_-` (what it is not, the negative way) each say the essential 20% that carries 80% of the meaning.",
-        "Conservative, in general: prefer what exists and is known to work over what is new; change little at a time, keep every step reversible, and when in doubt ask instead of acting. The mode `ultra_conservative` makes this stricter when it is on.",
-        "Only small diff steps: this is not about git diffs but about knowledge. What the machine generates or learns on its own grows in small steps, and each step should ideally pass a verification process at several levels before it becomes part of the memory: consistent with what is already known, checked by machines (tests, linters, formal proofs) and reviewed by a human."
-      ],
-      "brain_keys_intro": "The memory (`memory.json`) has exactly three primary keys, each saying what it is (`descr_+`) and what it is not (`descr_-`):",
+      "static_premises": {
+        "items": [
+          "Single source: `memory.json` is the brain, with exactly three primary keys (`config`, `primary`, `data`; see the table below), and `params.yaml` holds the interruptores and the agent placeholder. Every `.md` in the repo root and in `agents/` is generated from them: edit only those two files and run `cargo run --release --bin pla-build` (see `agents/BUILD.md`). Modules in `agents/` subfolders are hand-written. Never edit generated files by hand.",
+          "Only one brain: `memory.json`. There is no second memory, copy or parallel source of truth; everything else is built from it or points at it.",
+          "Secrets: they live only in `.secrets/` at the repo root, which git ignores except its `.gitkeep`. Code and configs reference them by environment variable; their values never go into other files, the chat or external services.",
+          "Specific formats: markdown for information, json for the memory (`memory.json`), yaml for the params (`params.yaml`), bash for system scripts (setup, links, servers) and Rust for everything else (see Premisas - dinámicas).",
+          "No duplication. Only one way of functional working, one memory file and one params file, symbolic links where matters, only one zettelkasten vault, etc.",
+          "Open source: everyone can collaborate with it (see `README.md` at the repo root for the contribution flow)",
+          "Pareto rule: 20% of the effort gives 80% of the result; when unsure, assume a similar split. Propose that 20% first, and more when it is for best practices. It also rules every description: `descr_+` (what a key is, the positive way) and `descr_-` (what it is not, the negative way) each say the essential 20% that carries 80% of the meaning.",
+          "Conservative, in general: prefer what exists and is known to work over what is new; change little at a time, keep every step reversible, and when in doubt ask instead of acting. The mode `ultra_conservative` makes this stricter when it is on.",
+          "Only small diff steps: this is not about git diffs but about knowledge. What the machine generates or learns on its own grows in small steps, and each step should ideally pass a verification process at several levels before it becomes part of the memory: consistent with what is already known, checked by machines (tests, linters, formal proofs) and reviewed by a human."
+        ],
+        "brain_keys_intro": "The memory (`memory.json`) has exactly three primary keys, each saying what it is (`descr_+`) and what it is not (`descr_-`):"
+      },
       "dynamic_premises": {
-        "brain": "Brain: `memory.json` is the brain of plalast, the place everything is read from and written to. Everything in this file, and every other generated file (every `.md` in the root and in `agents/`, `.gitignore`, `.claude/settings.json`), is rebuilt from it byte by byte, with the interruptores of `params.yaml`.",
+        "brain": "Brain: `memory.json` is the brain of plalast, the place everything is read from and written to. Everything in this file, and every other generated file (every `.md` in the root and in `agents/`, `.gitignore`, `.claude/settings.json`), is rebuilt from it byte by byte, with the params of `params.yaml` (interruptores and agent placeholder).",
         "write_order": "Write order: delete > modify/edit > add. Before adding anything, first delete what is no longer needed, then modify or edit what exists, and add only what neither covers. This forces a kind of autonomous retraining of the memory, as long as the Pareto rule holds in each case.",
         "problem_first": "Problem-first: say, in plain human language, the problem that a tool or a set of tools solves, before naming any tool. Do not get carried away by proper names: names change, the problem stays. Follow \"All models are wrong, but some are useful\": every tool and every description is a model, judged by how useful it is and not by how true it is. This is the pragmatic philosophy the Pareto rule installs in our learning by reinforcement.",
         "procedures": "Procedures: short instructions in human language for recurring situations, in `agents/PROCEDURES.md` (from `primary.procedures`). Read the one that fits before acting.",
         "intro": "The current state of the repo: it changes as the repo grows, so check it against the repo when in doubt.",
         "map": "Map: `agents/structure.md` (where each path lives) and `cargo run --release --bin pla-recall -- [term]`.",
+        "modes_intro": "Modes (`primary.mode`, each with its interruptor in `params.levers.mode`):",
+        "commands": {
+          "tool_intro": "Repo tool (details in `agents/BUILD.md`), from anywhere inside the repo:",
+          "code_intro": "Code:",
+          "code": [
+            "Rust: `cargo build`, `cargo test`, `cargo test <test_name>` (single test), `cargo clippy -- -D warnings`, `cargo fmt --check`",
+            "Verus: `cargo verus verify` (formal verification of the `verus!` code; install and usage in `agents/guides/verus.md`)",
+            "Lean 4: `lake build` (proofs of a Lean project; install and usage in `agents/guides/lean.md`)",
+            "Dafny: `dafny verify <file>.dfy` (verification of a Dafny file; install and usage in `agents/guides/dafny.md`)"
+          ]
+        },
         "tools_intro": "Tools and languages in use:",
+        "tools_and_languages": [
+          "Programs that must be fast, safe with memory and easy for an LLM to read and write, some of them proven correct: Rust, the default for every program and tool, with Verus for the proofs.",
+          "Proving that a statement is true, and keeping a growing base of checked facts: Lean 4.",
+          "Writing software together with the proof that it does what it says, in a form LLMs program well: Dafny, the default for LLM-programming."
+        ],
         "candidates_intro": "Candidates (possible, not in use yet):",
-        "modes_intro": "Modes (`primary.mode`, each with its interruptor in `params.levers.mode`):"
-      },
-      "commands": {
-        "tool_intro": "Repo tool (details in `agents/BUILD.md`), from anywhere inside the repo:",
-        "code_intro": "Code:",
-        "code": [
-          "Rust: `cargo build`, `cargo test`, `cargo test <test_name>` (single test), `cargo clippy -- -D warnings`, `cargo fmt --check`",
-          "Verus: `cargo verus verify` (formal verification of the `verus!` code; install and usage in `agents/guides/verus.md`)",
-          "Lean 4: `lake build` (proofs of a Lean project; install and usage in `agents/guides/lean.md`)",
-          "Dafny: `dafny verify <file>.dfy` (verification of a Dafny file; install and usage in `agents/guides/dafny.md`)"
+        "candidates": [
+          "Building web pages and user interfaces, and scripting or crawling the web: TypeScript."
         ]
       },
-      "tools_and_languages": [
-        "Programs that must be fast, safe with memory and easy for an LLM to read and write, some of them proven correct: Rust, the default for every program and tool, with Verus for the proofs.",
-        "Proving that a statement is true, and keeping a growing base of checked facts: Lean 4.",
-        "Writing software together with the proof that it does what it says, in a form LLMs program well: Dafny, the default for LLM-programming."
-      ],
-      "candidates": [
-        "Building web pages and user interfaces, and scripting or crawling the web: TypeScript."
-      ],
-      "good_practices": [
-        "Interruptor: every document section and every mode has one in `params.levers` (also called a memory lever), with three values: `enabled` (always in the agent's memory), `on_demand` (its own file, read when needed; the default when none is set) or `disabled` (not built). Every new section or mode gets one when its default is not the right one.",
-        "File changes: when the user asks to touch any file, make the change in its section of `memory.json` (or `params.yaml` for interruptores) and rebuild with `pla-build` (the Rust build tool); never edit the output directly. Only the hand-written Rust code and the modules in `agents/` subfolders are edited in place.",
-        "Log: after every commit, merge or new branch, add an entry `{date, branch, commit, kind, descr}` to `primary.log` (a commit cannot hold its own hash, so it goes in the next commit) and rebuild; `agents/LOG.md` shows it.",
-        "Zettelkasten markdown spirit. A lot of things in the web are garbage, so notes in the agent-zettelkasten use CDU (Universal Decimal Classification) notation: the file name starts with the CDU code, then a kebab-case title, e.g. `004.8-llm-agents.md` (004.8 = artificial intelligence). The infrastructure will be up.",
-        "Lean memory: always-on docs hold only what an agent cannot learn by reading the repo; maps, overviews and reference material are `on_demand`.",
-        "Every rule earns its place: add one only when an agent repeats a mistake, and only if the agent could not find it in the repo; `pla-lint` keeps always-on docs under `config.lint.max_lines`.",
-        "Enforce, don't ask: rules that must never bend (never edit generated files, docs in sync with `memory.json`) are hooks or checks, not just instructions."
-      ],
-      "preferences": [
-        "Naming: when the user says \"la memoria\", \"el contexto\" or \"el json\" (memory, context, the json), they mean `memory.json`.",
-        "Using languages LLM-friendly like Rust, Python or Go is desirable. Also, using LLM programming-specific languages is a tool to proceed with caution, but desirable at some point.",
-        "Formal verification is desirable, but very expensive. Watch out and connect to others' ideas instead of reinventing the wheel"
-      ]
+      "good_practices": {
+        "items": [
+          "Interruptor: every document section and every mode has one in `params.levers` (also called a memory lever), with three values: `enabled` (always in the agent's memory), `on_demand` (its own file, read when needed; the default when none is set) or `disabled` (not built). Every new section or mode gets one when its default is not the right one.",
+          "File changes: when the user asks to touch any file, make the change in its section of `memory.json` (or `params.yaml` for interruptores) and rebuild with `pla-build` (the Rust build tool); never edit the output directly. Only the hand-written Rust code and the modules in `agents/` subfolders are edited in place.",
+          "Log: after every commit, merge or new branch, add an entry `{date, branch, commit, kind, descr}` to `primary.log` (a commit cannot hold its own hash, so it goes in the next commit) and rebuild; `agents/LOG.md` shows it.",
+          "Zettelkasten markdown spirit. A lot of things in the web are garbage, so notes in the agent-zettelkasten use CDU (Universal Decimal Classification) notation: the file name starts with the CDU code, then a kebab-case title, e.g. `004.8-llm-agents.md` (004.8 = artificial intelligence). The infrastructure will be up.",
+          "Lean memory: always-on docs hold only what an agent cannot learn by reading the repo; maps, overviews and reference material are `on_demand`.",
+          "Every rule earns its place: add one only when an agent repeats a mistake, and only if the agent could not find it in the repo; `pla-lint` keeps always-on docs under `config.lint.max_lines`.",
+          "Enforce, don't ask: rules that must never bend (never edit generated files, docs in sync with `memory.json`) are hooks or checks, not just instructions."
+        ]
+      },
+      "preferences": {
+        "items": [
+          "Naming: when the user says \"la memoria\", \"el contexto\" or \"el json\" (memory, context, the json), they mean `memory.json`.",
+          "Using languages LLM-friendly like Rust, Python or Go is desirable. Also, using LLM programming-specific languages is a tool to proceed with caution, but desirable at some point.",
+          "Formal verification is desirable, but very expensive. Watch out and connect to others' ideas instead of reinventing the wheel"
+        ]
+      }
     },
     "commands": [
       {
@@ -484,6 +490,13 @@
         "commit": "5c96678",
         "kind": "commit",
         "descr": "memory.json is the brain with config, primary and data (descr_+ / descr_-); params.yaml holds only the interruptores; Pareto a static premise; brain and write_order premises; mode ultra_conservative; rebuild test."
+      },
+      {
+        "date": "2026-11-28",
+        "branch": "develop",
+        "commit": "b508c52",
+        "kind": "commit",
+        "descr": "Problem-first premise, primary.procedures (agents/PROCEDURES.md), and the static premises Conservative, in general and Only small diff steps."
       }
     ],
     "index": {},
@@ -564,7 +577,8 @@
         "config": "What the tools need to run the repo: git, tool settings and every path. Its `descr_+` and `descr_-` say what it is and is not.",
         "config.descr_+": "What `config` is (the positive way), in the essential 20% that carries 80% of the meaning (Pareto rule).",
         "config.descr_-": "What `config` is not (the negative way), in the essential 20% that carries 80% of the meaning (Pareto rule).",
-        "params": "The interruptores, from `params.yaml`: only `levers`.",
+        "params": "The params, from `params.yaml`: `agent_placeholder` and `levers` (the interruptores).",
+        "params.agent_placeholder": "The note on the second line of every generated doc (the `agent_note` block, and every `on_demand` file), such as `note for agent: ...`.",
         "config.PLALAST_DIR": "Where the repo lives: always `$PWD`, the repo root, which the tools find by walking up to `memory.json` and resolve at run time. No path is written, so the same value works on every machine and never leaks the user name.",
         "config.repository": "Remote repository of the project.",
         "config.branches": "`integration` (where work is committed) and `stable` (what receives merges); `pla-audit` checks they are in sync.",
@@ -582,18 +596,13 @@
         "primary.project": "Identity: `name`, `title` and `plalast_logo` (path of the project logo).",
         "primary.docs": "Everything about the docs, the markdown files about this project and how it operates.",
         "primary.docs.definition": "What counts as a doc, in words.",
-        "primary.docs.agent_note": "The note every generated doc carries on its second line, so an agent reading the file knows not to edit it by hand. Inserted by the `agent_note` block.",
         "primary.docs.on_demand": "How `on_demand` sections are pointed at: the heading of the pointer list (`heading`) and the pointer line (`pointer`, with `{path}`, `{title}` and `{when}`). Their folder is `config.paths.on_demand`.",
-        "primary.agents-md": "The AGENTS.md text that no other key holds, split into fields; `data.content.agents_md` gives the doc its shape and points at them with `ref`.",
+        "primary.agents-md": "The AGENTS.md text, split by the four categories of the doc: `intro` (under the title), `static_premises`, `dynamic_premises`, `good_practices` and `preferences`, one per section; `data.content.agents_md` gives the doc its shape and points at them with `ref`.",
         "primary.agents-md.intro": "Paragraphs under the title.",
-        "primary.agents-md.static_premises": "Fixed premises: what the repo is, how it is built and the Pareto rule (the Premisas - estáticas section).",
-        "primary.agents-md.brain_keys_intro": "Intro of the table of primary keys (the `brain_keys` block) in the Premisas - estáticas section.",
-        "primary.agents-md.dynamic_premises": "Texts of the Premisas - dinámicas section (`brain`, `write_order`, `problem_first`, `procedures`, `intro`, `map`, `tools_intro`, `candidates_intro`, `modes_intro`); its lists are `commands`, `tools_and_languages`, `candidates` and the `modes` block.",
-        "primary.agents-md.commands": "Commands of the Premisas - dinámicas section: intros (`tool_intro`, `code_intro`) and the `code` commands; the tool commands come from `primary.commands`.",
-        "primary.agents-md.tools_and_languages": "Languages and verifiers in use.",
-        "primary.agents-md.candidates": "Languages that may be used later.",
-        "primary.agents-md.good_practices": "How every agent works in the repo (the Buenas prácticas section).",
-        "primary.agents-md.preferences": "Preferences of the project owner (the Preferencias section).",
+        "primary.agents-md.static_premises": "The Premisas - estáticas section: `items` (the fixed premises: what the repo is, how it is built, the Pareto rule) and `brain_keys_intro` (intro of the table of primary keys, the `brain_keys` block).",
+        "primary.agents-md.dynamic_premises": "The Premisas - dinámicas section: texts (`brain`, `write_order`, `problem_first`, `procedures`, `intro`, `map`, `modes_intro`, `tools_intro`, `candidates_intro`) and lists (`commands`, with `tool_intro`, `code_intro` and `code`; `tools_and_languages`; `candidates`); the tool commands come from `primary.commands` and the modes from the `modes` block.",
+        "primary.agents-md.good_practices": "The Buenas prácticas section: `items`, how every agent works in the repo.",
+        "primary.agents-md.preferences": "The Preferencias section: `items`, preferences of the project owner.",
         "primary.features": "Features of the project, as `feature_<n>` -> `{descr, status}` (both strings).",
         "primary.log": "Project log: entries `{date, branch, commit, kind, descr}` in the order they happened; `kind` is `commit`, `merge` or `branch`. A commit cannot hold its own hash, so each one is logged in the next commit. LOG.md shows them newest first; `pla-audit` warns about commits missing from it.",
         "primary.index": "Project index (empty for now; its format is not defined yet).",
@@ -636,7 +645,7 @@
         "structure_table": "the Structure table, from the `data.structure` entries that have `table`",
         "schema": "a table of `primary.schema.<part>` with the given `header`",
         "image": "`![alt](src)`, or an HTML `<img>` when `width` is set; `ref` (a dotted config path such as `primary.project.plalast_logo`) can replace `src`",
-        "agent_note": "the text of `primary.docs.agent_note`, on the line right after the first one (no blank line); every doc has it as the second block of its `head`, unless the doc sets `agent_note: false`",
+        "agent_note": "the text of `params.agent_placeholder`, on the line right after the first one (no blank line); every doc has it as the second block of its `head`, unless the doc sets `agent_note: false`",
         "modes": "one `- Mode` line per mode of `primary.mode` that is not `disabled`: its rules when `enabled`, a pointer to `mode-<name>.md` when `on_demand`; nothing when every mode is disabled",
         "brain_keys": "a table `Key | Is (descr_+) | Is not (descr_-)` with one row per primary key of the memory (`config`, `primary`, `data`)",
         "procedures": "one `## <title>` per procedure of `primary.procedures.items`, followed by its paragraphs"
@@ -651,15 +660,15 @@
         "path": "memory.json",
         "type": "file",
         "build": null,
-        "table": "The memory, the brain: `config`, `primary` and `data`; with the interruptores of `params.yaml`, every `.md` in the root and in `agents/` is generated from it (see `agents/BUILD.md`)",
+        "table": "The memory, the brain: `config`, `primary` and `data`; with the params of `params.yaml`, every `.md` in the root and in `agents/` is generated from it (see `agents/BUILD.md`)",
         "description": "The memory (config, primary, data). Hand-edited; with params.yaml, the only files that change for docs and structure."
       },
       {
         "path": "params.yaml",
         "type": "file",
         "build": null,
-        "table": "Parameters: only the interruptores (`levers`) of document sections and modes",
-        "description": "Parameters (levers). Hand-edited YAML."
+        "table": "Parameters: the agent placeholder (line 2 of every doc) and the interruptores (`levers`) of document sections and modes",
+        "description": "Parameters (agent_placeholder, levers). Hand-edited YAML."
       },
       {
         "path": "Cargo.toml",
@@ -909,11 +918,11 @@
             "blocks": [
               {
                 "type": "list",
-                "ref": "primary.agents-md.static_premises"
+                "ref": "primary.agents-md.static_premises.items"
               },
               {
                 "type": "paragraph",
-                "ref": "primary.agents-md.brain_keys_intro"
+                "ref": "primary.agents-md.static_premises.brain_keys_intro"
               },
               {
                 "type": "brain_keys"
@@ -958,7 +967,7 @@
               },
               {
                 "type": "paragraph",
-                "ref": "primary.agents-md.commands.tool_intro"
+                "ref": "primary.agents-md.dynamic_premises.commands.tool_intro"
               },
               {
                 "type": "list",
@@ -967,11 +976,11 @@
               },
               {
                 "type": "paragraph",
-                "ref": "primary.agents-md.commands.code_intro"
+                "ref": "primary.agents-md.dynamic_premises.commands.code_intro"
               },
               {
                 "type": "list",
-                "ref": "primary.agents-md.commands.code"
+                "ref": "primary.agents-md.dynamic_premises.commands.code"
               },
               {
                 "type": "paragraph",
@@ -979,7 +988,7 @@
               },
               {
                 "type": "list",
-                "ref": "primary.agents-md.tools_and_languages"
+                "ref": "primary.agents-md.dynamic_premises.tools_and_languages"
               },
               {
                 "type": "paragraph",
@@ -987,7 +996,7 @@
               },
               {
                 "type": "list",
-                "ref": "primary.agents-md.candidates"
+                "ref": "primary.agents-md.dynamic_premises.candidates"
               }
             ]
           },
@@ -998,7 +1007,7 @@
             "blocks": [
               {
                 "type": "list",
-                "ref": "primary.agents-md.good_practices"
+                "ref": "primary.agents-md.good_practices.items"
               }
             ]
           },
@@ -1009,7 +1018,7 @@
             "blocks": [
               {
                 "type": "list",
-                "ref": "primary.agents-md.preferences"
+                "ref": "primary.agents-md.preferences.items"
               }
             ]
           }
@@ -1105,7 +1114,7 @@
           },
           {
             "type": "paragraph",
-            "ref": "primary.agents-md.static_premises.0"
+            "ref": "primary.agents-md.static_premises.items.0"
           }
         ],
         "sections": [
@@ -1139,7 +1148,7 @@
             "blocks": [
               {
                 "type": "paragraph",
-                "text": "The brain is `memory.json`, with exactly three primary keys: `config` (what the tools need to run: git, settings, paths), `primary` (what makes the docs: identity, texts, definitions) and `data` (what gets built); each starts with `descr_+` and `descr_-`, what it is and is not. `params.yaml` has exactly `levers`, the interruptores. The tools join them as `config`, `primary`, `data` and `params`, so a dotted path such as `config.paths.modules.agent_zettelkasten` or `params.levers.agents_md.preferencias` works everywhere. Any other top-level key is an error."
+                "text": "The brain is `memory.json`, with exactly three primary keys: `config` (what the tools need to run: git, settings, paths), `primary` (what makes the docs: identity, texts, definitions) and `data` (what gets built); each starts with `descr_+` and `descr_-`, what it is and is not. `params.yaml` has exactly `agent_placeholder` (the note on line 2 of every doc) and `levers` (the interruptores). The tools join them as `config`, `primary`, `data` and `params`, so a dotted path such as `config.paths.modules.agent_zettelkasten` or `params.levers.agents_md.preferencias` works everywhere. Any other top-level key is an error."
               },
               {
                 "type": "schema",

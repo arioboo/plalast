@@ -1,10 +1,11 @@
 # Log
-note for the agent: this file is generated via the brain (memory.json) and binaries (build.rs)
+note for agent: ...
 
 Branches, commits and merges of this repo, newest first. Source: `primary.log` in `memory.json`.
 
 | Date | Branch | Commit | Kind | Description |
 |---|---|---|---|---|
+| 2026-11-28 | develop | `b508c52` | commit | Problem-first premise, primary.procedures (agents/PROCEDURES.md), and the static premises Conservative, in general and Only small diff steps. |
 | 2026-11-28 | develop | `5c96678` | commit | memory.json is the brain with config, primary and data (descr_+ / descr_-); params.yaml holds only the interruptores; Pareto a static premise; brain and write_order premises; mode ultra_conservative; rebuild test. |
 | 2026-11-28 | main | `cffb150` | merge | Fast-forward merge of develop. |
 | 2026-11-28 | develop | `cffb150` | commit | CLAUDE.md made only an @AGENTS.md import: docs can opt out of the agent note with `agent_note: false`. |

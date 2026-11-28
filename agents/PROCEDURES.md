@@ -1,5 +1,5 @@
 # Procedures
-note for the agent: this file is generated via the brain (memory.json) and binaries (build.rs)
+note for agent: ...
 
 Procedures: mini-instructions of one or a few paragraphs, in human and not very concrete language, with no references to code or to the repo, readable by humans and machines alike. Each one has a `title` and `text` (a list of paragraphs).
 

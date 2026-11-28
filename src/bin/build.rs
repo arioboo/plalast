@@ -170,11 +170,11 @@ fn items(cfg: &Value, b: &Value, kind: &str) -> Res<Vec<String>> {
     })
 }
 
-/// The note every generated doc carries on its second line (`primary.docs.agent_note`).
+/// The note every generated doc carries on its second line (`params.agent_placeholder`).
 fn agent_note(cfg: &Value) -> Res<&str> {
-    docs(cfg)["agent_note"]
+    cfg["params"]["agent_placeholder"]
         .as_str()
-        .ok_or_else(|| "primary.docs.agent_note is missing".to_string())
+        .ok_or_else(|| "params.agent_placeholder is missing".to_string())
 }
 
 /// The `brain_keys` block: one row per primary key of the memory with what it is (`descr_+`)
@@ -743,10 +743,9 @@ mod tests {
     fn cfg(levers: &Value) -> Value {
         json!({
             "config": {"paths": {"on_demand": "agents"}},
-            "params": {"levers": {"doc": levers}},
+            "params": {"levers": {"doc": levers}, "agent_placeholder": "NOTE"},
             "primary": {
                 "docs": {
-                    "agent_note": "NOTE",
                     "on_demand": {"heading": "On demand", "pointer": "`{path}`: {title}. Read it when {when}."}
                 },
                 "schema": {"levers": {"enabled": "", "on_demand": "", "disabled": ""}}

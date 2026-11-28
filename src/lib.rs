@@ -1,6 +1,6 @@
 //! Shared helpers for the plalast tools. The brain of the repo is `memory.json` at its root, with
-//! exactly three primary keys (`config`, `primary`, `data`); `params.yaml` holds only the
-//! interruptores (`levers`). [`open`] joins them as one value, `{config, primary, data, params}`,
+//! exactly three primary keys (`config`, `primary`, `data`); `params.yaml` holds the
+//! interruptores (`levers`) and the agent placeholder (`agent_placeholder`). [`open`] joins them as one value, `{config, primary, data, params}`,
 //! so a dotted path such as `config.paths.modules.agent_zettelkasten` or
 //! `params.levers.agents_md.preferencias` works the same everywhere.
 
@@ -16,7 +16,7 @@ use std::process::ExitCode;
 /// The memory, the brain: what the tools need to run (`config`), what makes the docs (`primary`)
 /// and what gets built (`data`).
 pub const MEMORY: &str = "memory.json";
-/// The parameters: only the interruptores (`levers`).
+/// The parameters: the interruptores (`levers`) and the note on line 2 of every doc (`agent_placeholder`).
 pub const PARAMS: &str = "params.yaml";
 
 /// The primary keys of the memory, in file order; each one has a `descr_+` and a `descr_-`.
@@ -57,7 +57,7 @@ pub fn load(root: &Path) -> Res<Value> {
     let params: Value =
         serde_norway::from_str(&read(PARAMS)?).map_err(|e| format!("{PARAMS}: {e}"))?;
     check_keys(&memory, MEMORY, &["config", "data", "primary"])?;
-    check_keys(&params, PARAMS, &["levers"])?;
+    check_keys(&params, PARAMS, &["agent_placeholder", "levers"])?;
     let mut joined = memory;
     joined["params"] = params;
     Ok(joined)

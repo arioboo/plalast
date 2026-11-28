@@ -1,12 +1,12 @@
 # Structure
-note for the agent: this file is generated via the brain (memory.json) and binaries (build.rs)
+note for agent: ...
 
 Paths are added here as they are created:
 
 | Path | Content |
 |---|---|
-| `memory.json` | The memory, the brain: `config`, `primary` and `data`; with the interruptores of `params.yaml`, every `.md` in the root and in `agents/` is generated from it (see `agents/BUILD.md`) |
-| `params.yaml` | Parameters: only the interruptores (`levers`) of document sections and modes |
+| `memory.json` | The memory, the brain: `config`, `primary` and `data`; with the params of `params.yaml`, every `.md` in the root and in `agents/` is generated from it (see `agents/BUILD.md`) |
+| `params.yaml` | Parameters: the agent placeholder (line 2 of every doc) and the interruptores (`levers`) of document sections and modes |
 | `Cargo.toml` | Rust crate with four tools: `pla-build`, `pla-recall`, `pla-lint` and `pla-audit`, plus Verus verification (see `agents/BUILD.md`, `agents/guides/verus.md`) |
 | `src/` | Rust code: `lib.rs` (shared memory access and checks), `pdf.rs` (guide renderer), `verified.rs` (Verus-verified code), `bin/build.rs`, `bin/recall.rs`, `bin/lint.rs`, `bin/audit.rs` |
 | `tests/` | Integration tests: `tests/wiring.rs` runs the four tools against this repo's memory |

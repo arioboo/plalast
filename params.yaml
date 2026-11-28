@@ -1,6 +1,8 @@
-# params.yaml: only the interruptores (levers) of document sections and modes: enabled,
-# on_demand (the default when unset) or disabled. Everything else is in memory.json, the brain.
+# params.yaml: the agent placeholder (the note on line 2 of every generated doc) and the
+# interruptores (levers) of document sections and modes: enabled, on_demand (the default when
+# unset) or disabled. Everything else is in memory.json, the brain.
 # Documented in memory.json (primary.schema.keys) and agents/BUILD.md.
+agent_placeholder: "note for agent: ..."
 levers:
   agents_md:
     premisas-estaticas: enabled
