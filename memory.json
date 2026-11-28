@@ -118,6 +118,12 @@
         "build": "problems_md"
       },
       {
+        "path": "agents/user_guide.md",
+        "type": "file",
+        "build": "user_guide_md",
+        "pdf": true
+      },
+      {
         "path": "agents/BUILD.md",
         "type": "file",
         "build": "build_md"
@@ -444,6 +450,162 @@
           ],
           "sections": []
         },
+        "user_guide_md": {
+          "head": [
+            {
+              "type": "heading",
+              "level": 1,
+              "text": "Guía de usuario"
+            },
+            {
+              "type": "agent_note"
+            },
+            {
+              "type": "paragraph",
+              "text": "Cada parte empieza por un problema, dice qué param de `params.yaml` lo resuelve y da un ejemplo. Cada param se llama por la ruta del campo de `memory.json` que fija; solo tú cambias `params.yaml`."
+            },
+            {
+              "type": "heading",
+              "level": 2,
+              "text": "Quiero que el agente cargue más o menos memoria"
+            },
+            {
+              "type": "paragraph",
+              "text": "`config.mem_level` elige cuánta memoria está siempre en contexto: `low`, `mid` o `hard` (la que más). Un param escrito como `{low: …, mid: …, hard: …}` toma el valor del nivel actual."
+            },
+            {
+              "type": "code",
+              "lang": "yaml",
+              "text": "config.mem_level: low\nprimary.docs.content.agents_md.sections.buenas-practicas: {low: on_demand, mid: enabled, hard: enabled}"
+            },
+            {
+              "type": "heading",
+              "level": 2,
+              "text": "Quiero encender o apagar una sección, un doc entero o un modo"
+            },
+            {
+              "type": "paragraph",
+              "text": "Los interruptores van después de `#---INTERRUPTORS---`, con la ruta de su campo: `primary.docs.content.<doc>.sections.<id>`, `primary.docs.content.<doc>` o `primary.mode.<name>`. Valores: `enabled` (siempre en memoria), `on_demand` (su propio archivo, se lee cuando hace falta; el valor por defecto) o `disabled` (no se construye)."
+            },
+            {
+              "type": "code",
+              "lang": "yaml",
+              "text": "#---INTERRUPTORS---\nprimary.docs.content.agents_md.sections.preferencias: on_demand\nprimary.docs.content.features_md: disabled\nprimary.mode.ultra_conservative: enabled"
+            },
+            {
+              "type": "heading",
+              "level": 2,
+              "text": "Quiero que el agente trabaje solo o con subagentes"
+            },
+            {
+              "type": "paragraph",
+              "text": "Con `config.master_arch: false` el agente hace cada tarea él mismo; con `true` orquesta y delega en los subagentes de `agents/subagents/`. `config.subagent_cycle` nombra el ciclo en orden, separado por `-`, y cada `x` es `plalast-x`. Con `config.cycle_behavior: true` cada tarea pasa por el ciclo hasta que las comprobaciones pasan (como mucho 3 rondas); necesita `config.master_arch: true`."
+            },
+            {
+              "type": "code",
+              "lang": "yaml",
+              "text": "config.master_arch: true\nconfig.subagent_cycle: \"writer-verifier-debug\"\nconfig.cycle_behavior: true"
+            },
+            {
+              "type": "heading",
+              "level": 2,
+              "text": "Quiero decidir qué es obligatorio y qué preferente"
+            },
+            {
+              "type": "paragraph",
+              "text": "`config.obligatory` y `config.preferential` listan las secciones de AGENTS.md de cada clase, como rutas de la memoria; nunca una en las dos. El título de cada sección lo dice: `(obligatory)` o `(preferential)`."
+            },
+            {
+              "type": "code",
+              "lang": "yaml",
+              "text": "config.obligatory:\n  - primary.agents-md.static_rules\nconfig.preferential:\n  - primary.agents-md.preferences"
+            },
+            {
+              "type": "heading",
+              "level": 2,
+              "text": "Quiero cambiar la nota de la segunda línea de cada doc"
+            },
+            {
+              "type": "paragraph",
+              "text": "`primary.docs.agent_placeholder` es el texto que va en la línea 2 de cada doc generado, salvo `agents/CLAUDE.md`, que solo contiene `@AGENTS.md`."
+            },
+            {
+              "type": "code",
+              "lang": "yaml",
+              "text": "primary.docs.agent_placeholder: \"note for agent: generated from memory.json.\""
+            },
+            {
+              "type": "heading",
+              "level": 2,
+              "text": "Quiero limitar cuánto ocupa lo que siempre se carga"
+            },
+            {
+              "type": "paragraph",
+              "text": "`config.lint.max_lines` es el máximo de líneas, sumadas, de los docs siempre en contexto; si se pasa, `pla-lint` falla y toca mover secciones a `on_demand`. Puede escribirse por nivel."
+            },
+            {
+              "type": "code",
+              "lang": "yaml",
+              "text": "config.lint.max_lines: {low: 120, mid: 200, hard: 300}"
+            },
+            {
+              "type": "heading",
+              "level": 2,
+              "text": "Quiero elegir las ramas de trabajo y estable"
+            },
+            {
+              "type": "paragraph",
+              "text": "`config.branches.integration` nombra la rama de trabajo y `config.branches.stable` la estable; `pla-audit` comprueba que están sincronizadas."
+            },
+            {
+              "type": "code",
+              "lang": "yaml",
+              "text": "config.branches.integration: develop\nconfig.branches.stable: main"
+            },
+            {
+              "type": "heading",
+              "level": 2,
+              "text": "Quiero que la auditoría no reporte algo que es correcto"
+            },
+            {
+              "type": "paragraph",
+              "text": "`config.audit.allow` lista textos exactos o rutas que `pla-audit` nunca reporta (como un email público de contacto)."
+            },
+            {
+              "type": "code",
+              "lang": "yaml",
+              "text": "config.audit.allow: []"
+            },
+            {
+              "type": "heading",
+              "level": 2,
+              "text": "Quiero elegir los hooks de git y de Claude Code"
+            },
+            {
+              "type": "paragraph",
+              "text": "`config.hooks.dir` es la carpeta de los hooks de git (el `pre-commit` corre `pla-build --check`). `config.hooks.claude` tiene dos hooks de Claude Code: `PreToolUse` impide editar a mano los archivos generados y escribir fuera del repo; `SessionStart` corre `pla-recall --session` al empezar cada sesión."
+            },
+            {
+              "type": "code",
+              "lang": "yaml",
+              "text": "config.hooks.dir: agents/hooks\nconfig.hooks.claude:\n  PreToolUse: …    # protect-generated.sh\n  SessionStart: …  # session-recall.sh"
+            },
+            {
+              "type": "heading",
+              "level": 2,
+              "text": "Quiero que un cambio de param tenga efecto"
+            },
+            {
+              "type": "paragraph",
+              "text": "Reconstruye y verifica (o pídeselo al agente). Un param no se escribe también en `memory.json`: vive solo en `params.yaml`."
+            },
+            {
+              "type": "code",
+              "lang": "sh",
+              "text": "cargo run --release --bin pla-build\ncargo run --release --bin pla-verify"
+            }
+          ]
+        },
         "claude_md": {
           "agent_note": false,
           "head": [
@@ -620,7 +782,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Guides are modules too: write `agents/guides/<name>.md` and run `pla-build`, which renders `agents/guides/<name>.pdf` from it (headings, paragraphs, lists and code blocks; inline markup is flattened). The PDF is deterministic, so `pla-build --check` reports a stale one."
+                  "text": "Guides are modules too: write `agents/guides/<name>.md` and run `pla-build`, which renders `agents/guides/<name>.pdf` from it (headings, paragraphs, lists and code blocks; inline markup is flattened). A generated doc gets a PDF the same way when its `config.structure` entry has `pdf: true`. Every PDF is deterministic, so `pla-build --check` reports a stale one."
                 }
               ]
             },
@@ -964,6 +1126,20 @@
         "level": "issue",
         "where": "plalast::fantastic::CHECKS",
         "descr": "The battery of tests for the 4 fantásticos has only its first checks (one kind, unique names, solves a problem, rendered); the rest are still to be defined.",
+        "status": "open"
+      },
+      {
+        "date": "2026-11-28",
+        "level": "warning",
+        "where": "config.cycle_behavior",
+        "descr": "The limit of 3 rounds of the cycle is only text (in the premise, the schema and pla-recall); nothing enforces it.",
+        "status": "open"
+      },
+      {
+        "date": "2026-11-28",
+        "level": "warning",
+        "where": "pla-recall --session",
+        "descr": "The cycle line names the roles verifier and debug whatever config.subagent_cycle holds.",
         "status": "open"
       }
     ],
@@ -1373,6 +1549,20 @@
         "commit": "eae5d15",
         "change": "merge(main)",
         "descr": "Fast-forward merge of develop."
+      },
+      {
+        "date": "2026-11-28",
+        "branch": "develop",
+        "commit": "8e9410e",
+        "change": "feat(agents)",
+        "descr": "Subagents plalast-writer, plalast-verifier and plalast-debug; config.subagent_cycle and config.cycle_behavior."
+      },
+      {
+        "date": "2026-11-28",
+        "branch": "main",
+        "commit": "8e9410e",
+        "change": "merge(main)",
+        "descr": "Fast-forward merge of develop."
       }
     ],
     "index": {
@@ -1685,7 +1875,7 @@
           "descr_-": "Not the modules themselves, not their definitions (`primary.<kind>`, `primary.modules`)."
         },
         "config.structure": {
-          "descr_+": "Every path of the repo, in order, as the tools need it: `path` (or `path_ref`), `type`, and optional `build`, `gitkeep`, `secret`, `scratch` (contents git-ignored except `.gitkeep`, for the agent's scratch), `links_only` (a folder of symlinks into `agents/` only), `target` (or `target_ref`) and `local`. Its prose is in `primary.structure`.",
+          "descr_+": "Every path of the repo, in order, as the tools need it: `path` (or `path_ref`), `type`, and optional `build`, `gitkeep`, `secret`, `scratch` (contents git-ignored except `.gitkeep`, for the agent's scratch), `links_only` (a folder of symlinks into `agents/` only), `target` (or `target_ref`), `local` and `pdf` (a built `.md` also rendered as a `.pdf` at the same path). Its prose is in `primary.structure`.",
           "descr_-": "Not prose: descriptions and table texts are in `primary.structure`, path by path."
         },
         "config.mem_level": {
@@ -1865,7 +2055,7 @@
       "entry_types": {
         "dir": "Creates the folder; `gitkeep: true` adds an empty `.gitkeep`; `secret: true` git-ignores its contents except `.gitkeep` (and `pla-audit` reports anything committed there); `scratch: true` does the same for the agent's own folder, without that report. `path_ref` (a dotted path such as `config.paths.modules.skills.dir`) can replace `path`, and `label` may use `{path}`.",
         "symlink": "Creates a link to `target`, relative to the link's folder; `target_ref` (a dotted config path such as `config.paths.modules.agent_zettelkasten`) can replace `target`. `local: true` marks a link that depends on the machine's layout: it is git-ignored, built only where its target exists, and removed where it does not.",
-        "file + build": "Renders `primary.docs.content.<build>`; `build: \"gitignore\"` renders `.gitignore` from the secret, ignored and local entries; `build: \"claude_settings\"` renders `agents/hooks/claude-settings.json` from `config.hooks.claude`.",
+        "file + build": "Renders `primary.docs.content.<build>`; `build: \"gitignore\"` renders `.gitignore` from the secret, ignored and local entries; `build: \"claude_settings\"` renders `agents/hooks/claude-settings.json` from `config.hooks.claude`. `pdf: true` also renders the built `.md` as a `.pdf` at the same path (as `agents/user_guide.pdf`).",
         "file + build: null": "Hand-written code such as `Cargo.toml` or `src/`; never an `.md` in the root or `agents/`. Left as is.",
         "ignored": "Not created; listed in `.gitignore`.",
         "planned": "Not created; listed as planned in the Structure table."
@@ -1924,7 +2114,7 @@
       },
       "agents/": {
         "description": "Neutral source of all agent documentation and modules. Providers get symlinks into it.",
-        "table": "Single, provider-neutral source. Its `.md` files (`AGENTS.md`, `CLAUDE.md`, `PROCEDURES.md`, `PROBLEMS.md`, `BUILD.md`, `FEATURES.md`, `LOG.md`, `CHANGES.md`, `INDEX.md`) are generated; its subfolders hold hand-written modules and the agent's scratch (`workspace/`)"
+        "table": "Single, provider-neutral source. Its `.md` files (`AGENTS.md`, `CLAUDE.md`, `PROCEDURES.md`, `PROBLEMS.md`, `BUILD.md`, `FEATURES.md`, `LOG.md`, `CHANGES.md`, `INDEX.md`, `user_guide.md` with its `.pdf`) are generated; its subfolders hold hand-written modules and the agent's scratch (`workspace/`)"
       },
       "agents/workspace/": {
         "description": "Agent workspace: scratch output of any assistant agent, git-ignored except .gitkeep.",
@@ -1941,6 +2131,9 @@
       },
       "agents/PROBLEMS.md": {
         "description": "Problems doc: the problems the rules solve. Generated from primary.docs.content.problems_md and primary.problems."
+      },
+      "agents/user_guide.md": {
+        "description": "User guide, in Spanish: one part per problem, with the params of params.yaml that solve it and an example; also as agents/user_guide.pdf. Generated from primary.docs.content.user_guide_md."
       },
       "agents/BUILD.md": {
         "description": "How to build and recall the repo from memory.json and params.yaml. Generated from primary.docs.content.build_md."

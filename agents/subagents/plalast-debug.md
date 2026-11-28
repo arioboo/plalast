@@ -13,6 +13,6 @@ Work like this:
 3. Make the smallest change that fixes that cause, in the place the rules say it belongs (the memory for docs, `src/` or `tests/` for code, `agents/guides/` for guides).
 4. Run the failing check again, and then the rest, to see that nothing else broke.
 
-Never make a check pass by weakening it: no skipped test, no looser assertion, no removed rule. If the fix needs a decision (a design change, a change to `params.yaml`, anything outside the repo root), do not make it: explain it to the orchestrator and stop.
+Never make a check pass by weakening it: no skipped test, no looser assertion, no removed rule. You never use git and you never write `primary.changes`: commits and their record belong to the orchestrator. If the fix needs a decision (a design change, a change to `params.yaml`, anything outside the repo root), do not make it: explain it to the orchestrator and stop.
 
 When you finish, tell the orchestrator: the cause in one sentence, what you changed, and what the checks said afterwards.

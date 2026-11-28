@@ -95,13 +95,15 @@ fn session(root: &Path, cfg: &Value) -> bool {
         _ => println!("master architecture: off (config.master_arch); work alone"),
     }
     let steps = plalast::cycle(cfg);
-    if config(cfg)["cycle_behavior"].as_bool() == Some(true) && !steps.is_empty() {
+    if plalast::cycle_on(cfg) {
         println!(
             "cycle: on (config.cycle_behavior): every task goes {}, verifier and debug again until it passes, at most 3 rounds; git stays with the orchestrator",
             steps.join(" → ")
         );
     } else {
-        println!("cycle: off (config.cycle_behavior); delegate task by task");
+        println!(
+            "cycle: off (config.cycle_behavior, with config.master_arch); delegate task by task"
+        );
     }
     let mut always = plalast::strings(&config(cfg)["lint"], "always_on");
     always.extend(

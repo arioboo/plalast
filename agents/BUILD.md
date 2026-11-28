@@ -42,7 +42,7 @@ Switching a section from `on_demand` to `disabled` leaves its old file behind: `
 |---|---|
 | `dir` | Creates the folder; `gitkeep: true` adds an empty `.gitkeep`; `secret: true` git-ignores its contents except `.gitkeep` (and `pla-audit` reports anything committed there); `scratch: true` does the same for the agent's own folder, without that report. `path_ref` (a dotted path such as `config.paths.modules.skills.dir`) can replace `path`, and `label` may use `{path}`. |
 | `symlink` | Creates a link to `target`, relative to the link's folder; `target_ref` (a dotted config path such as `config.paths.modules.agent_zettelkasten`) can replace `target`. `local: true` marks a link that depends on the machine's layout: it is git-ignored, built only where its target exists, and removed where it does not. |
-| `file + build` | Renders `primary.docs.content.<build>`; `build: "gitignore"` renders `.gitignore` from the secret, ignored and local entries; `build: "claude_settings"` renders `agents/hooks/claude-settings.json` from `config.hooks.claude`. |
+| `file + build` | Renders `primary.docs.content.<build>`; `build: "gitignore"` renders `.gitignore` from the secret, ignored and local entries; `build: "claude_settings"` renders `agents/hooks/claude-settings.json` from `config.hooks.claude`. `pdf: true` also renders the built `.md` as a `.pdf` at the same path (as `agents/user_guide.pdf`). |
 | `file + build: null` | Hand-written code such as `Cargo.toml` or `src/`; never an `.md` in the root or `agents/`. Left as is. |
 | `ignored` | Not created; listed in `.gitignore`. |
 | `planned` | Not created; listed as planned in the Structure table. |
@@ -73,7 +73,7 @@ Each section is rendered as `## <title>` followed by its blocks. Blocks are sepa
 
 Write the module in its folder (for example `agents/skills/<name>/SKILL.md`) and run `pla-build`. Claude Code sees it through its folder links (`.claude/skills` -> `../agents/skills`). A provider that wants one link per module lists its folder in `config.paths.modules.<kind>.links`; `pla-build` then links each module there and removes the links of deleted modules.
 
-Guides are modules too: write `agents/guides/<name>.md` and run `pla-build`, which renders `agents/guides/<name>.pdf` from it (headings, paragraphs, lists and code blocks; inline markup is flattened). The PDF is deterministic, so `pla-build --check` reports a stale one.
+Guides are modules too: write `agents/guides/<name>.md` and run `pla-build`, which renders `agents/guides/<name>.pdf` from it (headings, paragraphs, lists and code blocks; inline markup is flattened). A generated doc gets a PDF the same way when its `config.structure` entry has `pdf: true`. Every PDF is deterministic, so `pla-build --check` reports a stale one.
 
 ## Removing a path
 

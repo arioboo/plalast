@@ -540,7 +540,8 @@ fn lint_fantastic(cfg: &Value, f: &mut Findings) {
     }
 }
 
-/// The subagent cycle: every subagent it names has its file, and `cycle_behavior` is a switch.
+/// The subagent cycle: every subagent it names has its file, and `cycle_behavior` is a switch
+/// that needs `master_arch` on.
 fn lint_cycle(root: &Path, cfg: &Value, f: &mut Findings) {
     let c = config(cfg);
     if c.get("subagent_cycle").is_none() && c.get("cycle_behavior").is_none() {
@@ -561,6 +562,12 @@ fn lint_cycle(root: &Path, cfg: &Value, f: &mut Findings) {
     }
     if !c["cycle_behavior"].is_boolean() {
         f.error(M, "config.cycle_behavior: must be `true` or `false`");
+    }
+    if c["cycle_behavior"].as_bool() == Some(true) && c["master_arch"].as_bool() != Some(true) {
+        f.error(
+            M,
+            "config.cycle_behavior: the cycle needs config.master_arch: true",
+        );
     }
 }
 
@@ -1310,6 +1317,20 @@ mod tests {
             .map(|(_, _, m)| m.as_str())
             .collect::<Vec<_>>()
             .join("\n")
+    }
+
+    #[test]
+    fn the_cycle_without_the_master_architecture_is_an_error() {
+        let root = Path::new("/nonexistent-pla-root");
+        let mut cfg =
+            json!({"config": {"subagent_cycle": "", "cycle_behavior": true, "master_arch": false}});
+        let mut f = Findings::default();
+        lint_cycle(root, &cfg, &mut f);
+        assert!(messages(&f).contains("the cycle needs config.master_arch: true"));
+        cfg["config"]["master_arch"] = json!(true);
+        let mut f = Findings::default();
+        lint_cycle(root, &cfg, &mut f);
+        assert!(!messages(&f).contains("master_arch"));
     }
 
     #[test]

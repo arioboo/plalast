@@ -5,6 +5,8 @@ Warnings, errors and issues found in this repo, newest first, with their status.
 
 | Date | Level | Where | Status | Description |
 |---|---|---|---|---|
+| 2026-11-28 | warning | `pla-recall --session` | open | The cycle line names the roles verifier and debug whatever config.subagent_cycle holds. |
+| 2026-11-28 | warning | `config.cycle_behavior` | open | The limit of 3 rounds of the cycle is only text (in the premise, the schema and pla-recall); nothing enforces it. |
 | 2026-11-28 | issue | `plalast::fantastic::CHECKS` | open | The battery of tests for the 4 fantásticos has only its first checks (one kind, unique names, solves a problem, rendered); the rest are still to be defined. |
 | 2026-11-28 | issue | `agents/guides` | closed | The guides were in English, but the Languages preference asks for Spanish; translated. |
 | 2026-11-28 | issue | `primary.features.feature_3` | open | language support is too vague to know which problem it solves or when it is done (Problem-first). |

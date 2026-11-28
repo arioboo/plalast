@@ -576,7 +576,19 @@ fn wanted(root: &Path, cfg: &Value) -> Res<Vec<Want>> {
                         return Err(format!("{path}: primary.docs.content.{key} is missing"));
                     }
                     let (main, extra) = render_doc(key, doc, cfg)?;
+                    // `pdf: true`: the same text also as a .pdf at the same path (src/pdf.rs).
+                    let pdf = if e.get("pdf").and_then(Value::as_bool) == Some(true) {
+                        let stem = path.strip_suffix(".md").ok_or_else(|| {
+                            format!("{path}: `pdf: true` needs a path ending in .md")
+                        })?;
+                        Some((format!("{stem}.pdf"), plalast::pdf::render(&main)))
+                    } else {
+                        None
+                    };
                     add_file(&mut out, &path, main)?;
+                    if let Some((p, text)) = pdf {
+                        add_file(&mut out, &p, text)?;
+                    }
                     for (p, text) in extra {
                         add_file(&mut out, &p, text)?;
                     }
@@ -1188,6 +1200,34 @@ mod tests {
         assert!(root.join("modules/missing").symlink_metadata().is_err());
         assert!(build(&root, &c, true).unwrap());
         fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn a_pdf_doc_gets_a_pdf_of_the_same_text() {
+        let root = Path::new("/nonexistent-pla-root");
+        let mut c = cfg(&json!({}));
+        c["primary"]["docs"]["content"]["guide"] =
+            json!({"head": [{"type": "heading", "level": 1, "text": "Guide"}]});
+        c["structure"] = json!([
+            {"path": "agents/guide.md", "type": "file", "build": "guide", "pdf": true},
+            {"path": "agents/plain.md", "type": "file", "build": "guide"}
+        ]);
+        let files: Vec<(String, String)> = wanted(root, &c)
+            .unwrap()
+            .into_iter()
+            .filter_map(|w| match w {
+                Want::File(p, t) => Some((rel(root, &p), t)),
+                _ => None,
+            })
+            .collect();
+        let names: Vec<&str> = files.iter().map(|(p, _)| p.as_str()).collect();
+        assert_eq!(
+            names,
+            ["agents/guide.md", "agents/guide.pdf", "agents/plain.md"]
+        );
+        assert_eq!(files[1].1, plalast::pdf::render(&files[0].1));
+        c["structure"][0]["path"] = json!("agents/guide.txt");
+        assert!(wanted(root, &c).is_err());
     }
 
     #[test]

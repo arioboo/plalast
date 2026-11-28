@@ -5,6 +5,8 @@ What happened in each commit, merge and branch of this repo, newest first, as `t
 
 | Date | Branch | Commit | Change |
 |---|---|---|---|
+| 2026-11-28 | main | `8e9410e` | merge(main): Fast-forward merge of develop. |
+| 2026-11-28 | develop | `8e9410e` | feat(agents): Subagents plalast-writer, plalast-verifier and plalast-debug; config.subagent_cycle and config.cycle_behavior. |
 | 2026-11-28 | main | `eae5d15` | merge(main): Fast-forward merge of develop. |
 | 2026-11-28 | develop | `eae5d15` | feat(agents): config.master_arch and five subagents (brain-editor, rust-coder, guide-writer, verifier, git-keeper). |
 | 2026-11-28 | main | `db499e4` | merge(main): Fast-forward merge of develop. |

@@ -464,6 +464,16 @@ pub fn cycle(cfg: &Value) -> Vec<String> {
         .collect()
 }
 
+/// The cycle runs only when `config.cycle_behavior` and `config.master_arch` are both `true`
+/// and `config.subagent_cycle` names some subagent: without the orchestrator there is no cycle.
+#[must_use]
+pub fn cycle_on(cfg: &Value) -> bool {
+    let c = config(cfg);
+    c["cycle_behavior"].as_bool() == Some(true)
+        && c["master_arch"].as_bool() == Some(true)
+        && !cycle(cfg).is_empty()
+}
+
 /// `(module folder, link folder)` for every provider link of every module kind.
 pub fn module_links(cfg: &Value) -> Vec<(String, String)> {
     let mut out = Vec::new();
@@ -764,6 +774,21 @@ mod tests {
             ["plalast-writer", "plalast-verifier", "plalast-debug"]
         );
         assert!(cycle(&json!({"config": {}})).is_empty());
+    }
+
+    #[test]
+    fn the_cycle_needs_the_master_architecture() {
+        let on = json!({"config": {"subagent_cycle": "writer", "cycle_behavior": true, "master_arch": true}});
+        assert!(cycle_on(&on));
+        let mut alone = on.clone();
+        alone["config"]["master_arch"] = json!(false);
+        assert!(!cycle_on(&alone));
+        let mut off = on.clone();
+        off["config"]["cycle_behavior"] = json!(false);
+        assert!(!cycle_on(&off));
+        let mut empty = on;
+        empty["config"]["subagent_cycle"] = json!("");
+        assert!(!cycle_on(&empty));
     }
 
     #[test]
