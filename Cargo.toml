@@ -2,7 +2,7 @@
 name = "plalast"
 version = "0.1.0"
 edition = "2021"
-description = "Build, recall, lint and audit the plalast repo from its brain: memory.json and params.yaml"
+description = "Build, recall, lint, audit and verify the plalast repo, and calculate purely, from its brain: memory.json and params.yaml"
 publish = false
 
 [dependencies]
@@ -37,3 +37,11 @@ path = "src/bin/lint.rs"
 [[bin]]
 name = "pla-audit"
 path = "src/bin/audit.rs"
+
+[[bin]]
+name = "pla-verify"
+path = "src/bin/verify.rs"
+
+[[bin]]
+name = "pla-calc"
+path = "src/bin/calc.rs"

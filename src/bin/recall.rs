@@ -4,8 +4,8 @@
 //! - `pla-recall <term>`   everything matching `term`, naming its file, section and lever.
 
 use plalast::{
-    arr, block_items, block_text, config, data, doc_dirs, docs, entry_path, exit, external_modules,
-    fill, lever_set, modes, module_dir, open, paths, primary, str_of, visible_entries, BRAIN_KEYS,
+    arr, block_items, block_text, config, doc_dirs, docs, entry_path, exit, external_modules, fill,
+    lever_set, modes, module_dir, open, paths, primary, str_of, visible_entries, BRAIN_KEYS,
     DEFAULT_LEVER, DESCR_KEYS, LOG_FIELDS, MEMORY, MODE_GROUP, MODULE_KINDS,
 };
 use serde_json::Value;
@@ -20,10 +20,10 @@ fn main() -> ExitCode {
 
 /// `(path, content key)` of every generated document, in structure order.
 fn documents(cfg: &Value) -> Vec<(String, &str)> {
-    arr(data(cfg), "structure")
+    plalast::structure(cfg)
         .iter()
         .filter_map(|e| Some((entry_path(cfg, e)?, str_of(e, "build")?)))
-        .filter(|(_, key)| data(cfg)["content"][*key].is_object())
+        .filter(|(_, key)| plalast::content(cfg)[*key].is_object())
         .collect()
 }
 
@@ -64,6 +64,21 @@ fn plain_data(cfg: &Value) -> Vec<(String, String)> {
         out.push((
             "primary.features".to_string(),
             format!("{k} [{status}] {descr}"),
+        ));
+    }
+    for (id, p) in plalast::problems(cfg) {
+        let solved: Vec<&str> = arr(p, "solved_by")
+            .iter()
+            .filter_map(Value::as_str)
+            .collect();
+        out.push((
+            "primary.problems".to_string(),
+            format!(
+                "{id}: {} | {} | solved by: {}",
+                str_of(p, "title").unwrap_or(id),
+                str_of(p, "statement").unwrap_or(""),
+                solved.join("; ")
+            ),
         ));
     }
     for (id, p) in plalast::procedures(cfg) {
@@ -186,7 +201,7 @@ fn print_map(root: &Path, cfg: &Value) {
             "external"
         );
     }
-    println!("\nModes (primary.mode, interruptor in params.levers.mode):");
+    println!("\nModes (primary.mode, interruptor primary.mode.<name> in params.yaml):");
     for (name, m, _) in modes(cfg) {
         println!(
             "  {name:<28} {:<20} {}",
@@ -202,7 +217,8 @@ fn print_map(root: &Path, cfg: &Value) {
         println!("  {text}");
     }
     println!(
-        "Procedures (primary.procedures): {}, commands (primary.commands): {}, log (primary.log): {}, index (primary.index): {} entries",
+        "Problems (primary.problems): {}, procedures (primary.procedures): {}, commands (primary.commands): {}, log (primary.log): {}, index (primary.index): {} entries",
+        count(&primary(cfg)["problems"]["items"]),
         count(&primary(cfg)["procedures"]["items"]),
         count(&primary(cfg)["commands"]),
         count(&primary(cfg)["log"]),
@@ -219,7 +235,7 @@ fn print_map(root: &Path, cfg: &Value) {
         count(&c["audit"]["allow"]),
         c["audit"]["max_file_kb"].as_u64().unwrap_or(0)
     );
-    for e in arr(data(cfg), "structure") {
+    for e in plalast::structure(cfg) {
         let path = entry_path(cfg, e).unwrap_or_default();
         println!(
             "{path:<30} {:<10} {}",
@@ -227,9 +243,9 @@ fn print_map(root: &Path, cfg: &Value) {
             str_of(e, "description").unwrap_or("")
         );
     }
-    println!("\nMemory levers (params.levers):");
+    println!("\nInterruptors (params.yaml, after #---INTERRUPTORS---):");
     for (path, key) in documents(cfg) {
-        for s in arr(&data(cfg)["content"][key], "sections") {
+        for s in arr(&plalast::content(cfg)[key], "sections") {
             let id = str_of(s, "id").unwrap_or("?");
             let title = str_of(s, "title").unwrap_or(id);
             let state = state_of(cfg, key, id);
@@ -294,7 +310,7 @@ fn search(cfg: &Value, q: &str) -> bool {
     for (path, value) in params.iter().filter(|(p, v)| hit(p) || hit(v)) {
         show(format!("{path}: {value}"));
     }
-    for e in arr(data(cfg), "structure") {
+    for e in plalast::structure(cfg) {
         let path = entry_path(cfg, e).unwrap_or_default();
         let description = str_of(e, "description").unwrap_or("");
         let fields = [
@@ -308,7 +324,7 @@ fn search(cfg: &Value, q: &str) -> bool {
         }
     }
     for (path, key) in documents(cfg) {
-        let doc = &data(cfg)["content"][key];
+        let doc = &plalast::content(cfg)[key];
         for b in arr(doc, "head") {
             for t in block_texts(cfg, b).iter().filter(|t| hit(t)) {
                 show(format!("{path} › (head): {t}"));

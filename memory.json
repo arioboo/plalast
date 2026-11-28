@@ -1,15 +1,10 @@
 {
   "config": {
-    "descr_+": "What the tools need to run the repo: repository, branches, paths, audit, lint and hooks.",
-    "descr_-": "Not text for the docs (primary), not what gets built (data), not interruptores or the agent placeholder (`params.yaml`), not secrets (`.secrets/`).",
+    "descr_+": "What the tools need to run the repo: repository, paths, the structure of the repo (every path, its type and how it is built), audit, lint and hooks.",
+    "descr_-": "Not text for the docs (primary), not the prose about each path (primary.structure), not the settings and interruptors only the user sets (`params.yaml`), not secrets (`.secrets/`).",
     "PLALAST_DIR": "$PWD",
     "repository": "github.com/arioboo/plalast",
-    "branches": {
-      "integration": "develop",
-      "stable": "main"
-    },
     "audit": {
-      "allow": [],
       "max_file_kb": 1024
     },
     "paths": {
@@ -21,21 +16,15 @@
       "modules": {
         "skills": {
           "dir": "agents/skills",
-          "links": {
-            "claude": ".claude/skills"
-          }
+          "links": {}
         },
         "agents": {
           "dir": "agents/subagents",
-          "links": {
-            "claude": ".claude/agents"
-          }
+          "links": {}
         },
         "rules": {
           "dir": "agents/rules",
-          "links": {
-            "claude": ".claude/rules"
-          }
+          "links": {}
         },
         "connectors": {
           "dir": "agents/mcp",
@@ -52,39 +41,691 @@
       "always_on": [
         "agents/CLAUDE.md",
         "agents/AGENTS.md"
-      ],
-      "max_lines": 200
+      ]
     },
-    "hooks": {
-      "dir": "agents/hooks",
-      "claude": {
-        "PreToolUse": [
-          {
-            "matcher": "Edit|Write",
-            "hooks": [
-              {
-                "type": "command",
-                "command": "\"$CLAUDE_PROJECT_DIR\"/agents/hooks/protect-generated.sh"
-              }
-            ]
-          }
-        ]
+    "structure": [
+      {
+        "path": "memory.json",
+        "type": "file",
+        "build": null
+      },
+      {
+        "path": "params.yaml",
+        "type": "file",
+        "build": null
+      },
+      {
+        "path": "Cargo.toml",
+        "type": "file",
+        "build": null
+      },
+      {
+        "path": "Cargo.lock",
+        "type": "file",
+        "build": null
+      },
+      {
+        "path": "src/",
+        "type": "dir"
+      },
+      {
+        "path_ref": "primary.project.plalast_logo",
+        "type": "file",
+        "build": null
+      },
+      {
+        "path": "tests/",
+        "type": "dir"
+      },
+      {
+        "path": "target/",
+        "type": "ignored"
+      },
+      {
+        "path": ".secrets/",
+        "type": "dir",
+        "gitkeep": true,
+        "secret": true
+      },
+      {
+        "path": "agents/",
+        "type": "dir"
+      },
+      {
+        "path": "agents/workspace/",
+        "type": "dir",
+        "gitkeep": true,
+        "scratch": true
+      },
+      {
+        "path": "agents/AGENTS.md",
+        "type": "file",
+        "build": "agents_md"
+      },
+      {
+        "path": "agents/CLAUDE.md",
+        "type": "file",
+        "build": "claude_md"
+      },
+      {
+        "path": "agents/PROCEDURES.md",
+        "type": "file",
+        "build": "procedures_md"
+      },
+      {
+        "path": "agents/PROBLEMS.md",
+        "type": "file",
+        "build": "problems_md"
+      },
+      {
+        "path": "agents/BUILD.md",
+        "type": "file",
+        "build": "build_md"
+      },
+      {
+        "path": "agents/FEATURES.md",
+        "type": "file",
+        "build": "features_md"
+      },
+      {
+        "path": "agents/LOG.md",
+        "type": "file",
+        "build": "log_md"
+      },
+      {
+        "path": "agents/INDEX.md",
+        "type": "file",
+        "build": "index_md"
+      },
+      {
+        "path_ref": "config.paths.modules.skills.dir",
+        "type": "dir",
+        "gitkeep": true
+      },
+      {
+        "path_ref": "config.paths.modules.agents.dir",
+        "type": "dir",
+        "gitkeep": true
+      },
+      {
+        "path_ref": "config.paths.modules.rules.dir",
+        "type": "dir",
+        "gitkeep": true
+      },
+      {
+        "path_ref": "config.paths.modules.guides.dir",
+        "type": "dir",
+        "gitkeep": true
+      },
+      {
+        "path_ref": "config.hooks.dir",
+        "type": "dir",
+        "gitkeep": true
+      },
+      {
+        "path": "agents/hooks/protect-generated.sh",
+        "type": "file",
+        "build": null
+      },
+      {
+        "path": "agents/hooks/pre-commit",
+        "type": "file",
+        "build": null
+      },
+      {
+        "path": "agents/hooks/claude-settings.json",
+        "type": "file",
+        "build": "claude_settings"
+      },
+      {
+        "path_ref": "config.paths.modules.connectors.dir",
+        "type": "dir",
+        "gitkeep": true
+      },
+      {
+        "path": ".claude/",
+        "type": "dir",
+        "links_only": true
+      },
+      {
+        "path": ".claude/CLAUDE.md",
+        "type": "symlink",
+        "target": "../agents/CLAUDE.md"
+      },
+      {
+        "path": ".claude/AGENTS.md",
+        "type": "symlink",
+        "target": "../agents/AGENTS.md"
+      },
+      {
+        "path": ".claude/settings.json",
+        "type": "symlink",
+        "target": "../agents/hooks/claude-settings.json"
+      },
+      {
+        "path": ".claude/skills",
+        "type": "symlink",
+        "target": "../agents/skills"
+      },
+      {
+        "path": ".claude/agents",
+        "type": "symlink",
+        "target": "../agents/subagents"
+      },
+      {
+        "path": ".claude/rules",
+        "type": "symlink",
+        "target": "../agents/rules"
+      },
+      {
+        "path": "README.md",
+        "type": "file",
+        "build": "readme_md"
+      },
+      {
+        "path": ".gitignore",
+        "type": "file",
+        "build": "gitignore"
+      },
+      {
+        "path": "modules/",
+        "type": "dir",
+        "gitkeep": true
+      },
+      {
+        "path": "tmux.conf",
+        "type": "file",
+        "build": null
       }
-    }
+    ]
   },
   "primary": {
-    "descr_+": "What makes the docs: identity, texts, definitions, commands, features, log, index, modes and the schema of the memory itself.",
-    "descr_-": "Not paths or tool settings (config), not what gets built on disk (data), not hand-written code or modules.",
+    "descr_+": "What makes the docs: identity, texts, definitions, the shape of every doc, the descriptions of every path, commands, features, log, index, modes, procedures, problems and the schema of the memory itself.",
+    "descr_-": "Not tool settings (config), not path settings such as types and flags (config.structure), not hand-written code or modules, not unplaced information (data).",
     "project": {
       "name": "plalast",
       "title": "plalast - The Living Creature",
       "plalast_logo": "src/plalast.png"
     },
     "docs": {
-      "definition": "Docs are all the markdown files about this project and how it operates. Every `.md` directly inside a folder of `config.paths.docs` is a doc, and every doc is generated from `data.content` by `pla-build`; a stray one fails the build.",
+      "definition": "Docs are all the markdown files about this project and how it operates. Every `.md` directly inside a folder of `config.paths.docs` is a doc, and every doc is generated from `primary.docs.content` by `pla-build`; a stray one fails the build.",
       "on_demand": {
         "heading": "On demand",
         "pointer": "`{path}`: {title}. Read it when {when}."
+      },
+      "content": {
+        "agents_md": {
+          "head": [
+            {
+              "type": "heading",
+              "level": 1,
+              "ref": "primary.project.title"
+            },
+            {
+              "type": "agent_note"
+            },
+            {
+              "type": "paragraph",
+              "ref": "primary.agents-md.intro.0"
+            },
+            {
+              "type": "paragraph",
+              "ref": "primary.agents-md.intro.1"
+            }
+          ],
+          "sections": [
+            {
+              "id": "reglas-estaticas",
+              "title": "Reglas - estáticas",
+              "when": "doing anything that writes, publishes or changes the brain",
+              "blocks": [
+                {
+                  "type": "list",
+                  "ref": "primary.agents-md.static_rules.items"
+                }
+              ]
+            },
+            {
+              "id": "premisas-estaticas",
+              "title": "Premisas - estáticas",
+              "when": "deciding what the repo is, where its source lives and what never changes",
+              "blocks": [
+                {
+                  "type": "list",
+                  "ref": "primary.agents-md.static_premises.items"
+                },
+                {
+                  "type": "paragraph",
+                  "ref": "primary.agents-md.static_premises.brain_keys_intro"
+                },
+                {
+                  "type": "brain_keys"
+                }
+              ]
+            },
+            {
+              "id": "premisas-dinamicas",
+              "title": "Premisas - dinámicas",
+              "when": "building, testing or checking the repo, or choosing a language or tool",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "ref": "primary.agents-md.dynamic_premises.intro"
+                },
+                {
+                  "type": "list",
+                  "ref": "primary.agents-md.dynamic_premises.items"
+                },
+                {
+                  "type": "paragraph",
+                  "ref": "primary.agents-md.dynamic_premises.state_intro"
+                },
+                {
+                  "type": "paragraph",
+                  "ref": "primary.agents-md.dynamic_premises.map"
+                },
+                {
+                  "type": "always_read",
+                  "ref": "primary.agents-md.dynamic_premises.always_read_intro"
+                },
+                {
+                  "type": "paragraph",
+                  "ref": "primary.agents-md.dynamic_premises.modes_intro"
+                },
+                {
+                  "type": "modes"
+                },
+                {
+                  "type": "paragraph",
+                  "ref": "primary.agents-md.dynamic_premises.commands.tool_intro"
+                },
+                {
+                  "type": "list",
+                  "ref": "primary.commands",
+                  "item": "{cmd}: {summary}"
+                },
+                {
+                  "type": "paragraph",
+                  "ref": "primary.agents-md.dynamic_premises.commands.code_intro"
+                },
+                {
+                  "type": "list",
+                  "ref": "primary.agents-md.dynamic_premises.commands.code"
+                },
+                {
+                  "type": "paragraph",
+                  "ref": "primary.agents-md.dynamic_premises.tools_intro"
+                },
+                {
+                  "type": "list",
+                  "ref": "primary.agents-md.dynamic_premises.tools_and_languages"
+                },
+                {
+                  "type": "paragraph",
+                  "ref": "primary.agents-md.dynamic_premises.candidates_intro"
+                },
+                {
+                  "type": "list",
+                  "ref": "primary.agents-md.dynamic_premises.candidates"
+                }
+              ]
+            },
+            {
+              "id": "buenas-practicas",
+              "title": "Buenas prácticas",
+              "when": "deciding how to write, format, log or place anything in the repo",
+              "blocks": [
+                {
+                  "type": "list",
+                  "ref": "primary.agents-md.good_practices.items"
+                }
+              ]
+            },
+            {
+              "id": "preferencias",
+              "title": "Preferencias",
+              "when": "choosing between options the rules leave open",
+              "blocks": [
+                {
+                  "type": "list",
+                  "ref": "primary.agents-md.preferences.items"
+                }
+              ]
+            }
+          ]
+        },
+        "procedures_md": {
+          "head": [
+            {
+              "type": "heading",
+              "level": 1,
+              "text": "Procedures"
+            },
+            {
+              "type": "agent_note"
+            },
+            {
+              "type": "paragraph",
+              "ref": "primary.procedures.definition"
+            },
+            {
+              "type": "procedures"
+            }
+          ],
+          "sections": []
+        },
+        "problems_md": {
+          "head": [
+            {
+              "type": "heading",
+              "level": 1,
+              "text": "Problems"
+            },
+            {
+              "type": "agent_note"
+            },
+            {
+              "type": "paragraph",
+              "ref": "primary.problems.definition"
+            },
+            {
+              "type": "problems"
+            }
+          ],
+          "sections": []
+        },
+        "claude_md": {
+          "agent_note": false,
+          "head": [
+            {
+              "type": "paragraph",
+              "text": "@AGENTS.md"
+            }
+          ],
+          "sections": []
+        },
+        "readme_md": {
+          "head": [
+            {
+              "type": "heading",
+              "level": 1,
+              "ref": "primary.project.title"
+            },
+            {
+              "type": "agent_note"
+            },
+            {
+              "type": "image",
+              "ref": "primary.project.plalast_logo",
+              "alt": "plalast logo",
+              "width": 200
+            },
+            {
+              "type": "paragraph",
+              "ref": "primary.agents-md.intro.0"
+            },
+            {
+              "type": "paragraph",
+              "ref": "primary.agents-md.intro.1"
+            },
+            {
+              "type": "paragraph",
+              "text": "Project rules and conventions for humans and agents: [agents/AGENTS.md](agents/AGENTS.md). Everything is generated from [memory.json](memory.json) and [params.yaml](params.yaml); see [agents/BUILD.md](agents/BUILD.md)."
+            }
+          ],
+          "sections": [
+            {
+              "id": "contributing",
+              "title": "Contributing",
+              "when": "preparing a branch or a pull request",
+              "blocks": [
+                {
+                  "type": "ordered_list",
+                  "items": [
+                    "Fork the repo and create a branch from `develop` (`feat/<topic>`, `fix/<topic>`, `docs/<topic>`).",
+                    "Change only `memory.json` or `params.yaml` (or a hand-written module in an `agents/` subfolder), run `cargo run --release --bin pla-build`, and keep each change small: no duplication, Rust by default, markdown/json/yaml/bash formats.",
+                    "Run `pla-lint` and `pla-audit` (see *Premisas - dinámicas* in agents/AGENTS.md): both must finish with no errors.",
+                    "Open a pull request against `develop` describing what changed and why. `main` only receives merges from `develop`."
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "build_md": {
+          "head": [
+            {
+              "type": "heading",
+              "level": 1,
+              "text": "BUILD"
+            },
+            {
+              "type": "agent_note"
+            },
+            {
+              "type": "paragraph",
+              "ref": "primary.agents-md.static_rules.items.0"
+            }
+          ],
+          "sections": [
+            {
+              "id": "build-commands",
+              "title": "Commands",
+              "when": "running pla-build or pla-recall",
+              "blocks": [
+                {
+                  "type": "table",
+                  "ref": "primary.commands",
+                  "header": [
+                    "Command",
+                    "What it does"
+                  ],
+                  "row": [
+                    "{cmd}",
+                    "{detail}"
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Run them from anywhere inside the repo: the tool walks up to the folder that holds `memory.json`. Symlinks need a Unix system (Linux or macOS). `pla-build` never replaces a real file or folder with a link, and never deletes anything except broken module links."
+                }
+              ]
+            },
+            {
+              "id": "brain-files",
+              "title": "memory.json and params.yaml",
+              "when": "editing memory.json or params.yaml",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The brain is `memory.json`, with exactly three primary keys: `config` (what the tools need to run: git, settings, paths), `primary` (what makes the docs: identity, texts, definitions) and `data` (what gets built); each starts with `descr_+` and `descr_-`, what it is and is not. `params.yaml` holds what only the user sets, every key named by the path of a field of the memory: a value `enabled`, `on_demand` or `disabled` is the interruptor of that field (after `#---INTERRUPTORS---`); any other value sets the field (such as `config.hooks.dir`), which then must not be in `memory.json` too. The tools join them as `config`, `primary`, `data` and `params` (`params.interruptors`), so a dotted path such as `config.paths.modules.agent_zettelkasten` works everywhere."
+                },
+                {
+                  "type": "schema",
+                  "part": "keys",
+                  "header": [
+                    "Key",
+                    "Is (descr_+)",
+                    "Is not (descr_-)"
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "levers",
+              "title": "Interruptors (params.yaml)",
+              "when": "changing what agents load into memory",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Every doc section (`primary.docs.content.<doc>.sections.<id>`), whole doc (`primary.docs.content.<doc>`) and mode (`primary.mode.<name>`) can have an interruptor in `params.yaml`, after `#---INTERRUPTORS---`. An unset one is `on_demand`; one for something that does not exist, or a value outside this table, stops the build or fails `pla-lint`."
+                },
+                {
+                  "type": "schema",
+                  "part": "levers",
+                  "header": [
+                    "Value",
+                    "Effect"
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Switching a section from `on_demand` to `disabled` leaves its old file behind: `pla-build` reports it as a stray `.md` and fails until you delete it."
+                }
+              ]
+            },
+            {
+              "id": "entry-types",
+              "title": "Structure entry types",
+              "when": "adding or changing a path in config.structure",
+              "blocks": [
+                {
+                  "type": "schema",
+                  "part": "entry_types",
+                  "header": [
+                    "Type",
+                    "Build action"
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "content-blocks",
+              "title": "Content blocks",
+              "when": "writing document content in primary.docs.content",
+              "blocks": [
+                {
+                  "type": "schema",
+                  "part": "blocks",
+                  "header": [
+                    "Block",
+                    "Markdown"
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Each section is rendered as `## <title>` followed by its blocks. Blocks are separated by one blank line, except `agent_note`, which goes right under the first line; every file ends with one newline."
+                }
+              ]
+            },
+            {
+              "id": "adding-module",
+              "title": "Adding a module",
+              "when": "adding a skill, subagent or rule",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Write the module in its folder (for example `agents/skills/<name>/SKILL.md`) and run `pla-build`. Claude Code sees it through its folder links (`.claude/skills` -> `../agents/skills`). A provider that wants one link per module lists its folder in `config.paths.modules.<kind>.links`; `pla-build` then links each module there and removes the links of deleted modules."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Guides are modules too: write `agents/guides/<name>.md` and run `pla-build`, which renders `agents/guides/<name>.pdf` from it (headings, paragraphs, lists and code blocks; inline markup is flattened). The PDF is deterministic, so `pla-build --check` reports a stale one."
+                }
+              ]
+            },
+            {
+              "id": "removing-path",
+              "title": "Removing a path",
+              "when": "deleting something from memory.json",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Deleting an entry from `memory.json` does not delete it from disk. `pla-build --check` reports leftover `.md` files in the root and `agents/`; delete them once you have confirmed they are no longer needed."
+                }
+              ]
+            },
+            {
+              "id": "structure",
+              "title": "Structure",
+              "when": "looking for where something lives or adding a path",
+              "blocks": [
+                {
+                  "type": "structure_table"
+                }
+              ]
+            }
+          ]
+        },
+        "features_md": {
+          "head": [
+            {
+              "type": "heading",
+              "level": 1,
+              "text": "Features"
+            },
+            {
+              "type": "agent_note"
+            },
+            {
+              "type": "paragraph",
+              "text": "Features of the project and their status. Source: `primary.features` in `memory.json`."
+            },
+            {
+              "type": "table",
+              "ref": "primary.features",
+              "header": [
+                "Feature",
+                "Description",
+                "Status"
+              ],
+              "row": [
+                "{key}",
+                "{descr}",
+                "{status}"
+              ]
+            }
+          ],
+          "sections": []
+        },
+        "log_md": {
+          "head": [
+            {
+              "type": "heading",
+              "level": 1,
+              "text": "Log"
+            },
+            {
+              "type": "agent_note"
+            },
+            {
+              "type": "paragraph",
+              "text": "Branches, commits and merges of this repo, newest first. Source: `primary.log` in `memory.json`."
+            },
+            {
+              "type": "table",
+              "ref": "primary.log",
+              "reverse": true,
+              "header": [
+                "Date",
+                "Branch",
+                "Commit",
+                "Kind",
+                "Description"
+              ],
+              "row": [
+                "{date}",
+                "{branch}",
+                "`{commit}`",
+                "{kind}",
+                "{descr}"
+              ]
+            }
+          ],
+          "sections": []
+        },
+        "index_md": {
+          "head": [
+            {
+              "type": "heading",
+              "level": 1,
+              "text": "Index"
+            },
+            {
+              "type": "agent_note"
+            }
+          ],
+          "sections": []
+        }
       }
     },
     "agents-md": {
@@ -92,12 +733,20 @@
         "This repo is a public and living creature. Turn on your VPS or machine, connect your agents, code it, teach it something, and make a pull request on Github.",
         "The servers will be 24/7 on. This is a personal project on autonomous coding and living information systems, but everyone is welcome in."
       ],
+      "static_rules": {
+        "items": [
+          "Single source: every `.md` in the repo root and in `agents/` is generated from `memory.json` and `params.yaml`: change `memory.json` (and `params.yaml` only as Params untouchable allows), then run `cargo run --release --bin pla-build` (see `agents/BUILD.md`); never edit a generated file by hand. Hand-written: the Rust code, the scripts and the modules in `agents/` subfolders.",
+          "Write only inside the root: an agent has no write permission outside the plalast root folder (the one that holds `memory.json`). Never write outside it, in any case, even when the user, distracted, says yes to something that would do it implicitly: refuse and say why. The Claude Code hook (`pla-build --guard`) denies such edits.",
+          "Params untouchable, Memory updatable: the params (`params.yaml`) are touched only by the user; an agent changes or redesigns anything in them only when the user says so explicitly. Every param is named by the path of the field of `memory.json` it sets or switches, nesting its json keys with `.` (such as `config.lint.max_lines` or `primary.docs.content.agents_md.sections.preferencias`). The memory is updatable: it follows those paths, it is switched on through the interruptors after `#---INTERRUPTORS---`, and it is read on demand through the recall library (`pla-recall`).",
+          "Secrets: they live only in `.secrets/` at the repo root, which git ignores except its `.gitkeep`. Code and configs reference them by environment variable; their values never go into other files, the chat or external services."
+        ]
+      },
       "static_premises": {
         "items": [
-          "Single source: `memory.json` is the brain, with exactly three primary keys (`config`, `primary`, `data`; see the table below), and `params.yaml` holds the interruptores and the agent placeholder. Every `.md` in the repo root and in `agents/` is generated from them: edit only those two files and run `cargo run --release --bin pla-build` (see `agents/BUILD.md`). Modules in `agents/` subfolders are hand-written. Never edit generated files by hand.",
           "Only one brain: `memory.json`. There is no second memory, copy or parallel source of truth; everything else is built from it or points at it.",
-          "Secrets: they live only in `.secrets/` at the repo root, which git ignores except its `.gitkeep`. Code and configs reference them by environment variable; their values never go into other files, the chat or external services.",
-          "Specific formats: markdown for information, json for the memory (`memory.json`), yaml for the params (`params.yaml`), bash for system scripts (setup, links, servers) and Rust for everything else (see Premisas - dinámicas).",
+          "Only migrate UP!: information moves in one direction only, up, as it fits a higher field better: `data` > `primary` > `config` (config on top). `data` is external memory, nearly empty, where what is not yet placed lands; nothing moves down. Every move is well delimited (`descr_+`, `descr_-`), follows the Pareto rule and logical and formal rules; `pla-lint` refuses a field in `data` without a planned destination.",
+          "One folder for every assistant: `agents/` is the folder of any assistant agent. `.claude/` holds only symlinks into `agents/`; any other assistant with its own folders may read `agents/` or link to its files as it suits it. No assistant clutters the other folders, the root included.",
+          "Specific formats: markdown for information, json for the memory (`memory.json`), yaml for the params (`params.yaml`), Rust for programs and scripts, and bash only for the thin launchers a system calls by path, such as the git and Claude Code hooks (see Premisas - dinámicas).",
           "No duplication. Only one way of functional working, one memory file and one params file, symbolic links where matters, only one zettelkasten vault, etc.",
           "Open source: everyone can collaborate with it (see `README.md` at the repo root for the contribution flow)",
           "Pareto rule: 20% of the effort gives 80% of the result; when unsure, assume a similar split. Propose that 20% first, and more when it is for best practices. It also rules every description: `descr_+` (what a key is, the positive way) and `descr_-` (what it is not, the negative way) each say the essential 20% that carries 80% of the meaning.",
@@ -107,13 +756,22 @@
         "brain_keys_intro": "The memory (`memory.json`) has exactly three primary keys, each saying what it is (`descr_+`) and what it is not (`descr_-`):"
       },
       "dynamic_premises": {
-        "brain": "Brain: `memory.json` is the brain of plalast, the place everything is read from and written to. Everything in this file, and every other generated file (every `.md` in the root and in `agents/`, `.gitignore`, `.claude/settings.json`), is rebuilt from it byte by byte, with the params of `params.yaml` (interruptores and agent placeholder).",
-        "write_order": "Write order: delete > modify/edit > add. Before adding anything, first delete what is no longer needed, then modify or edit what exists, and add only what neither covers. This forces a kind of autonomous retraining of the memory, as long as the Pareto rule holds in each case.",
-        "problem_first": "Problem-first: say, in plain human language, the problem that a tool or a set of tools solves, before naming any tool. Do not get carried away by proper names: names change, the problem stays. Follow \"All models are wrong, but some are useful\": every tool and every description is a model, judged by how useful it is and not by how true it is. This is the pragmatic philosophy the Pareto rule installs in our learning by reinforcement.",
-        "procedures": "Procedures: short instructions in human language for recurring situations, in `agents/PROCEDURES.md` (from `primary.procedures`). Read the one that fits before acting.",
-        "intro": "The current state of the repo: it changes as the repo grows, so check it against the repo when in doubt.",
+        "intro": "Dynamic premises are still to be verified: each one is the current state of how we solve a concrete problem (`primary.problems`, in `agents/PROBLEMS.md`), and it changes when a better solution is verified.",
+        "items": [
+          "Brain: everything is read from and written to `memory.json`. This file and every other generated file (every `.md` in the root and in `agents/`, `.gitignore`, the Claude Code settings) are rebuilt from it byte by byte, with the params of `params.yaml`; a test rebuilds them all and compares.",
+          "LLM agent has his folder, but one repo brain: the agent's folder is `agents/`. Its scripts, reports, `.md` and `.pdf` files go to `agents/workspace/` (git-ignored except `.gitkeep`, never part of the brain), without touching the rest of the repo; everything else follows AGENTS.md.",
+          "Write order: delete > modify/edit > add. Before adding anything, first delete what is no longer needed, then modify or edit what exists, and add only what neither covers. This forces a kind of autonomous retraining of the memory, as long as the Pareto rule holds in each case.",
+          "Problem-first: say, in plain human language, the problem that a tool or a set of tools solves, before naming any tool. Do not get carried away by proper names: names change, the problem stays. Follow \"All models are wrong, but some are useful\": every tool and every description is a model, judged by how useful it is and not by how true it is. This is the pragmatic philosophy the Pareto rule installs in our learning by reinforcement.",
+          "Better deterministic and explained than interpreted: prefer a rule that a tool checks the same way every time, with its reason written next to it, over one that depends on how someone reads a text. When a rule can be a check, make it one (Enforce, don't ask); when it cannot, explain it well enough to follow it without guessing.",
+          "Rust-only: Rust for backend and scripts. TypeScript occasionally (web pages and user interfaces). Rust and C/C++ tools allowed.",
+          "Pure calculator: use it to isolate calculation. `plalast::calc` (the library, `src/calc.rs`) and `pla-calc <expression>` (the command) evaluate arithmetic exactly, as fractions, with no side effects: `+ - * /`, integer `^`, parentheses and decimals; division by zero and overflow are errors, never a wrong number.",
+          "Procedures: short instructions in human language for recurring situations, in `agents/PROCEDURES.md` (from `primary.procedures`). Read the one that fits before acting.",
+          "Verification (precarious, growing): `pla-verify` checks a change at several levels: `consistency` (the repo agrees with the brain: `pla-build --check`, `pla-lint memory modules`), `logic` (`pla-lint rust`, that is fmt and clippy, then the logic tests: `cargo test`, with `tests/logic.rs` checking at run time the contracts that `src/verified.rs` proves), `formal` (`cargo verus verify`, skipped with a warning where Verus is not installed) and a last human level (it lists the changed files to review). There are still few proofs and few logic tests."
+        ],
+        "state_intro": "The current state of the repo: it changes as the repo grows, so check it against the repo when in doubt.",
         "map": "Map: `agents/structure.md` (where each path lives) and `cargo run --release --bin pla-recall -- [term]`.",
-        "modes_intro": "Modes (`primary.mode`, each with its interruptor in `params.levers.mode`):",
+        "always_read_intro": "Always read at the start of a session (docs whose interruptor is `enabled`):",
+        "modes_intro": "Modes (`primary.mode`, each with its interruptor `primary.mode.<name>` in `params.yaml`):",
         "commands": {
           "tool_intro": "Repo tool (details in `agents/BUILD.md`), from anywhere inside the repo:",
           "code_intro": "Code:",
@@ -127,30 +785,34 @@
         "tools_intro": "Tools and languages in use:",
         "tools_and_languages": [
           "Programs that must be fast, safe with memory and easy for an LLM to read and write, some of them proven correct: Rust, the default for every program and tool, with Verus for the proofs.",
-          "Proving that a statement is true, and keeping a growing base of checked facts: Lean 4.",
-          "Writing software together with the proof that it does what it says, in a form LLMs program well: Dafny, the default for LLM-programming."
+          "Proving that a statement is true, and keeping a growing base of checked facts: Lean 4."
         ],
         "candidates_intro": "Candidates (possible, not in use yet):",
         "candidates": [
+          "Writing software together with the proof that it does what it says, in a form LLMs program well: Dafny (not a Rust or C/C++ tool, so not in use while Rust-only holds).",
           "Building web pages and user interfaces, and scripting or crawling the web: TypeScript."
         ]
       },
       "good_practices": {
         "items": [
-          "Interruptor: every document section and every mode has one in `params.levers` (also called a memory lever), with three values: `enabled` (always in the agent's memory), `on_demand` (its own file, read when needed; the default when none is set) or `disabled` (not built). Every new section or mode gets one when its default is not the right one.",
-          "File changes: when the user asks to touch any file, make the change in its section of `memory.json` (or `params.yaml` for interruptores) and rebuild with `pla-build` (the Rust build tool); never edit the output directly. Only the hand-written Rust code and the modules in `agents/` subfolders are edited in place.",
+          "Interruptor: every doc section, every whole doc and every mode can have one in `params.yaml`, after `#---INTERRUPTORS---`, named by the path of its field (`primary.docs.content.<doc>.sections.<id>`, `primary.docs.content.<doc>`, `primary.mode.<name>`), with three values: `enabled` (always in the agent's memory), `on_demand` (its own file, read when needed; the default when none is set) or `disabled` (not built). A new section, doc or mode works with the default; when another value fits better, propose it to the user, who sets it.",
+          "File changes: when the user asks to touch any file, find the part of `memory.json` that builds it, change it there and rebuild with `pla-build`.",
           "Log: after every commit, merge or new branch, add an entry `{date, branch, commit, kind, descr}` to `primary.log` (a commit cannot hold its own hash, so it goes in the next commit) and rebuild; `agents/LOG.md` shows it.",
           "Zettelkasten markdown spirit. A lot of things in the web are garbage, so notes in the agent-zettelkasten use CDU (Universal Decimal Classification) notation: the file name starts with the CDU code, then a kebab-case title, e.g. `004.8-llm-agents.md` (004.8 = artificial intelligence). The infrastructure will be up.",
           "Lean memory: always-on docs hold only what an agent cannot learn by reading the repo; maps, overviews and reference material are `on_demand`.",
           "Every rule earns its place: add one only when an agent repeats a mistake, and only if the agent could not find it in the repo; `pla-lint` keeps always-on docs under `config.lint.max_lines`.",
-          "Enforce, don't ask: rules that must never bend (never edit generated files, docs in sync with `memory.json`) are hooks or checks, not just instructions."
+          "Enforce, don't ask: rules that must never bend (never edit generated files, docs in sync with `memory.json`) are hooks or checks, not just instructions.",
+          "Verification: run `pla-verify` before every commit and report what each level said; a skipped level is said, never hidden. A new pure function with a clear contract goes in `src/verified.rs` with `requires`/`ensures`, and gets a logic test in `tests/logic.rs` checking the same contract. When a test or a proof fails, fix the code or the contract, never weaken the check to make it pass.",
+          "Everything ends in Rust: something done in another language (a Python prototype, a one-off script) is ported to Rust before it stays in the repo.",
+          "Calculation isolation: do not compute numbers in your head or in a free-form script; pass the expression to `pla-calc` (or call `plalast::calc` from Rust) and use its exact result.",
+          "Where things go: before saving anything in the memory, find the field whose `descr_+` fits it and whose `descr_-` does not exclude it (`primary.schema.keys`, or the three primary keys); if none fits, propose a new field with both, Pareto-short."
         ]
       },
       "preferences": {
         "items": [
-          "Naming: when the user says \"la memoria\", \"el contexto\" or \"el json\" (memory, context, the json), they mean `memory.json`.",
-          "Using languages LLM-friendly like Rust, Python or Go is desirable. Also, using LLM programming-specific languages is a tool to proceed with caution, but desirable at some point.",
-          "Formal verification is desirable, but very expensive. Watch out and connect to others' ideas instead of reinventing the wheel"
+          "Naming: when the user says \"la memoria\", \"el contexto\" or \"el json\" (memory, context, the json), they mean `memory.json`. \"Los 4 fantásticos\" are the sections of AGENTS.md (Reglas - estáticas, Premisas - estáticas, Premisas - dinámicas, Buenas prácticas, Preferencias): there are more than four, the name stays.",
+          "LLM-friendly languages: desirable, Rust first (see Rust-only). Languages made for LLM programming are a tool to use with caution, but desirable at some point.",
+          "Formal verification: desirable, but very expensive. Watch out and connect to others' ideas instead of reinventing the wheel."
         ]
       }
     },
@@ -167,8 +829,8 @@
       },
       {
         "cmd": "`cargo run --release --bin pla-build -- --guard`",
-        "summary": "Claude Code hook: deny hand edits of generated files",
-        "detail": "Reads a Claude Code PreToolUse payload on stdin and denies Edit/Write on any file `pla-build` generates; `agents/hooks/protect-generated.sh` runs it."
+        "summary": "Claude Code hook: deny hand edits of generated files and writes outside the repo root",
+        "detail": "Reads a Claude Code PreToolUse payload on stdin and denies Edit/Write/NotebookEdit on any file `pla-build` generates and on any path outside the repo root; `agents/hooks/protect-generated.sh` runs it."
       },
       {
         "cmd": "`cargo run --release --bin pla-recall -- [term]`",
@@ -178,12 +840,22 @@
       {
         "cmd": "`cargo run --release --bin pla-lint -- [memory] [modules] [rust]`",
         "summary": "check that the memory, the hand-written modules and the Rust code are well formed",
-        "detail": "Checks that `memory.json` and `params.yaml` are consistent and fully documented in `primary.schema`, that hand-written modules have the right shape (skill folders with `SKILL.md`, frontmatter `name` and `description`), that guides have their source, and that `cargo fmt`, `cargo clippy` and, when Verus is installed, `cargo verus verify` pass. Pass `memory`, `modules` or `rust` to run only some areas."
+        "detail": "Checks that `memory.json` and `params.yaml` are consistent and fully documented in `primary.schema`, that hand-written modules have the right shape (skill folders with `SKILL.md`, frontmatter `name` and `description`), that guides have their source, that the texts of the memory say each thing once and point at paths, dotted keys and binaries that exist, and that `cargo fmt` and `cargo clippy` pass (formal verification is in `pla-verify`). Pass `memory`, `modules` or `rust` to run only some areas."
       },
       {
         "cmd": "`cargo run --release --bin pla-audit -- [secrets] [deps] [repo]`",
         "summary": "look for secrets and personal data, vulnerable dependencies, broken links and branches out of sync",
-        "detail": "Looks for keys, tokens, emails and home-folder paths in what git would commit, files committed inside secret folders, known vulnerabilities in `Cargo.lock` (with `cargo-audit`), broken links, large files, uncommitted changes and branches out of sync. Pass `secrets`, `deps` or `repo` to run only some areas; `config.audit` holds its settings."
+        "detail": "Looks for keys, tokens, emails and home-folder paths in what git would commit, files committed inside secret folders, known vulnerabilities in `Cargo.lock` (with `cargo-audit`), broken links, large files, files with the same content, uncommitted changes and branches out of sync. Pass `secrets`, `deps` or `repo` to run only some areas; `config.audit` holds its settings."
+      },
+      {
+        "cmd": "`cargo run --release --bin pla-verify -- [consistency] [logic] [formal]`",
+        "summary": "verify a change at several levels: consistency with the brain, logic tests and formal proofs (Verus), then a human review",
+        "detail": "Runs the verification levels of a change and reports each one: `consistency` (`pla-build --check` and `pla-lint memory modules`), `logic` (`pla-lint rust`, then `cargo test`, including the logic tests of `tests/logic.rs`) and `formal` (`cargo verus verify`; skipped with a warning when Verus is not installed). It ends by listing the changed files for the human review. Pass `consistency`, `logic` or `formal` to run only some levels."
+      },
+      {
+        "cmd": "`cargo run --release --bin pla-calc -- <expression>`",
+        "summary": "the pure calculator: evaluate an expression exactly, isolated from everything else",
+        "detail": "Evaluates an arithmetic expression with `plalast::calc`: exact fractions (`0.1 + 0.2` is `3/10`), `+ - * /`, `^` with an integer exponent, unary minus and parentheses. Prints the exact value and, for a fraction, its decimal digits (marked `…` when cut). Exit 1 when the expression has no value (division by zero, overflow, a syntax error), 2 without an expression."
       },
       {
         "cmd": "`git config core.hooksPath agents/hooks`",
@@ -497,6 +1169,13 @@
         "commit": "b508c52",
         "kind": "commit",
         "descr": "Problem-first premise, primary.procedures (agents/PROCEDURES.md), and the static premises Conservative, in general and Only small diff steps."
+      },
+      {
+        "date": "2026-11-28",
+        "branch": "develop",
+        "commit": "9ae9dfc",
+        "kind": "commit",
+        "descr": "primary.agents-md grouped by the four AGENTS.md categories; static premise Only one brain; params.agent_placeholder is the note on line 2 of every doc."
       }
     ],
     "index": {},
@@ -526,8 +1205,7 @@
         "title": "Mode ultra_conservative",
         "when": "the user turns it on, or a change is risky, irreversible or outward-facing",
         "rules": [
-          "Without the user's explicit confirmation: no commit, push, merge, branch deletion or file deletion.",
-          "Without the user's explicit confirmation: no change outside `memory.json` and `params.yaml`.",
+          "Without the user's explicit confirmation: no commit, push, merge, branch or file deletion, and no change outside `memory.json`.",
           "Keep every diff minimal, and say what would change before changing it."
         ]
       }
@@ -569,58 +1247,368 @@
             "When a step cannot be undone, or it reaches other people, ask first. When it can be undone, prefer doing it and showing the result over asking.",
             "Say plainly what was done, what was not, and why. A clear partial result is more useful than an unclear complete one."
           ]
+        },
+        "verify-a-change": {
+          "title": "Verifying a change",
+          "text": [
+            "Check a change at several levels before keeping it, from the cheapest to the most demanding: first that it agrees with what is already known, then that it passes the tests that exercise its logic, then, where it is possible, that a proof shows it is right for every case.",
+            "A level that could not run is not a level that passed: say which ones ran and which did not. Last, a person looks at the change; the machine checks help that look, they do not replace it."
+          ]
+        }
+      }
+    },
+    "problems": {
+      "definition": "Problems: the concrete problems this project solves, each said in human language with no proper names and no references to code or to the repo, and the rules that solve it today (`solved_by`, the names of premises, good practices and preferences, as they start in AGENTS.md). `pla-lint` checks that every name exists and that every rule solves at least one problem.",
+      "items": {
+        "scattered-truth": {
+          "title": "Scattered truth",
+          "statement": "Knowledge about a project ends up spread over many files that drift apart, until nobody knows which version is right.",
+          "solved_by": [
+            "Single source",
+            "Only one brain",
+            "Brain",
+            "No duplication",
+            "File changes"
+          ]
+        },
+        "limited-attention": {
+          "title": "Limited attention",
+          "statement": "An agent has limited attention: loading everything every time wastes it, and loading too little leaves it blind.",
+          "solved_by": [
+            "Interruptor",
+            "Lean memory",
+            "Procedures"
+          ]
+        },
+        "rules-that-bend": {
+          "title": "Rules that bend",
+          "statement": "Rules that live only as text are forgotten or bent, and nobody notices until the damage is done.",
+          "solved_by": [
+            "Enforce, don't ask",
+            "Better deterministic and explained than interpreted"
+          ]
+        },
+        "who-holds-the-controls": {
+          "title": "Who holds the controls",
+          "statement": "An agent that changes the controls of a system on its own can steer it away from what its owner wants.",
+          "solved_by": [
+            "Params untouchable, Memory updatable",
+            "Conservative, in general"
+          ]
+        },
+        "growing-without-learning": {
+          "title": "Growing without learning",
+          "statement": "A memory that only grows piles up stale and contradictory rules instead of getting better.",
+          "solved_by": [
+            "Write order",
+            "Every rule earns its place",
+            "Log"
+          ]
+        },
+        "unverified-knowledge": {
+          "title": "Unverified knowledge",
+          "statement": "What a machine produces by itself can be wrong in ways that look right.",
+          "solved_by": [
+            "Only small diff steps",
+            "Verification (precarious, growing)",
+            "Verification",
+            "Formal verification"
+          ]
+        },
+        "wasted-effort": {
+          "title": "Wasted effort",
+          "statement": "Effort goes into details that bring little, while the essentials stay undone.",
+          "solved_by": [
+            "Pareto rule",
+            "Problem-first"
+          ]
+        },
+        "tools-by-fashion": {
+          "title": "Tools by fashion",
+          "statement": "Tools chosen by their name or by fashion, instead of by the problem they solve, turn into a collection nobody masters.",
+          "solved_by": [
+            "Problem-first",
+            "Rust-only",
+            "Everything ends in Rust",
+            "Specific formats",
+            "LLM-friendly languages"
+          ]
+        },
+        "wrong-numbers": {
+          "title": "Wrong numbers",
+          "statement": "Numbers worked out by guessing, or with rounding nobody sees, are silently wrong.",
+          "solved_by": [
+            "Pure calculator",
+            "Calculation isolation"
+          ]
+        },
+        "leaked-secrets": {
+          "title": "Leaked secrets",
+          "statement": "A public project that is always on can leak keys or personal data.",
+          "solved_by": [
+            "Secrets"
+          ]
+        },
+        "noisy-sources": {
+          "title": "Noisy sources",
+          "statement": "Much of what can be read online is of low quality, and notes taken from it pollute what is known.",
+          "solved_by": [
+            "Zettelkasten markdown spirit"
+          ]
+        },
+        "one-person-project": {
+          "title": "One-person project",
+          "statement": "A project only one person can work on stops when that person stops.",
+          "solved_by": [
+            "Open source"
+          ]
+        },
+        "misread-words": {
+          "title": "Misread words",
+          "statement": "A person names things in their own words; an agent that does not map those words to the right thing acts on the wrong one.",
+          "solved_by": [
+            "Naming"
+          ]
+        },
+        "misplaced-knowledge": {
+          "title": "Misplaced knowledge",
+          "statement": "Without a clear edge for each place, new knowledge is stored where it does not belong, and later it is not found or it contradicts what is next to it.",
+          "solved_by": [
+            "Where things go",
+            "Pareto rule"
+          ]
+        },
+        "writes-outside-the-project": {
+          "title": "Writes outside the project",
+          "statement": "An agent that can write anywhere on a machine can damage what is not its own, and one careless yes from a person is enough for it.",
+          "solved_by": [
+            "Write only inside the root"
+          ]
+        },
+        "agent-clutter": {
+          "title": "Agent clutter",
+          "statement": "An agent at work leaves drafts, reports and scripts behind; spread through a project, they blur what is real and what is only a draft.",
+          "solved_by": [
+            "LLM agent has his folder, but one repo brain",
+            "One folder for every assistant"
+          ]
+        },
+        "one-copy-per-assistant": {
+          "title": "One copy per assistant",
+          "statement": "Each assistant expects its own folder layout; copying the knowledge into each one splits it into versions that drift apart.",
+          "solved_by": [
+            "One folder for every assistant",
+            "No duplication"
+          ]
+        },
+        "sediment": {
+          "title": "Sediment",
+          "statement": "Information dropped in a temporary place stays there for good, and the project slowly runs on material nobody sorted.",
+          "solved_by": [
+            "Only migrate UP!",
+            "Where things go"
+          ]
         }
       }
     },
     "schema": {
       "keys": {
-        "config": "What the tools need to run the repo: git, tool settings and every path. Its `descr_+` and `descr_-` say what it is and is not.",
-        "config.descr_+": "What `config` is (the positive way), in the essential 20% that carries 80% of the meaning (Pareto rule).",
-        "config.descr_-": "What `config` is not (the negative way), in the essential 20% that carries 80% of the meaning (Pareto rule).",
-        "params": "The params, from `params.yaml`: `agent_placeholder` and `levers` (the interruptores).",
-        "params.agent_placeholder": "The note on the second line of every generated doc (the `agent_note` block, and every `on_demand` file), such as `note for agent: ...`.",
-        "config.PLALAST_DIR": "Where the repo lives: always `$PWD`, the repo root, which the tools find by walking up to `memory.json` and resolve at run time. No path is written, so the same value works on every machine and never leaks the user name.",
-        "config.repository": "Remote repository of the project.",
-        "config.branches": "`integration` (where work is committed) and `stable` (what receives merges); `pla-audit` checks they are in sync.",
-        "config.audit": "Settings of `pla-audit`: `allow` (exact strings or repo paths that are never reported, such as a public contact email) and `max_file_kb` (larger files are reported).",
-        "config.lint": "Settings of `pla-lint`: `always_on` (docs an agent loads every session) and `max_lines` (their combined line budget; over it, move sections to `on_demand`).",
-        "config.hooks": "Hooks that enforce the rules: `dir` (scripts; also git's `core.hooksPath`, so `pre-commit` runs `pla-build --check`) and `claude` (Claude Code hooks, rendered into `.claude/settings.json`; the PreToolUse hook denies hand edits of generated files).",
-        "config.paths": "Every path the tools use: `docs`, `on_demand` and `modules`.",
-        "config.paths.docs": "Folders whose `.md` files are docs (`.` is the repo root). Every `.md` directly inside them must be generated.",
-        "config.paths.on_demand": "Folder where `on_demand` sections are written as `<id>.md`.",
-        "config.paths.modules": "Per module kind (skills, agents, rules, connectors, guides): `dir` (where its modules are written) and `links` (provider -> folder that gets one symlink per module). Per external module of `primary.modules` (such as `agent_zettelkasten`): its path, relative to `modules/` (or to the folder of a structure symlink whose `target_ref` points at it). Keep it relative: an absolute path leaks your home folder. It depends on where the repo and the module sit on the machine, so a machine with another layout changes the value.",
-        "params.levers": "Interruptor (memory lever) of every document section, as `<doc>` -> `<section id>` -> value, and of every mode, as `mode` -> `<name>` -> value (see Memory levers). Unset means `on_demand`.",
-        "primary": "What makes the docs: project identity, texts, definitions, commands, features, log, index, modes and this schema. Its `descr_+` and `descr_-` say what it is and is not.",
-        "primary.descr_+": "What `primary` is (the positive way), in the essential 20% that carries 80% of the meaning (Pareto rule).",
-        "primary.descr_-": "What `primary` is not (the negative way), in the essential 20% that carries 80% of the meaning (Pareto rule).",
-        "primary.project": "Identity: `name`, `title` and `plalast_logo` (path of the project logo).",
-        "primary.docs": "Everything about the docs, the markdown files about this project and how it operates.",
-        "primary.docs.definition": "What counts as a doc, in words.",
-        "primary.docs.on_demand": "How `on_demand` sections are pointed at: the heading of the pointer list (`heading`) and the pointer line (`pointer`, with `{path}`, `{title}` and `{when}`). Their folder is `config.paths.on_demand`.",
-        "primary.agents-md": "The AGENTS.md text, split by the four categories of the doc: `intro` (under the title), `static_premises`, `dynamic_premises`, `good_practices` and `preferences`, one per section; `data.content.agents_md` gives the doc its shape and points at them with `ref`.",
-        "primary.agents-md.intro": "Paragraphs under the title.",
-        "primary.agents-md.static_premises": "The Premisas - estáticas section: `items` (the fixed premises: what the repo is, how it is built, the Pareto rule) and `brain_keys_intro` (intro of the table of primary keys, the `brain_keys` block).",
-        "primary.agents-md.dynamic_premises": "The Premisas - dinámicas section: texts (`brain`, `write_order`, `problem_first`, `procedures`, `intro`, `map`, `modes_intro`, `tools_intro`, `candidates_intro`) and lists (`commands`, with `tool_intro`, `code_intro` and `code`; `tools_and_languages`; `candidates`); the tool commands come from `primary.commands` and the modes from the `modes` block.",
-        "primary.agents-md.good_practices": "The Buenas prácticas section: `items`, how every agent works in the repo.",
-        "primary.agents-md.preferences": "The Preferencias section: `items`, preferences of the project owner.",
-        "primary.features": "Features of the project, as `feature_<n>` -> `{descr, status}` (both strings).",
-        "primary.log": "Project log: entries `{date, branch, commit, kind, descr}` in the order they happened; `kind` is `commit`, `merge` or `branch`. A commit cannot hold its own hash, so each one is logged in the next commit. LOG.md shows them newest first; `pla-audit` warns about commits missing from it.",
-        "primary.index": "Project index (empty for now; its format is not defined yet).",
-        "primary.skills": "Skills: `definition`; its folder and provider links are in `config.paths.modules`.",
-        "primary.agents": "Subagents: `definition`; its folder and provider links are in `config.paths.modules`.",
-        "primary.rules": "Rules: `definition`; its folder and provider links are in `config.paths.modules`.",
-        "primary.connectors": "MCP connectors: `definition`; its folder and provider links are in `config.paths.modules`. `pla-lint` checks each file's neutral format.",
-        "primary.guides": "Guides: `definition` and `render` (`pdf`: each .md is rendered to a .pdf by `pla-build`); folder and links in `config.paths.modules.guides`.",
-        "primary.modules": "External modules that live outside this repo, by name (such as `agent_zettelkasten`): each has a `definition` (what it is, in words); its path is `config.paths.modules.<name>`. A symlink in `modules/` is built only if `data.structure` has one for it.",
-        "primary.mode": "Modes, by name (such as `ultra_conservative`): `title`, `when` and `rules` (a list of strings). Its interruptor is `params.levers.mode.<name>`: `enabled` writes the rules into the `modes` block, `on_demand` writes them to `<config.paths.on_demand>/mode-<name>.md` and leaves a pointer, `disabled` drops them.",
-        "primary.procedures": "Procedures: `definition` and `items` (by id: `title` and `text`, a list of paragraphs in human language, with no backticks or file names; `pla-lint` checks it). Rendered into `agents/PROCEDURES.md` by the `procedures` block.",
-        "primary.schema": "This documentation of the memory and params format; `BUILD.md` renders its tables.",
-        "primary.commands": "The repo's commands, each `{cmd, summary, detail}`: AGENTS.md lists the summaries and BUILD.md the details.",
-        "data": "What gets built. Its `descr_+` and `descr_-` say what it is and is not.",
-        "data.descr_+": "What `data` is (the positive way), in the essential 20% that carries 80% of the meaning (Pareto rule).",
-        "data.descr_-": "What `data` is not (the negative way), in the essential 20% that carries 80% of the meaning (Pareto rule).",
-        "data.structure": "Every path, in order: `path`, `type`, `description`; optional `table` and `label` (its row in the Structure table), `gitkeep`, `secret`, `target`, `local` and `build`.",
-        "data.content": "One document per key: `head` (blocks before the first section), `sections` (`id`, `title`, `when`, `blocks`) and optional `agent_note: false` (no agent note, for adapter files such as `CLAUDE.md`, which is only `@AGENTS.md`). A `file` entry with `build: \"<key>\"` is rendered from it."
+        "config.descr_+": {
+          "descr_+": "What `config` is (the positive way), in the essential 20% that carries 80% of the meaning (Pareto rule).",
+          "descr_-": "Not a list of contents: one sentence, the essential 20%."
+        },
+        "config.descr_-": {
+          "descr_+": "What `config` is not (the negative way), in the essential 20% that carries 80% of the meaning (Pareto rule).",
+          "descr_-": "Not a repeat of `descr_+` in negative form: what a reader could wrongly put there."
+        },
+        "config.PLALAST_DIR": {
+          "descr_+": "Where the repo lives: always `$PWD`, the repo root, which the tools find by walking up to `memory.json` and resolve at run time. No path is written, so the same value works on every machine and never leaks the user name.",
+          "descr_-": "Not a written path: a written one works on one machine only and leaks the user name."
+        },
+        "config.repository": {
+          "descr_+": "Remote repository of the project.",
+          "descr_-": "Not a clone URL with credentials, not the branches (`config.branches`)."
+        },
+        "config.branches": {
+          "descr_+": "`integration` (where work is committed) and `stable` (what receives merges); `pla-audit` checks they are in sync. Set in `params.yaml`.",
+          "descr_-": "Not the list of all branches: only the two the flow depends on."
+        },
+        "config.audit": {
+          "descr_+": "Settings of `pla-audit`: `allow` (exact strings or repo paths that are never reported, such as a public contact email) and `max_file_kb` (larger files are reported). (`allow` is set in `params.yaml`)",
+          "descr_-": "Not the audit itself (`pla-audit`), not the lint settings (`config.lint`)."
+        },
+        "config.lint": {
+          "descr_+": "Settings of `pla-lint`: `always_on` (docs an agent loads every session) and `max_lines` (their combined line budget; over it, move sections to `on_demand`). (`max_lines` is set in `params.yaml`)",
+          "descr_-": "Not the lint itself (`pla-lint`), not which sections are always on (the interruptores)."
+        },
+        "config.hooks": {
+          "descr_+": "Hooks that enforce the rules: `dir` (scripts; also git's `core.hooksPath`, so `pre-commit` runs `pla-build --check`) and `claude` (Claude Code hooks, rendered into `agents/hooks/claude-settings.json`, which `.claude/settings.json` links to; the PreToolUse hook denies hand edits of generated files and any write outside the repo root). Set in `params.yaml`.",
+          "descr_-": "Not the hook scripts (they live in `agents/hooks/`), not git settings of the machine."
+        },
+        "config.paths": {
+          "descr_+": "Every path the tools use: `docs`, `on_demand` and `modules`.",
+          "descr_-": "Not file contents, not the structure of the repo (`config.structure`)."
+        },
+        "config.paths.docs": {
+          "descr_+": "Folders whose `.md` files are docs (`.` is the repo root). Every `.md` directly inside them must be generated.",
+          "descr_-": "Not every folder with markdown: guides and modules are hand-written, not docs."
+        },
+        "config.paths.on_demand": {
+          "descr_+": "Folder where `on_demand` sections are written as `<id>.md` and `on_demand` modes as `mode-<name>.md`.",
+          "descr_-": "Not where hand-written modules go (`config.paths.modules`)."
+        },
+        "config.paths.modules": {
+          "descr_+": "Per module kind (skills, agents, rules, connectors, guides): `dir` (where its modules are written) and `links` (provider -> folder that gets one symlink per module). Per external module of `primary.modules` (such as `agent_zettelkasten`): its path, relative to `modules/` (or to the folder of a structure symlink whose `target_ref` points at it). Keep it relative: an absolute path leaks your home folder. It depends on where the repo and the module sit on the machine, so a machine with another layout changes the value.",
+          "descr_-": "Not the modules themselves, not their definitions (`primary.<kind>`, `primary.modules`)."
+        },
+        "config.structure": {
+          "descr_+": "Every path of the repo, in order, as the tools need it: `path` (or `path_ref`), `type`, and optional `build`, `gitkeep`, `secret`, `scratch` (contents git-ignored except `.gitkeep`, for the agent's scratch), `links_only` (a folder of symlinks into `agents/` only), `target` (or `target_ref`) and `local`. Its prose is in `primary.structure`.",
+          "descr_-": "Not prose: descriptions and table texts are in `primary.structure`, path by path."
+        },
+        "config.obligatory": {
+          "descr_+": "The categories of AGENTS.md that must always be followed, as memory paths (`primary.agents-md.<category>`); their sections are titled `(obligatory)`. Set in `params.yaml`.",
+          "descr_-": "Not a list of single rules, and never a category that is also preferential."
+        },
+        "config.preferential": {
+          "descr_+": "The categories of AGENTS.md that are followed when they fit, as memory paths; their sections are titled `(preferential)`. Set in `params.yaml`.",
+          "descr_-": "Not optional to read: only to apply, when another rule does not decide."
+        },
+        "primary.descr_+": {
+          "descr_+": "What `primary` is (the positive way), in the essential 20% that carries 80% of the meaning (Pareto rule).",
+          "descr_-": "Not a list of contents: one sentence, the essential 20%."
+        },
+        "primary.descr_-": {
+          "descr_+": "What `primary` is not (the negative way), in the essential 20% that carries 80% of the meaning (Pareto rule).",
+          "descr_-": "Not a repeat of `descr_+` in negative form: what a reader could wrongly put there."
+        },
+        "primary.project": {
+          "descr_+": "Identity: `name`, `title` and `plalast_logo` (path of the project logo).",
+          "descr_-": "Not the repository settings (`config.repository`), not the README text."
+        },
+        "primary.docs": {
+          "descr_+": "Everything about the docs, the markdown files about this project and how it operates.",
+          "descr_-": "Not the text of any doc: only what is common to all of them."
+        },
+        "primary.docs.definition": {
+          "descr_+": "What counts as a doc, in words.",
+          "descr_-": "Not a list of the docs (that is `config.structure`)."
+        },
+        "primary.docs.on_demand": {
+          "descr_+": "How `on_demand` sections are pointed at: the heading of the pointer list (`heading`) and the pointer line (`pointer`, with `{path}`, `{title}` and `{when}`). Their folder is `config.paths.on_demand`.",
+          "descr_-": "Not the `on_demand` files, not their folder (`config.paths.on_demand`)."
+        },
+        "primary.docs.content": {
+          "descr_+": "One document per key: `head` (blocks before the first section), `sections` (`id`, `title`, `when`, `blocks`) and optional `agent_note: false` (no agent note, for adapter files such as `CLAUDE.md`, which is only `@AGENTS.md`). A `file` entry with `build: \"<key>\"` is rendered from it. A whole doc can be switched with the interruptor `primary.docs.content.<key>` (`disabled`: not built).",
+          "descr_-": "Not prose: blocks point at texts in `primary` with `ref`."
+        },
+        "primary.docs.agent_placeholder": {
+          "descr_+": "The note on the second line of every generated doc (the `agent_note` block, and every `on_demand` file), such as `note for agent: ...`. Set in `params.yaml`.",
+          "descr_-": "Not a rule and not the title: only the second line of each doc."
+        },
+        "primary.agents-md": {
+          "descr_+": "The AGENTS.md text, one key per category of the doc: `intro` (under the title), `static_rules`, `static_premises`, `dynamic_premises`, `good_practices` and `preferences`; `primary.docs.content.agents_md` gives the doc its shape and points at them with `ref`.",
+          "descr_-": "Not the shape of AGENTS.md (`primary.docs.content.agents_md`), not the doc itself."
+        },
+        "primary.agents-md.intro": {
+          "descr_+": "Paragraphs under the title.",
+          "descr_-": "Not a rule: no premise, practice or preference goes here."
+        },
+        "primary.agents-md.static_rules": {
+          "descr_+": "The Reglas - estáticas section: `items`, the rules that never bend and that the tools enforce (generation from the brain, writes only inside the root, params only by the user, secrets).",
+          "descr_-": "Not premises to reason from (static premises), not things still to verify (dynamic premises)."
+        },
+        "primary.agents-md.static_premises": {
+          "descr_+": "The Premisas - estáticas section: `items` (the fixed premises) and `brain_keys_intro` (intro of the table of primary keys, the `brain_keys` block).",
+          "descr_-": "Not things still to verify (those are dynamic), not how to work (good practices)."
+        },
+        "primary.agents-md.dynamic_premises": {
+          "descr_+": "The Premisas - dinámicas section: `intro` (dynamic premises are still to be verified, each the current solution to a problem), `items` (the premises), then the current state: `state_intro`, `map`, `modes_intro` and the `modes` block, `commands` (`tool_intro`, `code_intro`, `code`; the tool commands come from `primary.commands`), `tools_intro` and `tools_and_languages`, `candidates_intro` and `candidates`.",
+          "descr_-": "Not fixed truths: a dynamic premise may change once a better solution is verified."
+        },
+        "primary.agents-md.good_practices": {
+          "descr_+": "The Buenas prácticas section: `items`, how every agent works in the repo.",
+          "descr_-": "Not premises (what the repo is), not tastes of the owner (preferences)."
+        },
+        "primary.agents-md.preferences": {
+          "descr_+": "The Preferencias section: `items`, preferences of the project owner.",
+          "descr_-": "Not rules that must never bend: those are premises or checks."
+        },
+        "primary.features": {
+          "descr_+": "Features of the project, as `feature_<n>` -> `{descr, status}` (both strings).",
+          "descr_-": "Not a roadmap of ideas, not the log of what was done (`primary.log`)."
+        },
+        "primary.log": {
+          "descr_+": "Project log: entries `{date, branch, commit, kind, descr}` in the order they happened; `kind` is `commit`, `merge` or `branch`. A commit cannot hold its own hash, so each one is logged in the next commit. LOG.md shows them newest first; `pla-audit` warns about commits missing from it.",
+          "descr_-": "Not a changelog of ideas or plans: only branches, commits and merges that happened."
+        },
+        "primary.index": {
+          "descr_+": "Project index (empty for now; its format is not defined yet).",
+          "descr_-": "Not the map of paths (`config.structure`, `agents/structure.md`)."
+        },
+        "primary.skills": {
+          "descr_+": "Skills: `definition`; its folder and provider links are in `config.paths.modules`.",
+          "descr_-": "Not the skills themselves (they are hand-written in their folder)."
+        },
+        "primary.agents": {
+          "descr_+": "Subagents: `definition`; its folder and provider links are in `config.paths.modules`.",
+          "descr_-": "Not the subagents themselves (they are hand-written in their folder)."
+        },
+        "primary.rules": {
+          "descr_+": "Rules: `definition`; its folder and provider links are in `config.paths.modules`.",
+          "descr_-": "Not the rules of AGENTS.md (premises, practices, preferences): these are hand-written modules."
+        },
+        "primary.connectors": {
+          "descr_+": "MCP connectors: `definition`; its folder and provider links are in `config.paths.modules`. `pla-lint` checks each file's neutral format.",
+          "descr_-": "Not the connectors themselves, and never their secrets (those live in `.secrets/`)."
+        },
+        "primary.guides": {
+          "descr_+": "Guides: `definition` and `render` (`pdf`: each .md is rendered to a .pdf by `pla-build`); folder and links in `config.paths.modules.guides`.",
+          "descr_-": "Not the guides themselves (hand-written `.md` in their folder), not the generated PDFs."
+        },
+        "primary.modules": {
+          "descr_+": "External modules that live outside this repo, by name (such as `agent_zettelkasten`): each has a `definition` (what it is, in words); its path is `config.paths.modules.<name>`. A symlink in `modules/` is built only if `config.structure` has one for it.",
+          "descr_-": "Not module kinds of this repo (`primary.skills` and the like): only what lives outside it."
+        },
+        "primary.mode": {
+          "descr_+": "Modes, by name (such as `ultra_conservative`): `title`, `when` and `rules` (a list of strings). Its interruptor is `primary.mode.<name>` in `params.yaml`: `enabled` writes the rules into the `modes` block, `on_demand` writes them to `<config.paths.on_demand>/mode-<name>.md` and leaves a pointer, `disabled` drops them.",
+          "descr_-": "Not the interruptor of a mode (that is in `params.yaml`), not a doc section."
+        },
+        "primary.procedures": {
+          "descr_+": "Procedures: `definition` and `items` (by id: `title` and `text`, a list of paragraphs in human language, with no backticks or file names; `pla-lint` checks it). Rendered into `agents/PROCEDURES.md` by the `procedures` block.",
+          "descr_-": "Not rules (premises, practices), not technical steps with commands or paths."
+        },
+        "primary.problems": {
+          "descr_+": "Problems: `definition` and `items` (by id: `title`, `statement` in human language with no backticks or file names, and `solved_by`, the names of the rules that solve it). A rule's name is its text up to the first `:` or `. `. Rendered into `agents/PROBLEMS.md` by the `problems` block; `pla-lint` checks every name resolves to exactly one rule and every rule solves a problem.",
+          "descr_-": "Not solutions: the rules that solve a problem live in `primary.agents-md` and are only named here."
+        },
+        "primary.structure": {
+          "descr_+": "The prose of every path, by path: `description`, and optional `table` and `label` (its row in the Structure table, with `{path}`). `pla-lint` pairs it with `config.structure`, path by path.",
+          "descr_-": "Not the path settings (types, flags, how it is built): those are in `config.structure`."
+        },
+        "primary.schema": {
+          "descr_+": "This documentation of the memory and params format; `BUILD.md` renders its tables.",
+          "descr_-": "Not the data it describes, not a copy of the docs."
+        },
+        "primary.commands": {
+          "descr_+": "The repo's commands, each `{cmd, summary, detail}`: AGENTS.md lists the summaries and BUILD.md the details.",
+          "descr_-": "Not the code commands of AGENTS.md (`primary.agents-md.dynamic_premises.commands`): only the repo's own tools and setup."
+        },
+        "data.descr_+": {
+          "descr_+": "What `data` is (the positive way), in the essential 20% that carries 80% of the meaning (Pareto rule).",
+          "descr_-": "Not a list of contents: one sentence, the essential 20%."
+        },
+        "data.descr_-": {
+          "descr_+": "What `data` is not (the negative way), in the essential 20% that carries 80% of the meaning (Pareto rule).",
+          "descr_-": "Not a repeat of `descr_+` in negative form: what a reader could wrongly put there."
+        },
+        "params": {
+          "descr_+": "What `params.yaml` holds once loaded: the interruptors, by the path of the field they switch (`params.interruptors`). Its other params set fields of the memory at their path (such as `config.hooks`), so they appear there.",
+          "descr_-": "Not something an agent changes on its own (Params untouchable, Memory updatable)."
+        },
+        "params.interruptors": {
+          "descr_+": "Interruptor (memory lever) of every doc section (`primary.docs.content.<doc>.sections.<id>`), whole doc (`primary.docs.content.<doc>`) and mode (`primary.mode.<name>`), by that path; written after `#---INTERRUPTORS---`. Unset means `on_demand`.",
+          "descr_-": "Not the sections, docs or modes themselves, only whether they are loaded."
+        }
       },
       "levers": {
         "enabled": "Rendered inside its document as `## <title>`: always in the agent's memory.",
@@ -628,9 +1616,9 @@
         "disabled": "Not rendered anywhere."
       },
       "entry_types": {
-        "dir": "Creates the folder; `gitkeep: true` adds an empty `.gitkeep`; `secret: true` git-ignores its contents except `.gitkeep`. `path_ref` (a dotted path such as `config.paths.modules.skills.dir`) can replace `path`, and `label` may use `{path}`.",
+        "dir": "Creates the folder; `gitkeep: true` adds an empty `.gitkeep`; `secret: true` git-ignores its contents except `.gitkeep` (and `pla-audit` reports anything committed there); `scratch: true` does the same for the agent's own folder, without that report. `path_ref` (a dotted path such as `config.paths.modules.skills.dir`) can replace `path`, and `label` may use `{path}`.",
         "symlink": "Creates a link to `target`, relative to the link's folder; `target_ref` (a dotted config path such as `config.paths.modules.agent_zettelkasten`) can replace `target`. `local: true` marks a link that depends on the machine's layout: it is git-ignored, built only where its target exists, and removed where it does not.",
-        "file + build": "Renders `data.content.<build>`; `build: \"gitignore\"` renders `.gitignore` from the secret, ignored and local entries; `build: \"claude_settings\"` renders `.claude/settings.json` from `config.hooks.claude`.",
+        "file + build": "Renders `primary.docs.content.<build>`; `build: \"gitignore\"` renders `.gitignore` from the secret, ignored and local entries; `build: \"claude_settings\"` renders `agents/hooks/claude-settings.json` from `config.hooks.claude`.",
         "file + build: null": "Hand-written code such as `Cargo.toml` or `src/`; never an `.md` in the root or `agents/`. Left as is.",
         "ignored": "Not created; listed in `.gitignore`.",
         "planned": "Not created; listed as planned in the Structure table."
@@ -641,682 +1629,162 @@
         "list": "one `- item` line per item; `ref` (a dotted path to a list) can replace `items`, and `item` (a template such as `{cmd}: {summary}`) renders a list of objects",
         "ordered_list": "`1. item`, `2. item`, ...; `ref` (a dotted config path to a list of strings) can replace `items`",
         "code": "a fenced block with `lang` and `text`",
-        "table": "`header` and `rows` as a markdown table; or `ref` to a list of objects with `row` (one template per column) and optional `reverse`",
-        "structure_table": "the Structure table, from the `data.structure` entries that have `table`",
-        "schema": "a table of `primary.schema.<part>` with the given `header`",
+        "table": "`header` and `rows` as a markdown table; or `ref` to a list of objects (or a mapping of objects, whose key fills `{key}`) with `row` (one template per column) and optional `reverse`",
+        "structure_table": "the Structure table, from the `config.structure` entries that have `table`",
+        "schema": "a table of `primary.schema.<part>` with the given `header`; a field of `keys` is `{descr_+, descr_-}`, shown as two columns",
         "image": "`![alt](src)`, or an HTML `<img>` when `width` is set; `ref` (a dotted config path such as `primary.project.plalast_logo`) can replace `src`",
-        "agent_note": "the text of `params.agent_placeholder`, on the line right after the first one (no blank line); every doc has it as the second block of its `head`, unless the doc sets `agent_note: false`",
+        "agent_note": "the text of `primary.docs.agent_placeholder` (set in `params.yaml`), on the line right after the first one (no blank line); every doc has it as the second block of its `head`, unless the doc sets `agent_note: false`",
         "modes": "one `- Mode` line per mode of `primary.mode` that is not `disabled`: its rules when `enabled`, a pointer to `mode-<name>.md` when `on_demand`; nothing when every mode is disabled",
         "brain_keys": "a table `Key | Is (descr_+) | Is not (descr_-)` with one row per primary key of the memory (`config`, `primary`, `data`)",
-        "procedures": "one `## <title>` per procedure of `primary.procedures.items`, followed by its paragraphs"
+        "procedures": "one `## <title>` per procedure of `primary.procedures.items`, followed by its paragraphs",
+        "problems": "one `## <title>` per problem of `primary.problems.items`: its statement and a `Solved by:` line with the names of its rules",
+        "always_read": "the intro of its `ref` and one `- path` line per generated doc whose interruptor is `enabled`; nothing when there are none"
+      }
+    },
+    "structure": {
+      "memory.json": {
+        "description": "The memory (config, primary, data). Hand-edited; with params.yaml, the only files that change for docs and structure.",
+        "table": "The memory, the brain: `config`, `primary` and `data`; with the params of `params.yaml`, every `.md` in the root and in `agents/` is generated from it (see `agents/BUILD.md`)"
+      },
+      "params.yaml": {
+        "description": "Parameters: settings by memory path, then the interruptors. Hand-edited YAML, by the user only.",
+        "table": "Parameters only the user sets, each named by the path of its memory field; the interruptors go after `#---INTERRUPTORS---`"
+      },
+      "Cargo.toml": {
+        "description": "Crate manifest: binaries pla-build, pla-recall, pla-lint, pla-audit, pla-verify and pla-calc (src/bin/<name>.rs), the vstd dependency and the Verus settings. Hand-edited code.",
+        "table": "Rust crate with six tools: `pla-build`, `pla-recall`, `pla-lint`, `pla-audit`, `pla-verify` and `pla-calc`, plus Verus verification (see `agents/BUILD.md`, `agents/guides/verus.md`)"
+      },
+      "Cargo.lock": {
+        "description": "Pinned dependency versions, managed by cargo."
+      },
+      "src/": {
+        "description": "Hand-edited Rust code.",
+        "table": "Rust code: `lib.rs` (shared memory access and checks), `calc.rs` (the pure calculator), `pdf.rs` (guide renderer), `verified.rs` (Verus-verified code), `bin/build.rs`, `bin/recall.rs`, `bin/lint.rs`, `bin/audit.rs`, `bin/verify.rs`, `bin/calc.rs`"
+      },
+      "src/plalast.png": {
+        "description": "Project logo, shown in README.md. Its path lives in primary.project.plalast_logo."
+      },
+      "tests/": {
+        "description": "Hand-edited Rust integration tests (cargo test).",
+        "table": "Tests: `tests/wiring.rs` runs the tools against this repo's memory; `tests/logic.rs` checks at run time the contracts of `src/verified.rs` and the laws of arithmetic in the pure calculator"
+      },
+      "target/": {
+        "description": "Cargo build output, git-ignored."
+      },
+      ".secrets/": {
+        "description": "The single secrets folder, at the repo root. Its contents are never committed (only .gitkeep); pla-audit fails if anything else is tracked inside.",
+        "table": "Secrets: git-ignored except `.gitkeep`; values are referenced by environment variables, never written in other files"
+      },
+      "agents/": {
+        "description": "Neutral source of all agent documentation and modules. Providers get symlinks into it.",
+        "table": "Single, provider-neutral source. Its `.md` files (`AGENTS.md`, `CLAUDE.md`, `PROCEDURES.md`, `PROBLEMS.md`, `BUILD.md`, `FEATURES.md`, `LOG.md`, `INDEX.md`) are generated; its subfolders hold hand-written modules and the agent's scratch (`workspace/`)"
+      },
+      "agents/workspace/": {
+        "description": "Agent workspace: scratch output of any assistant agent, git-ignored except .gitkeep.",
+        "table": "The assistant agent's own scratch: its scripts, reports, `.md` and `.pdf` files; git-ignored except `.gitkeep`, never part of the brain"
+      },
+      "agents/AGENTS.md": {
+        "description": "Global rules for every agent. Generated from content.agents_md."
+      },
+      "agents/CLAUDE.md": {
+        "description": "Claude Code entry point; only imports AGENTS.md. Generated from content.claude_md."
+      },
+      "agents/PROCEDURES.md": {
+        "description": "Procedures doc: mini-instructions in human language. Generated from primary.docs.content.procedures_md and primary.procedures."
+      },
+      "agents/PROBLEMS.md": {
+        "description": "Problems doc: the problems the rules solve. Generated from primary.docs.content.problems_md and primary.problems."
+      },
+      "agents/BUILD.md": {
+        "description": "How to build and recall the repo from memory.json and params.yaml. Generated from primary.docs.content.build_md."
+      },
+      "agents/FEATURES.md": {
+        "description": "Features doc. Generated from primary.docs.content.features_md: a table of primary.features."
+      },
+      "agents/LOG.md": {
+        "description": "Log doc: branches, commits and merges, generated from primary.log."
+      },
+      "agents/INDEX.md": {
+        "description": "Index doc. Generated from primary.docs.content.index_md (only its title and the agent note for now)."
+      },
+      "agents/skills/": {
+        "description": "One folder per skill with an uppercase SKILL.md.",
+        "table": "Skills, one folder each",
+        "label": "{path}<name>/SKILL.md"
+      },
+      "agents/subagents/": {
+        "description": "One markdown file per subagent; the body is its system prompt.",
+        "table": "Subagents",
+        "label": "{path}<name>.md"
+      },
+      "agents/rules/": {
+        "description": "Rule files loaded on demand.",
+        "table": "Modular rules by topic",
+        "label": "{path}*.md"
+      },
+      "agents/guides/": {
+        "description": "Guides (primary.guides). Sources are hand-written; their PDFs are generated.",
+        "table": "Guides: hand-written .md sources and the .pdf that `pla-build` renders from each",
+        "label": "{path}<name>.md"
+      },
+      "agents/hooks/": {
+        "description": "Executable hook scripts.",
+        "table": "Hook scripts: `protect-generated.sh` (Claude Code) and `pre-commit` (git); their config is `config.hooks`"
+      },
+      "agents/hooks/protect-generated.sh": {
+        "description": "Claude Code PreToolUse hook: runs `pla-build --guard`, which denies Edit/Write on generated files. Hand-written script."
+      },
+      "agents/hooks/pre-commit": {
+        "description": "git pre-commit hook (via core.hooksPath): refuses the commit while `pla-build --check` fails. Hand-written script."
+      },
+      "agents/hooks/claude-settings.json": {
+        "description": "Claude Code project settings: the hooks of config.hooks.claude. Generated; .claude/settings.json links to it."
+      },
+      "agents/mcp/": {
+        "description": "Neutral MCP server definitions: name, transport, command/args or url, env.",
+        "table": "One MCP connector per file",
+        "label": "{path}<server>.json"
+      },
+      ".claude/": {
+        "description": "Claude Code reads this natively; it holds only symlinks into agents/.",
+        "table": "Claude Code adapter: only symlinks into `agents/` (`CLAUDE.md`, `AGENTS.md`, `settings.json`, `skills`, `agents`, `rules`); `pla-lint` refuses anything else"
+      },
+      ".claude/CLAUDE.md": {
+        "description": "Claude Code project instructions."
+      },
+      ".claude/AGENTS.md": {
+        "description": "Lets the @AGENTS.md import resolve next to the symlink as well as next to its target."
+      },
+      ".claude/settings.json": {
+        "description": "Claude Code project settings: a link to the generated agents/hooks/claude-settings.json."
+      },
+      ".claude/skills": {
+        "description": "Claude Code skills: a link to agents/skills."
+      },
+      ".claude/agents": {
+        "description": "Claude Code subagents: a link to agents/subagents."
+      },
+      ".claude/rules": {
+        "description": "Claude Code rules: a link to agents/rules."
+      },
+      "README.md": {
+        "description": "Repo front page for humans and GitHub. Generated from content.readme_md."
+      },
+      ".gitignore": {
+        "description": "Generated from the structure entries marked secret."
+      },
+      "modules/": {
+        "description": "External modules, one symlink each.",
+        "table": "Folder for links to the external modules of `primary.modules` (none is built now)"
+      },
+      "tmux.conf": {
+        "description": "Session-scoped tmux settings (windows agent, build, git and the status bar). Hand-written.",
+        "table": "tmux config for the `plalast` session, sourced on top of `~/.tmux.conf`; its header comments hold the commands to start it"
       }
     }
   },
   "data": {
-    "descr_+": "What gets built: every path of the repo (`structure`) and the shape of every generated doc (`content`).",
-    "descr_-": "Not prose (texts live in primary and are pointed at with `ref`), not settings (config).",
-    "structure": [
-      {
-        "path": "memory.json",
-        "type": "file",
-        "build": null,
-        "table": "The memory, the brain: `config`, `primary` and `data`; with the params of `params.yaml`, every `.md` in the root and in `agents/` is generated from it (see `agents/BUILD.md`)",
-        "description": "The memory (config, primary, data). Hand-edited; with params.yaml, the only files that change for docs and structure."
-      },
-      {
-        "path": "params.yaml",
-        "type": "file",
-        "build": null,
-        "table": "Parameters: the agent placeholder (line 2 of every doc) and the interruptores (`levers`) of document sections and modes",
-        "description": "Parameters (agent_placeholder, levers). Hand-edited YAML."
-      },
-      {
-        "path": "Cargo.toml",
-        "type": "file",
-        "build": null,
-        "table": "Rust crate with four tools: `pla-build`, `pla-recall`, `pla-lint` and `pla-audit`, plus Verus verification (see `agents/BUILD.md`, `agents/guides/verus.md`)",
-        "description": "Crate manifest: binaries pla-build, pla-recall, pla-lint and pla-audit (src/bin/<name>.rs), the vstd dependency and the Verus settings. Hand-edited code."
-      },
-      {
-        "path": "Cargo.lock",
-        "type": "file",
-        "build": null,
-        "description": "Pinned dependency versions, managed by cargo."
-      },
-      {
-        "path": "src/",
-        "type": "dir",
-        "table": "Rust code: `lib.rs` (shared memory access and checks), `pdf.rs` (guide renderer), `verified.rs` (Verus-verified code), `bin/build.rs`, `bin/recall.rs`, `bin/lint.rs`, `bin/audit.rs`",
-        "description": "Hand-edited Rust code."
-      },
-      {
-        "path_ref": "primary.project.plalast_logo",
-        "type": "file",
-        "build": null,
-        "description": "Project logo, shown in README.md. Its path lives in primary.project.plalast_logo."
-      },
-      {
-        "path": "tests/",
-        "type": "dir",
-        "table": "Integration tests: `tests/wiring.rs` runs the four tools against this repo's memory",
-        "description": "Hand-edited Rust integration tests (cargo test)."
-      },
-      {
-        "path": "target/",
-        "type": "ignored",
-        "description": "Cargo build output, git-ignored."
-      },
-      {
-        "path": ".secrets/",
-        "type": "dir",
-        "gitkeep": true,
-        "secret": true,
-        "table": "Secrets: git-ignored except `.gitkeep`; values are referenced by environment variables, never written in other files",
-        "description": "The single secrets folder, at the repo root. Its contents are never committed (only .gitkeep); pla-audit fails if anything else is tracked inside."
-      },
-      {
-        "path": "agents/",
-        "type": "dir",
-        "table": "Single, provider-neutral source. Its `.md` files (`AGENTS.md`, `CLAUDE.md`, `PROCEDURES.md`, `BUILD.md`, `FEATURES.md`, `LOG.md`, `INDEX.md`) are generated; its subfolders hold hand-written modules",
-        "description": "Neutral source of all agent documentation and modules. Providers get symlinks into it."
-      },
-      {
-        "path": "agents/AGENTS.md",
-        "type": "file",
-        "build": "agents_md",
-        "description": "Global rules for every agent. Generated from content.agents_md."
-      },
-      {
-        "path": "agents/CLAUDE.md",
-        "type": "file",
-        "build": "claude_md",
-        "description": "Claude Code entry point; only imports AGENTS.md. Generated from content.claude_md."
-      },
-      {
-        "path": "agents/PROCEDURES.md",
-        "type": "file",
-        "build": "procedures_md",
-        "description": "Procedures doc: mini-instructions in human language. Generated from data.content.procedures_md and primary.procedures."
-      },
-      {
-        "path": "agents/BUILD.md",
-        "type": "file",
-        "build": "build_md",
-        "description": "How to build and recall the repo from memory.json and params.yaml. Generated from data.content.build_md."
-      },
-      {
-        "path": "agents/FEATURES.md",
-        "type": "file",
-        "build": "features_md",
-        "description": "Features doc. Generated from data.content.features_md (only its title and the agent note for now)."
-      },
-      {
-        "path": "agents/LOG.md",
-        "type": "file",
-        "build": "log_md",
-        "description": "Log doc: branches, commits and merges, generated from primary.log."
-      },
-      {
-        "path": "agents/INDEX.md",
-        "type": "file",
-        "build": "index_md",
-        "description": "Index doc. Generated from data.content.index_md (only its title and the agent note for now)."
-      },
-      {
-        "path_ref": "config.paths.modules.skills.dir",
-        "type": "dir",
-        "gitkeep": true,
-        "label": "{path}<name>/SKILL.md",
-        "table": "Skills, one folder each",
-        "description": "One folder per skill with an uppercase SKILL.md."
-      },
-      {
-        "path_ref": "config.paths.modules.agents.dir",
-        "type": "dir",
-        "gitkeep": true,
-        "label": "{path}<name>.md",
-        "table": "Subagents",
-        "description": "One markdown file per subagent; the body is its system prompt."
-      },
-      {
-        "path_ref": "config.paths.modules.rules.dir",
-        "type": "dir",
-        "gitkeep": true,
-        "label": "{path}*.md",
-        "table": "Modular rules by topic",
-        "description": "Rule files loaded on demand."
-      },
-      {
-        "path_ref": "config.paths.modules.guides.dir",
-        "type": "dir",
-        "gitkeep": true,
-        "label": "{path}<name>.md",
-        "table": "Guides: hand-written .md sources and the .pdf that `pla-build` renders from each",
-        "description": "Guides (primary.guides). Sources are hand-written; their PDFs are generated."
-      },
-      {
-        "path_ref": "config.hooks.dir",
-        "type": "dir",
-        "gitkeep": true,
-        "table": "Hook scripts: `protect-generated.sh` (Claude Code) and `pre-commit` (git); their config is `config.hooks`",
-        "description": "Executable hook scripts."
-      },
-      {
-        "path": "agents/hooks/protect-generated.sh",
-        "type": "file",
-        "build": null,
-        "description": "Claude Code PreToolUse hook: runs `pla-build --guard`, which denies Edit/Write on generated files. Hand-written script."
-      },
-      {
-        "path": "agents/hooks/pre-commit",
-        "type": "file",
-        "build": null,
-        "description": "git pre-commit hook (via core.hooksPath): refuses the commit while `pla-build --check` fails. Hand-written script."
-      },
-      {
-        "path_ref": "config.paths.modules.connectors.dir",
-        "type": "dir",
-        "gitkeep": true,
-        "label": "{path}<server>.json",
-        "table": "One MCP connector per file",
-        "description": "Neutral MCP server definitions: name, transport, command/args or url, env."
-      },
-      {
-        "path": ".claude/",
-        "type": "dir",
-        "table": "Claude Code adapter: `pla-build` links each module of `agents/` one by one, as `config.paths.modules.<kind>.links` says",
-        "description": "Claude Code reads this natively."
-      },
-      {
-        "path": ".claude/CLAUDE.md",
-        "type": "symlink",
-        "target": "../agents/CLAUDE.md",
-        "description": "Claude Code project instructions."
-      },
-      {
-        "path": ".claude/AGENTS.md",
-        "type": "symlink",
-        "target": "../agents/AGENTS.md",
-        "description": "Lets the @AGENTS.md import resolve next to the symlink as well as next to its target."
-      },
-      {
-        "path": ".claude/settings.json",
-        "type": "file",
-        "build": "claude_settings",
-        "description": "Claude Code project settings: the hooks of config.hooks.claude. Generated."
-      },
-      {
-        "path_ref": "config.paths.modules.skills.links.claude",
-        "type": "dir",
-        "gitkeep": true,
-        "description": "Generated by build: one symlink per skill, .claude/skills/<name> -> ../../agents/skills/<name>."
-      },
-      {
-        "path_ref": "config.paths.modules.agents.links.claude",
-        "type": "dir",
-        "gitkeep": true,
-        "description": "Generated by build: one symlink per subagent, .claude/agents/<name>.md -> ../../agents/subagents/<name>.md."
-      },
-      {
-        "path_ref": "config.paths.modules.rules.links.claude",
-        "type": "dir",
-        "gitkeep": true,
-        "description": "Generated by build: one symlink per rule, .claude/rules/<name>.md -> ../../agents/rules/<name>.md."
-      },
-      {
-        "path": "README.md",
-        "type": "file",
-        "build": "readme_md",
-        "description": "Repo front page for humans and GitHub. Generated from content.readme_md."
-      },
-      {
-        "path": ".gitignore",
-        "type": "file",
-        "build": "gitignore",
-        "description": "Generated from the structure entries marked secret."
-      },
-      {
-        "path": "modules/",
-        "type": "dir",
-        "gitkeep": true,
-        "table": "Folder for links to the external modules of `primary.modules` (none is built now)",
-        "description": "External modules, one symlink each."
-      },
-      {
-        "path": "tmux.conf",
-        "type": "file",
-        "build": null,
-        "table": "tmux config for the `plalast` session, sourced on top of `~/.tmux.conf`; its header comments hold the commands to start it",
-        "description": "Session-scoped tmux settings (windows agent, build, git and the status bar). Hand-written."
-      }
-    ],
-    "content": {
-      "agents_md": {
-        "head": [
-          {
-            "type": "heading",
-            "level": 1,
-            "ref": "primary.project.title"
-          },
-          {
-            "type": "agent_note"
-          },
-          {
-            "type": "paragraph",
-            "ref": "primary.agents-md.intro.0"
-          },
-          {
-            "type": "paragraph",
-            "ref": "primary.agents-md.intro.1"
-          }
-        ],
-        "sections": [
-          {
-            "id": "premisas-estaticas",
-            "title": "Premisas - estáticas",
-            "when": "deciding what the repo is, where its source lives and what never changes",
-            "blocks": [
-              {
-                "type": "list",
-                "ref": "primary.agents-md.static_premises.items"
-              },
-              {
-                "type": "paragraph",
-                "ref": "primary.agents-md.static_premises.brain_keys_intro"
-              },
-              {
-                "type": "brain_keys"
-              }
-            ]
-          },
-          {
-            "id": "premisas-dinamicas",
-            "title": "Premisas - dinámicas",
-            "when": "building, testing or checking the repo, or choosing a language or tool",
-            "blocks": [
-              {
-                "type": "paragraph",
-                "ref": "primary.agents-md.dynamic_premises.brain"
-              },
-              {
-                "type": "paragraph",
-                "ref": "primary.agents-md.dynamic_premises.write_order"
-              },
-              {
-                "type": "paragraph",
-                "ref": "primary.agents-md.dynamic_premises.problem_first"
-              },
-              {
-                "type": "paragraph",
-                "ref": "primary.agents-md.dynamic_premises.procedures"
-              },
-              {
-                "type": "paragraph",
-                "ref": "primary.agents-md.dynamic_premises.intro"
-              },
-              {
-                "type": "paragraph",
-                "ref": "primary.agents-md.dynamic_premises.map"
-              },
-              {
-                "type": "paragraph",
-                "ref": "primary.agents-md.dynamic_premises.modes_intro"
-              },
-              {
-                "type": "modes"
-              },
-              {
-                "type": "paragraph",
-                "ref": "primary.agents-md.dynamic_premises.commands.tool_intro"
-              },
-              {
-                "type": "list",
-                "ref": "primary.commands",
-                "item": "{cmd}: {summary}"
-              },
-              {
-                "type": "paragraph",
-                "ref": "primary.agents-md.dynamic_premises.commands.code_intro"
-              },
-              {
-                "type": "list",
-                "ref": "primary.agents-md.dynamic_premises.commands.code"
-              },
-              {
-                "type": "paragraph",
-                "ref": "primary.agents-md.dynamic_premises.tools_intro"
-              },
-              {
-                "type": "list",
-                "ref": "primary.agents-md.dynamic_premises.tools_and_languages"
-              },
-              {
-                "type": "paragraph",
-                "ref": "primary.agents-md.dynamic_premises.candidates_intro"
-              },
-              {
-                "type": "list",
-                "ref": "primary.agents-md.dynamic_premises.candidates"
-              }
-            ]
-          },
-          {
-            "id": "buenas-practicas",
-            "title": "Buenas prácticas",
-            "when": "deciding how to write, format, log or place anything in the repo",
-            "blocks": [
-              {
-                "type": "list",
-                "ref": "primary.agents-md.good_practices.items"
-              }
-            ]
-          },
-          {
-            "id": "preferencias",
-            "title": "Preferencias",
-            "when": "choosing between options the rules leave open",
-            "blocks": [
-              {
-                "type": "list",
-                "ref": "primary.agents-md.preferences.items"
-              }
-            ]
-          }
-        ]
-      },
-      "procedures_md": {
-        "head": [
-          {
-            "type": "heading",
-            "level": 1,
-            "text": "Procedures"
-          },
-          {
-            "type": "agent_note"
-          },
-          {
-            "type": "paragraph",
-            "ref": "primary.procedures.definition"
-          },
-          {
-            "type": "procedures"
-          }
-        ],
-        "sections": []
-      },
-      "claude_md": {
-        "agent_note": false,
-        "head": [
-          {
-            "type": "paragraph",
-            "text": "@AGENTS.md"
-          }
-        ],
-        "sections": []
-      },
-      "readme_md": {
-        "head": [
-          {
-            "type": "heading",
-            "level": 1,
-            "ref": "primary.project.title"
-          },
-          {
-            "type": "agent_note"
-          },
-          {
-            "type": "image",
-            "ref": "primary.project.plalast_logo",
-            "alt": "plalast logo",
-            "width": 200
-          },
-          {
-            "type": "paragraph",
-            "ref": "primary.agents-md.intro.0"
-          },
-          {
-            "type": "paragraph",
-            "ref": "primary.agents-md.intro.1"
-          },
-          {
-            "type": "paragraph",
-            "text": "Project rules and conventions for humans and agents: [agents/AGENTS.md](agents/AGENTS.md). Everything is generated from [memory.json](memory.json) and [params.yaml](params.yaml); see [agents/BUILD.md](agents/BUILD.md)."
-          }
-        ],
-        "sections": [
-          {
-            "id": "contributing",
-            "title": "Contributing",
-            "when": "preparing a branch or a pull request",
-            "blocks": [
-              {
-                "type": "ordered_list",
-                "items": [
-                  "Fork the repo and create a branch from `develop` (`feat/<topic>`, `fix/<topic>`, `docs/<topic>`).",
-                  "Change only `memory.json` or `params.yaml` (or a hand-written module in an `agents/` subfolder), run `cargo run --release --bin pla-build`, and keep each change small: no duplication, Rust by default, markdown/json/yaml/bash formats.",
-                  "Run `pla-lint` and `pla-audit` (see *Premisas - dinámicas* in agents/AGENTS.md): both must finish with no errors.",
-                  "Open a pull request against `develop` describing what changed and why. `main` only receives merges from `develop`."
-                ]
-              }
-            ]
-          }
-        ]
-      },
-      "build_md": {
-        "head": [
-          {
-            "type": "heading",
-            "level": 1,
-            "text": "BUILD"
-          },
-          {
-            "type": "agent_note"
-          },
-          {
-            "type": "paragraph",
-            "ref": "primary.agents-md.static_premises.items.0"
-          }
-        ],
-        "sections": [
-          {
-            "id": "build-commands",
-            "title": "Commands",
-            "when": "running pla-build or pla-recall",
-            "blocks": [
-              {
-                "type": "table",
-                "ref": "primary.commands",
-                "header": [
-                  "Command",
-                  "What it does"
-                ],
-                "row": [
-                  "{cmd}",
-                  "{detail}"
-                ]
-              },
-              {
-                "type": "paragraph",
-                "text": "Run them from anywhere inside the repo: the tool walks up to the folder that holds `memory.json`. Symlinks need a Unix system (Linux or macOS). `pla-build` never replaces a real file or folder with a link, and never deletes anything except broken module links."
-              }
-            ]
-          },
-          {
-            "id": "brain-files",
-            "title": "memory.json and params.yaml",
-            "when": "editing memory.json or params.yaml",
-            "blocks": [
-              {
-                "type": "paragraph",
-                "text": "The brain is `memory.json`, with exactly three primary keys: `config` (what the tools need to run: git, settings, paths), `primary` (what makes the docs: identity, texts, definitions) and `data` (what gets built); each starts with `descr_+` and `descr_-`, what it is and is not. `params.yaml` has exactly `agent_placeholder` (the note on line 2 of every doc) and `levers` (the interruptores). The tools join them as `config`, `primary`, `data` and `params`, so a dotted path such as `config.paths.modules.agent_zettelkasten` or `params.levers.agents_md.preferencias` works everywhere. Any other top-level key is an error."
-              },
-              {
-                "type": "schema",
-                "part": "keys",
-                "header": [
-                  "Key",
-                  "Meaning"
-                ]
-              }
-            ]
-          },
-          {
-            "id": "levers",
-            "title": "Memory levers: interruptores (params.yaml)",
-            "when": "changing what agents load into memory",
-            "blocks": [
-              {
-                "type": "paragraph",
-                "text": "Every section of every document has an interruptor in `params.levers.<doc>.<section id>`, and every mode of `primary.mode` one in `params.levers.mode.<name>`. An unset one is `on_demand`; a lever for a section or mode that does not exist, or a value outside this table, stops the build."
-              },
-              {
-                "type": "schema",
-                "part": "levers",
-                "header": [
-                  "Value",
-                  "Effect"
-                ]
-              },
-              {
-                "type": "paragraph",
-                "text": "Switching a section from `on_demand` to `disabled` leaves its old file behind: `pla-build` reports it as a stray `.md` and fails until you delete it."
-              }
-            ]
-          },
-          {
-            "id": "entry-types",
-            "title": "Structure entry types",
-            "when": "adding or changing a path in data.structure",
-            "blocks": [
-              {
-                "type": "schema",
-                "part": "entry_types",
-                "header": [
-                  "Type",
-                  "Build action"
-                ]
-              }
-            ]
-          },
-          {
-            "id": "content-blocks",
-            "title": "Content blocks",
-            "when": "writing document content in data.content",
-            "blocks": [
-              {
-                "type": "schema",
-                "part": "blocks",
-                "header": [
-                  "Block",
-                  "Markdown"
-                ]
-              },
-              {
-                "type": "paragraph",
-                "text": "Each section is rendered as `## <title>` followed by its blocks. Blocks are separated by one blank line, except `agent_note`, which goes right under the first line; every file ends with one newline."
-              }
-            ]
-          },
-          {
-            "id": "adding-module",
-            "title": "Adding a module",
-            "when": "adding a skill, subagent or rule",
-            "blocks": [
-              {
-                "type": "paragraph",
-                "text": "Write the module in its folder (for example `agents/skills/<name>/SKILL.md`) and run `pla-build`: each provider in `config.paths.modules.<kind>.links` gets one link for it (`.claude/skills/<name>` -> `../../agents/skills/<name>`), never a whole folder. Links of deleted modules are removed on the next build."
-              },
-              {
-                "type": "paragraph",
-                "text": "Guides are modules too: write `agents/guides/<name>.md` and run `pla-build`, which renders `agents/guides/<name>.pdf` from it (headings, paragraphs, lists and code blocks; inline markup is flattened). The PDF is deterministic, so `pla-build --check` reports a stale one."
-              }
-            ]
-          },
-          {
-            "id": "removing-path",
-            "title": "Removing a path",
-            "when": "deleting something from memory.json",
-            "blocks": [
-              {
-                "type": "paragraph",
-                "text": "Deleting an entry from `memory.json` does not delete it from disk. `pla-build --check` reports leftover `.md` files in the root and `agents/`; delete them once you have confirmed they are no longer needed."
-              }
-            ]
-          },
-          {
-            "id": "structure",
-            "title": "Structure",
-            "when": "looking for where something lives or adding a path",
-            "blocks": [
-              {
-                "type": "structure_table"
-              }
-            ]
-          }
-        ]
-      },
-      "features_md": {
-        "head": [
-          {
-            "type": "heading",
-            "level": 1,
-            "text": "Features"
-          },
-          {
-            "type": "agent_note"
-          }
-        ],
-        "sections": []
-      },
-      "log_md": {
-        "head": [
-          {
-            "type": "heading",
-            "level": 1,
-            "text": "Log"
-          },
-          {
-            "type": "agent_note"
-          },
-          {
-            "type": "paragraph",
-            "text": "Branches, commits and merges of this repo, newest first. Source: `primary.log` in `memory.json`."
-          },
-          {
-            "type": "table",
-            "ref": "primary.log",
-            "reverse": true,
-            "header": [
-              "Date",
-              "Branch",
-              "Commit",
-              "Kind",
-              "Description"
-            ],
-            "row": [
-              "{date}",
-              "{branch}",
-              "`{commit}`",
-              "{kind}",
-              "{descr}"
-            ]
-          }
-        ],
-        "sections": []
-      },
-      "index_md": {
-        "head": [
-          {
-            "type": "heading",
-            "level": 1,
-            "text": "Index"
-          },
-          {
-            "type": "agent_note"
-          }
-        ],
-        "sections": []
-      }
-    }
+    "descr_+": "External memory: the landing place of what is not yet placed; it migrates up, to `primary` or `config`, as soon as a field there fits it (Only migrate UP!).",
+    "descr_-": "Not a permanent home: nothing stays here once a field above fits it; not settings (config), not texts of the docs (primary)."
   }
 }

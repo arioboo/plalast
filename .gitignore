@@ -1,3 +1,5 @@
 target/
 .secrets/*
 !.secrets/.gitkeep
+agents/workspace/*
+!agents/workspace/.gitkeep

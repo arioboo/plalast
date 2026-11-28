@@ -4,13 +4,14 @@
 //! so a dotted path such as `config.paths.modules.agent_zettelkasten` or
 //! `params.levers.agents_md.preferencias` works the same everywhere.
 
+pub mod calc;
 pub mod pdf;
 pub mod verified;
 
 use serde_json::Value;
 use std::env;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 use std::process::ExitCode;
 
 /// The memory, the brain: what the tools need to run (`config`), what makes the docs (`primary`)
@@ -49,7 +50,16 @@ pub fn find_root() -> Res<PathBuf> {
     }
 }
 
-/// Reads `memory.json` and `params.yaml`, checks their top-level keys, and joins them.
+/// The values an interruptor can take; a param with one of them is an interruptor.
+pub const LEVER_VALUES: [&str; 3] = ["enabled", "on_demand", "disabled"];
+
+/// The line of `params.yaml` after which only interruptors are written.
+pub const INTERRUPTORS_MARK: &str = "#---INTERRUPTORS---";
+
+/// Reads `memory.json` and `params.yaml` and joins them. Every key of `params.yaml` is the path of
+/// a field of the memory (`config.…`, `primary.…`, `data.…`): a value `enabled`, `on_demand` or
+/// `disabled` is the interruptor of that field (kept in `params.interruptors`, by path); any other
+/// value sets the field, which must then not be written in `memory.json` too.
 pub fn load(root: &Path) -> Res<Value> {
     let read = |name: &str| fs::read_to_string(root.join(name)).map_err(|e| format!("{name}: {e}"));
     let memory: Value =
@@ -57,10 +67,83 @@ pub fn load(root: &Path) -> Res<Value> {
     let params: Value =
         serde_norway::from_str(&read(PARAMS)?).map_err(|e| format!("{PARAMS}: {e}"))?;
     check_keys(&memory, MEMORY, &["config", "data", "primary"])?;
-    check_keys(&params, PARAMS, &["agent_placeholder", "levers"])?;
+    let params = params
+        .as_object()
+        .ok_or_else(|| format!("{PARAMS}: the top level must be a mapping"))?;
     let mut joined = memory;
-    joined["params"] = params;
+    let mut interruptors = serde_json::Map::new();
+    for (path, v) in params {
+        if !BRAIN_KEYS
+            .iter()
+            .any(|b| path.starts_with(&format!("{b}.")))
+        {
+            return Err(format!(
+                "{PARAMS}: `{path}` is not the path of a field of {MEMORY} (config.…, primary.…, data.…)"
+            ));
+        }
+        if v.as_str().is_some_and(|s| LEVER_VALUES.contains(&s)) {
+            interruptors.insert(path.clone(), v.clone());
+        } else {
+            set_path(&mut joined, path, v.clone())?;
+        }
+    }
+    joined["params"] = serde_json::json!({ "interruptors": interruptors });
+    // The derived view `structure`: each entry of `config.structure` (path, type, flags) with its
+    // prose from `primary.structure.<path>` (description, table, label). Not a field of the memory.
+    let mut view = Vec::new();
+    for e in arr(&joined["config"], "structure") {
+        let mut merged = e.clone();
+        if let Some(path) = entry_path(&joined, e) {
+            for (k, v) in joined["primary"]["structure"][path.as_str()]
+                .as_object()
+                .into_iter()
+                .flatten()
+            {
+                merged[k.as_str()] = v.clone();
+            }
+        }
+        view.push(merged);
+    }
+    joined["structure"] = Value::Array(view);
     Ok(joined)
+}
+
+/// Every path of the repo, in order: `config.structure` joined with its prose from
+/// `primary.structure` (the derived view built by [`load`]).
+#[must_use]
+pub fn structure(cfg: &Value) -> &[Value] {
+    arr(cfg, "structure")
+}
+
+/// The shape of every generated doc, by key: `primary.docs.content`.
+#[must_use]
+pub fn content(cfg: &Value) -> &Value {
+    &cfg["primary"]["docs"]["content"]
+}
+
+/// Writes `v` at the dotted `path` of `root`, creating the objects on the way. A field that
+/// already has a value is an error: a param never repeats what the memory holds.
+fn set_path(root: &mut Value, path: &str, v: Value) -> Res<()> {
+    let mut cur = root;
+    let parts: Vec<&str> = path.split('.').collect();
+    for (i, part) in parts.iter().enumerate() {
+        let obj = cur.as_object_mut().ok_or_else(|| {
+            format!("{PARAMS}: `{path}` goes through a value that is not an object")
+        })?;
+        if i == parts.len() - 1 {
+            if obj.get(*part).is_some_and(|x| !x.is_null()) {
+                return Err(format!(
+                    "{PARAMS}: `{path}` is set in both {PARAMS} and {MEMORY}; keep it in one"
+                ));
+            }
+            obj.insert((*part).to_string(), v);
+            return Ok(());
+        }
+        cur = obj
+            .entry((*part).to_string())
+            .or_insert_with(|| Value::Object(serde_json::Map::new()));
+    }
+    Ok(())
 }
 
 /// `file` must be an object whose top-level keys are exactly `expected` (sorted).
@@ -110,17 +193,39 @@ pub fn data(cfg: &Value) -> &Value {
     &cfg["data"]
 }
 
-/// Value of an interruptor that is not set in `params.levers`.
+/// Value of an interruptor that is not set in `params.yaml`.
 pub const DEFAULT_LEVER: &str = "on_demand";
 
-/// Group of `params.levers` that holds the modes (`params.levers.mode.<name>`), not a document.
+/// Group name for the modes in [`lever_set`] (`primary.mode.<name>`), not a document.
 pub const MODE_GROUP: &str = "mode";
 
-/// Interruptor (memory lever) of one document section (`params.levers.<doc>.<id>`) or one mode
-/// (`params.levers.mode.<name>`), only if it is set.
+/// The interruptor set in `params.yaml` for the field at `path`, if any.
+#[must_use]
+pub fn interruptor<'a>(cfg: &'a Value, path: &str) -> Option<&'a str> {
+    cfg["params"]["interruptors"][path].as_str()
+}
+
+/// Path of the interruptor of one document section (`primary.docs.content.<doc>.sections.<id>`) or,
+/// with `group` = [`MODE_GROUP`], of one mode (`primary.mode.<name>`).
+#[must_use]
+pub fn lever_path(group: &str, id: &str) -> String {
+    if group == MODE_GROUP {
+        format!("primary.mode.{id}")
+    } else {
+        format!("primary.docs.content.{group}.sections.{id}")
+    }
+}
+
+/// Interruptor (memory lever) of one document section or one mode, only if it is set.
 #[must_use]
 pub fn lever_set<'a>(cfg: &'a Value, group: &str, id: &str) -> Option<&'a str> {
-    cfg["params"]["levers"][group][id].as_str()
+    interruptor(cfg, &lever_path(group, id))
+}
+
+/// Interruptor of a whole generated doc (`primary.docs.content.<key>`): its value, or the default.
+#[must_use]
+pub fn doc_lever<'a>(cfg: &'a Value, key: &str) -> &'a str {
+    interruptor(cfg, &format!("primary.docs.content.{key}")).unwrap_or(DEFAULT_LEVER)
 }
 
 /// Interruptor of one document section or mode: its value, or [`DEFAULT_LEVER`] when unset.
@@ -151,6 +256,52 @@ pub fn procedures(cfg: &Value) -> Vec<(&str, &Value)> {
         .collect()
 }
 
+/// Problems of `primary.problems.items`, in file order: id and problem (`title`, `statement`,
+/// `solved_by`).
+#[must_use]
+pub fn problems(cfg: &Value) -> Vec<(&str, &Value)> {
+    primary(cfg)["problems"]["items"]
+        .as_object()
+        .into_iter()
+        .flatten()
+        .map(|(id, p)| (id.as_str(), p))
+        .collect()
+}
+
+/// The categories of AGENTS.md that hold rules, as `primary.agents-md.<key>.items`.
+pub const RULE_CATEGORIES: [&str; 5] = [
+    "static_rules",
+    "static_premises",
+    "dynamic_premises",
+    "good_practices",
+    "preferences",
+];
+
+/// Name of a rule: its text up to the first `:` or `. ` (such as `Pareto rule`).
+#[must_use]
+pub fn rule_name(text: &str) -> &str {
+    let end = [text.find(':'), text.find(". ")]
+        .into_iter()
+        .flatten()
+        .min()
+        .unwrap_or(text.len());
+    text[..end].trim_end_matches('.').trim()
+}
+
+/// Every rule of AGENTS.md as `(category, name)`, in order.
+#[must_use]
+pub fn rules(cfg: &Value) -> Vec<(&'static str, &str)> {
+    RULE_CATEGORIES
+        .iter()
+        .flat_map(|c| {
+            arr(&primary(cfg)["agents-md"][*c], "items")
+                .iter()
+                .filter_map(Value::as_str)
+                .map(move |t| (*c, rule_name(t)))
+        })
+        .collect()
+}
+
 /// Path of the file an `on_demand` mode is rendered to: `<config.paths.on_demand>/mode-<name>.md`.
 #[must_use]
 pub fn mode_path(cfg: &Value, name: &str) -> Option<String> {
@@ -167,7 +318,7 @@ pub fn lookup<'a>(cfg: &'a Value, dotted: &str) -> Option<&'a Value> {
 // ---------- registries: pla-lint fails when the brain and these drift apart ----------
 
 /// Keys of `config`, in file order, and the tools that handle each.
-pub const CONFIG_KEYS: [(&str, &str); 9] = [
+pub const CONFIG_KEYS: [(&str, &str); 12] = [
     ("descr_+", "build (brain_keys), recall, lint"),
     ("descr_-", "build (brain_keys), recall, lint"),
     (
@@ -175,18 +326,30 @@ pub const CONFIG_KEYS: [(&str, &str); 9] = [
         "recall (resolved to the repo root), lint (must be $PWD)",
     ),
     ("repository", "recall"),
-    ("branches", "audit (sync), recall"),
     ("audit", "audit (allow, max_file_kb), recall, lint"),
     ("paths", "build, lint, recall, audit"),
     ("lint", "lint (always-on line budget)"),
     (
+        "structure",
+        "build (every path), lint (pairing with primary.structure), recall, audit",
+    ),
+    ("branches", "audit (sync), recall"),
+    (
         "hooks",
-        "build (.claude/settings.json, --guard), lint, audit",
+        "build (Claude Code settings, --guard), lint, audit",
+    ),
+    (
+        "obligatory",
+        "build (section titles), lint (covers the categories)",
+    ),
+    (
+        "preferential",
+        "build (section titles), lint (covers the categories)",
     ),
 ];
 
 /// Keys of `primary`, in file order, and the tools that handle each.
-pub const PRIMARY_KEYS: [(&str, &str); 18] = [
+pub const PRIMARY_KEYS: [(&str, &str); 20] = [
     ("descr_+", "build (brain_keys), recall, lint"),
     ("descr_-", "build (brain_keys), recall, lint"),
     ("project", "build (title, logo), recall"),
@@ -208,13 +371,21 @@ pub const PRIMARY_KEYS: [(&str, &str); 18] = [
     ("mode", "build (modes block, on_demand files), recall, lint"),
     ("procedures", "build (procedures block), recall, lint"),
     (
+        "problems",
+        "build (problems block), recall, lint (names, coverage)",
+    ),
+    (
         "schema",
         "build (schema blocks, lever values), lint (coverage)",
     ),
+    (
+        "structure",
+        "build (structure table, via the derived view), recall, lint (pairing)",
+    ),
 ];
 
-/// `build` values rendered from the brain itself rather than from `data.content`:
-/// `.gitignore` (from structure) and `.claude/settings.json` (from `config.hooks.claude`).
+/// `build` values rendered from the brain itself rather than from `primary.docs.content`:
+/// `.gitignore` (from structure) and the Claude Code settings (from `config.hooks.claude`).
 pub const SPECIAL_BUILDS: [&str; 2] = ["gitignore", "claude_settings"];
 
 /// Kinds of log entry in `primary.log`.
@@ -295,7 +466,7 @@ pub fn is_doc_path(cfg: &Value, path: &str) -> bool {
         .any(|d| (d == "." && parent.is_empty()) || *d == parent)
 }
 
-/// Path of a `data.structure` entry: its `path`, or the string its `path_ref` points at.
+/// Path of a `config.structure` entry: its `path`, or the string its `path_ref` points at.
 /// Folders always end with `/`.
 #[must_use]
 pub fn entry_path(cfg: &Value, entry: &Value) -> Option<String> {
@@ -474,6 +645,34 @@ pub fn cargo() -> String {
     env::var("CARGO").unwrap_or_else(|_| "cargo".to_string())
 }
 
+/// Resolves `target` (a symlink's text) against the link's folder without touching disk.
+#[must_use]
+pub fn lexical_target(link: &Path, target: &Path) -> PathBuf {
+    let mut out = PathBuf::new();
+    for c in link
+        .parent()
+        .unwrap_or(Path::new(""))
+        .join(target)
+        .components()
+    {
+        match c {
+            // `..` cancels the last real folder; with none left (or only `..`), it stays.
+            Component::ParentDir => {
+                let last_is_real =
+                    matches!(out.components().next_back(), Some(Component::Normal(_)));
+                if last_is_real {
+                    out.pop();
+                } else {
+                    out.push("..");
+                }
+            }
+            Component::CurDir => {}
+            other => out.push(other),
+        }
+    }
+    out
+}
+
 /// Files git would commit: tracked plus untracked-but-not-ignored, relative to `root`.
 pub fn repo_files(root: &Path) -> Res<Vec<String>> {
     let (ok, out) = run(
@@ -509,14 +708,32 @@ mod tests {
     }
 
     #[test]
-    fn params_yaml_parses_into_json_values() {
-        let v: Value = serde_norway::from_str(
-            "config:\n  paths:\n    docs: [\".\", agents]\n  audit: {allow: [], max_file_kb: 1024}\nlevers:\n  doc: {a: on_demand}\n",
-        )
-        .unwrap();
-        assert_eq!(v["config"]["paths"]["docs"], json!([".", "agents"]));
-        assert_eq!(v["config"]["audit"]["max_file_kb"], json!(1024));
-        assert_eq!(v["levers"]["doc"]["a"], json!("on_demand"));
+    fn params_set_fields_by_path_and_never_twice() {
+        let mut m = json!({"config": {"audit": {"max_file_kb": 1}}});
+        set_path(&mut m, "config.audit.allow", json!([])).unwrap();
+        set_path(&mut m, "config.hooks.dir", json!("h")).unwrap();
+        assert_eq!(
+            m,
+            json!({"config": {"audit": {"max_file_kb": 1, "allow": []}, "hooks": {"dir": "h"}}})
+        );
+        assert!(set_path(&mut m, "config.audit.max_file_kb", json!(2))
+            .unwrap_err()
+            .contains("set in both"));
+        assert!(set_path(&mut m, "config.hooks.dir.x", json!(1)).is_err());
+    }
+
+    #[test]
+    fn interruptors_are_found_by_the_path_of_their_field() {
+        let cfg = json!({"params": {"interruptors": {
+            "primary.docs.content.agents_md.sections.a": "enabled",
+            "primary.mode.careful": "disabled",
+            "primary.docs.content.log_md": "disabled"
+        }}});
+        assert_eq!(lever_set(&cfg, "agents_md", "a"), Some("enabled"));
+        assert_eq!(lever(&cfg, MODE_GROUP, "careful"), "disabled");
+        assert_eq!(lever(&cfg, "agents_md", "b"), DEFAULT_LEVER);
+        assert_eq!(doc_lever(&cfg, "log_md"), "disabled");
+        assert_eq!(doc_lever(&cfg, "index_md"), DEFAULT_LEVER);
     }
 
     #[test]

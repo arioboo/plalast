@@ -1,4 +1,4 @@
-//! build: renders every generated doc, folder, symlink, `.gitignore` and `.claude/settings.json`
+//! build: renders every generated doc, folder, symlink, `.gitignore` and the Claude Code settings
 //! from the brain (`memory.json` + `params.yaml`).
 //!
 //! - `pla-build`           applies the changes.
@@ -12,9 +12,9 @@
 //! in the `modes` block, `on_demand` writes them to their own file, `disabled` drops them.
 
 use plalast::{
-    arr, block_items, block_text, config, data, doc_dirs, docs, entry_path, exit, fill, lever,
-    lookup, mode_path, modes, module_dir, module_links, open, paths, primary, rel, req, str_of,
-    strings, visible_entries, Res, BRAIN_KEYS, MEMORY, SPECIAL_BUILDS,
+    arr, block_items, block_text, config, doc_dirs, docs, entry_path, exit, fill, lever, lookup,
+    mode_path, modes, module_dir, module_links, open, paths, primary, rel, req, str_of, strings,
+    visible_entries, Res, BRAIN_KEYS, MEMORY, SPECIAL_BUILDS,
 };
 use serde_json::{json, Value};
 use std::env;
@@ -54,9 +54,9 @@ fn md_table(header: &[String], rows: &[Vec<String>]) -> String {
     out
 }
 
-/// The Structure table: one row per `data.structure` entry with a `table` text.
+/// The Structure table: one row per `config.structure` entry with a `table` text.
 fn structure_table(cfg: &Value) -> String {
-    let structure = arr(data(cfg), "structure");
+    let structure = plalast::structure(cfg);
     let planned: Vec<String> = structure
         .iter()
         .filter(|e| str_of(e, "type") == Some("planned"))
@@ -105,9 +105,20 @@ fn table(cfg: &Value, b: &Value) -> Res<String> {
             })
             .collect(),
         Some(r) => {
-            let list = lookup(cfg, r)
-                .and_then(Value::as_array)
-                .ok_or_else(|| format!("table block: ref `{r}` is not a list"))?;
+            // A list of objects, or a mapping of objects whose key fills `{key}` (such as
+            // `primary.features`, `feature_<n>` -> `{descr, status}`).
+            let list: Vec<Value> = match lookup(cfg, r) {
+                Some(Value::Array(a)) => a.clone(),
+                Some(Value::Object(m)) => m
+                    .iter()
+                    .map(|(k, v)| {
+                        let mut obj = v.clone();
+                        obj["key"] = Value::String(k.clone());
+                        obj
+                    })
+                    .collect(),
+                _ => return Err(format!("table block: ref `{r}` is not a list or a mapping")),
+            };
             let templates = strings(b, "row");
             let mut rows: Vec<Vec<String>> = list
                 .iter()
@@ -128,9 +139,19 @@ fn schema_table(cfg: &Value, block: &Value) -> Res<String> {
     let map = primary(cfg)["schema"][part]
         .as_object()
         .ok_or_else(|| format!("schema block: primary.schema.{part} is missing"))?;
+    // A field of the memory is `{descr_+, descr_-}` (what it is and is not); other parts are text.
     let rows: Vec<Vec<String>> = map
         .iter()
-        .map(|(k, v)| vec![format!("`{k}`"), v.as_str().unwrap_or("").to_string()])
+        .map(|(k, v)| {
+            let mut row = vec![format!("`{k}`")];
+            match v.as_str() {
+                Some(text) => row.push(text.to_string()),
+                None => {
+                    row.extend(plalast::DESCR_KEYS.map(|d| str_of(v, d).unwrap_or("").to_string()))
+                }
+            }
+            row
+        })
         .collect();
     Ok(md_table(&strings(block, "header"), &rows))
 }
@@ -172,9 +193,9 @@ fn items(cfg: &Value, b: &Value, kind: &str) -> Res<Vec<String>> {
 
 /// The note every generated doc carries on its second line (`params.agent_placeholder`).
 fn agent_note(cfg: &Value) -> Res<&str> {
-    cfg["params"]["agent_placeholder"]
-        .as_str()
-        .ok_or_else(|| "params.agent_placeholder is missing".to_string())
+    docs(cfg)["agent_placeholder"].as_str().ok_or_else(|| {
+        "primary.docs.agent_placeholder is missing (set it in params.yaml)".to_string()
+    })
 }
 
 /// The `brain_keys` block: one row per primary key of the memory with what it is (`descr_+`)
@@ -190,6 +211,26 @@ fn brain_keys(cfg: &Value) -> Res<String> {
     Ok(md_table(&header, &rows))
 }
 
+/// The `always_read` block: the docs whose interruptor is `enabled`, under the intro of its
+/// `ref`; nothing when there are none.
+fn always_read(cfg: &Value, b: &Value) -> Res<String> {
+    let docs: Vec<String> = plalast::structure(cfg)
+        .iter()
+        .filter_map(|e| Some((entry_path(cfg, e)?, str_of(e, "build")?)))
+        .filter(|(_, key)| plalast::content(cfg)[*key].is_object())
+        .filter(|(_, key)| plalast::doc_lever(cfg, key) == "enabled")
+        .map(|(path, _)| format!("- `{path}`"))
+        .collect();
+    if docs.is_empty() {
+        return Ok(String::new());
+    }
+    Ok(format!(
+        "{}\n\n{}",
+        text(cfg, b, "always_read")?,
+        docs.join("\n")
+    ))
+}
+
 /// The `procedures` block: `## <title>` and the paragraphs of every procedure.
 fn procedures_block(cfg: &Value) -> Res<String> {
     let mut parts = Vec::new();
@@ -201,6 +242,28 @@ fn procedures_block(cfg: &Value) -> Res<String> {
             return Err(format!("{ctx}: needs a non-empty `text` list"));
         }
         parts.push(format!("## {title}\n\n{}", text.join("\n\n")));
+    }
+    Ok(parts.join("\n\n"))
+}
+
+/// The `problems` block: `## <title>`, the statement and the rules that solve it.
+fn problems_block(cfg: &Value) -> Res<String> {
+    let mut parts = Vec::new();
+    for (id, p) in plalast::problems(cfg) {
+        let ctx = format!("primary.problems.items.{id}");
+        let title = req(p, "title", &ctx)?;
+        let statement = req(p, "statement", &ctx)?;
+        let solved: Vec<&str> = arr(p, "solved_by")
+            .iter()
+            .filter_map(Value::as_str)
+            .collect();
+        if solved.is_empty() {
+            return Err(format!("{ctx}: needs a non-empty `solved_by` list"));
+        }
+        parts.push(format!(
+            "## {title}\n\n{statement}\n\nSolved by: {}.",
+            solved.join("; ")
+        ));
     }
     Ok(parts.join("\n\n"))
 }
@@ -288,7 +351,11 @@ fn render_blocks(blocks: &[Value], cfg: &Value) -> Res<String> {
             "ordered_list" => items(cfg, b, kind)?
                 .iter()
                 .enumerate()
-                .map(|(n, i)| format!("{}. {i}", n + 1))
+                .map(|(n, i)| {
+                    // Verified: index + 1, never 0 and never overflowing (src/verified.rs).
+                    let n = plalast::verified::ordered_number(n as u64);
+                    format!("{n}. {i}")
+                })
                 .collect::<Vec<_>>()
                 .join("\n"),
             "code" => format!(
@@ -304,6 +371,8 @@ fn render_blocks(blocks: &[Value], cfg: &Value) -> Res<String> {
             "modes" => modes_block(cfg)?,
             "brain_keys" => brain_keys(cfg)?,
             "procedures" => procedures_block(cfg)?,
+            "always_read" => always_read(cfg, b)?,
+            "problems" => problems_block(cfg)?,
             other => return Err(format!("unknown content block type `{other}`")),
         };
         // A block with nothing to show (such as `modes` with every mode disabled) adds no lines.
@@ -321,20 +390,45 @@ fn render_blocks(blocks: &[Value], cfg: &Value) -> Res<String> {
 
 // ---------- documents ----------
 
+/// ` (obligatory)` or ` (preferential)` when a block of `section` points at a category listed in
+/// `config.obligatory` or `config.preferential` (a memory path such as
+/// `primary.agents-md.static_rules`); nothing otherwise.
+fn rule_kind(cfg: &Value, section: &Value) -> String {
+    for kind in ["obligatory", "preferential"] {
+        let listed = strings(config(cfg), kind);
+        let hit = arr(section, "blocks")
+            .iter()
+            .filter_map(|b| str_of(b, "ref"))
+            .any(|r| {
+                listed
+                    .iter()
+                    .any(|p| r == p || r.starts_with(&format!("{p}.")))
+            });
+        if hit {
+            return format!(" ({kind})");
+        }
+    }
+    String::new()
+}
+
 /// Renders document `key`: its main text plus one `(path, text)` per `on_demand` section.
 fn render_doc(key: &str, doc: &Value, cfg: &Value) -> Res<(String, Vec<(String, String)>)> {
     let sections = arr(doc, "sections");
     let allowed: Vec<&str> = primary(cfg)["schema"]["levers"]
         .as_object()
         .map_or_default(|m| m.keys().map(String::as_str).collect());
-    for id in cfg["params"]["levers"][key]
+    let prefix = format!("primary.docs.content.{key}.sections.");
+    for path in cfg["params"]["interruptors"]
         .as_object()
         .into_iter()
         .flat_map(|m| m.keys())
     {
+        let Some(id) = path.strip_prefix(&prefix) else {
+            continue;
+        };
         if !sections.iter().any(|s| str_of(s, "id") == Some(id)) {
             return Err(format!(
-                "params.levers.{key}.{id}: no such section in data.content.{key}"
+                "params.yaml `{path}`: no such section in primary.docs.content.{key}"
             ));
         }
     }
@@ -348,7 +442,7 @@ fn render_doc(key: &str, doc: &Value, cfg: &Value) -> Res<(String, Vec<(String, 
     let mut pointers = Vec::new();
     let mut files = Vec::new();
     for s in sections {
-        let id = req(s, "id", &format!("data.content.{key} section"))?;
+        let id = req(s, "id", &format!("primary.docs.content.{key} section"))?;
         let title = req(s, "title", id)?;
         let state = lever(cfg, key, id);
         if !allowed.contains(&state) {
@@ -365,7 +459,7 @@ fn render_doc(key: &str, doc: &Value, cfg: &Value) -> Res<(String, Vec<(String, 
             }
         };
         match state {
-            "enabled" => parts.push(with_body(format!("## {title}"))),
+            "enabled" => parts.push(with_body(format!("## {title}{}", rule_kind(cfg, s)))),
             "on_demand" => {
                 let dir = req(paths(cfg), "on_demand", "config.paths")?.trim_end_matches('/');
                 let path = format!("{dir}/{id}.md");
@@ -397,7 +491,7 @@ fn render_doc(key: &str, doc: &Value, cfg: &Value) -> Res<(String, Vec<(String, 
     Ok((main, files))
 }
 
-/// `.claude/settings.json`: the Claude Code hooks of `config.hooks.claude`.
+/// The Claude Code settings (`agents/hooks/claude-settings.json`): the hooks of `config.hooks.claude`.
 fn render_claude_settings(cfg: &Value) -> Res<String> {
     let hooks = &config(cfg)["hooks"]["claude"];
     if !hooks.is_object() {
@@ -411,11 +505,13 @@ fn render_claude_settings(cfg: &Value) -> Res<String> {
 /// `.gitignore`: secret folders (all but their `.gitkeep`) and ignored paths.
 fn render_gitignore(cfg: &Value) -> String {
     let mut out = String::new();
-    for e in arr(data(cfg), "structure") {
+    for e in plalast::structure(cfg) {
         let Some(path) = entry_path(cfg, e) else {
             continue;
         };
-        if e.get("secret").and_then(Value::as_bool) == Some(true) {
+        // `secret` (secrets) and `scratch` (the agent's own folder): contents ignored, `.gitkeep` kept.
+        let flag = |k: &str| e.get(k).and_then(Value::as_bool) == Some(true);
+        if flag("secret") || flag("scratch") {
             let _ = write!(out, "{path}*\n!{path}.gitkeep\n");
         } else if str_of(e, "type") == Some("ignored")
             || e.get("local").and_then(Value::as_bool) == Some(true)
@@ -450,9 +546,9 @@ fn wanted(root: &Path, cfg: &Value) -> Res<Vec<Want>> {
         out.push(Want::File(root.join(path), text));
         Ok(())
     };
-    for e in arr(data(cfg), "structure") {
+    for e in plalast::structure(cfg) {
         let path = entry_path(cfg, e)
-            .ok_or_else(|| format!("data.structure entry without a resolvable path: {e}"))?;
+            .ok_or_else(|| format!("config.structure entry without a resolvable path: {e}"))?;
         let full = root.join(path.trim_end_matches('/'));
         match req(e, "type", &path)? {
             "dir" => {
@@ -490,10 +586,12 @@ fn wanted(root: &Path, cfg: &Value) -> Res<Vec<Want>> {
                 Some(key) if SPECIAL_BUILDS.contains(&key) => {
                     return Err(format!("{path}: special build `{key}` has no renderer"))
                 }
+                // A whole doc switched off is not built (its interruptor is `primary.docs.content.<key>`).
+                Some(key) if plalast::doc_lever(cfg, key) == "disabled" => {}
                 Some(key) => {
-                    let doc = &data(cfg)["content"][key];
+                    let doc = &plalast::content(cfg)[key];
                     if !doc.is_object() {
-                        return Err(format!("{path}: data.content.{key} is missing"));
+                        return Err(format!("{path}: primary.docs.content.{key} is missing"));
                     }
                     let (main, extra) = render_doc(key, doc, cfg)?;
                     add_file(&mut out, &path, main)?;
@@ -690,20 +788,39 @@ fn guard_decision(rel: &str, generated: &[String]) -> Option<String> {
     generated.iter().any(|g| g == rel).then(|| {
         format!(
             "{rel} is generated by pla-build from the brain. Make the change in its section of \
-             {MEMORY} (or params.yaml for settings and levers; see agents/BUILD.md), then run \
+             {MEMORY} (params.yaml only when the user says so; see agents/BUILD.md), then run \
              `cargo run --release --bin pla-build`."
         )
     })
 }
 
-/// Claude Code `PreToolUse` hook: denies Edit/Write on generated files, silent otherwise.
+/// The denial reason when `resolved` lies outside the repo root: an agent never writes outside it
+/// (static premise "Write only inside the root"), whatever was agreed in the chat.
+fn outside_root(resolved: &Path, root: &Path) -> Option<String> {
+    (!resolved.starts_with(root)).then(|| {
+        format!(
+            "{} is outside the plalast root ({}). An agent has no write permission outside it, in \
+             any case, even if the user agreed to something that implies it (static premise \
+             \"Write only inside the root\").",
+            resolved.display(),
+            root.display()
+        )
+    })
+}
+
+/// Claude Code `PreToolUse` hook: denies Edit/Write outside the repo root and on generated
+/// files, silent otherwise.
 fn guard(root: &Path, cfg: &Value) -> Res<bool> {
     let mut input = String::new();
     std::io::stdin()
         .read_to_string(&mut input)
         .map_err(|e| e.to_string())?;
     let payload: Value = serde_json::from_str(&input).map_err(|e| format!("hook payload: {e}"))?;
-    let Some(file) = payload["tool_input"]["file_path"].as_str() else {
+    let input = &payload["tool_input"];
+    let Some(file) = input["file_path"]
+        .as_str()
+        .or_else(|| input["notebook_path"].as_str())
+    else {
         return Ok(true);
     };
     // Resolve symlinks (such as .claude/AGENTS.md) so every route to a file is caught.
@@ -716,11 +833,14 @@ fn guard(root: &Path, cfg: &Value) -> Res<bool> {
         }
     });
     let root = fs::canonicalize(root).map_err(|e| e.to_string())?;
-    if !resolved.starts_with(&root) {
-        return Ok(true);
-    }
-    let generated = generated_files(&root, &wanted(&root, cfg)?);
-    if let Some(reason) = guard_decision(&rel(&root, &resolved), &generated) {
+    let reason = match outside_root(&resolved, &root) {
+        Some(r) => Some(r),
+        None => guard_decision(
+            &rel(&root, &resolved),
+            &generated_files(&root, &wanted(&root, cfg)?),
+        ),
+    };
+    if let Some(reason) = reason {
         let out = json!({
             "hookSpecificOutput": {
                 "hookEventName": "PreToolUse",
@@ -739,19 +859,49 @@ fn guard(root: &Path, cfg: &Value) -> Res<bool> {
 mod tests {
     use super::*;
 
+    /// `{section id: value}` as the interruptors of document `doc`, by the path of each section.
+    fn interruptors(levers: &Value) -> Value {
+        let mut out = serde_json::Map::new();
+        for (id, v) in levers.as_object().into_iter().flatten() {
+            out.insert(format!("primary.docs.content.doc.sections.{id}"), v.clone());
+        }
+        Value::Object(out)
+    }
+
+    /// A fixture written with `data.structure` / `data.content`, as `load` joins it: the derived
+    /// `structure` view and `primary.docs.content`.
+    fn view(mut v: Value) -> Value {
+        if let Some(s) = v
+            .get_mut("data")
+            .and_then(|d| d.as_object_mut())
+            .and_then(|d| d.remove("structure"))
+        {
+            v["structure"] = s;
+        }
+        if let Some(c) = v
+            .get_mut("data")
+            .and_then(|d| d.as_object_mut())
+            .and_then(|d| d.remove("content"))
+        {
+            v["primary"]["docs"]["content"] = c;
+        }
+        v
+    }
+
     /// A brain with one document `doc` holding sections `a` and `b` with the given levers.
     fn cfg(levers: &Value) -> Value {
-        json!({
+        view(json!({
             "config": {"paths": {"on_demand": "agents"}},
-            "params": {"levers": {"doc": levers}, "agent_placeholder": "NOTE"},
+            "params": {"interruptors": interruptors(levers)},
             "primary": {
                 "docs": {
+                    "agent_placeholder": "NOTE",
                     "on_demand": {"heading": "On demand", "pointer": "`{path}`: {title}. Read it when {when}."}
                 },
                 "schema": {"levers": {"enabled": "", "on_demand": "", "disabled": ""}}
             },
             "data": {"structure": [], "content": {}}
-        })
+        }))
     }
 
     fn doc() -> Value {
@@ -820,6 +970,30 @@ mod tests {
     }
 
     #[test]
+    fn table_ref_takes_a_mapping_with_its_keys() {
+        let c = json!({"primary": {"features": {"feature_1": {"descr": "A", "status": "done"}}}});
+        let b = json!({"type": "table", "ref": "primary.features", "header": ["Id", "What"],
+                       "row": ["{key}", "{descr} ({status})"]});
+        assert_eq!(
+            table(&c, &b).unwrap(),
+            "| Id | What |\n|---|---|\n| feature_1 | A (done) |"
+        );
+    }
+
+    #[test]
+    fn gitignore_keeps_only_gitkeep_of_secret_and_scratch_folders() {
+        let c = view(json!({"config": {}, "data": {"structure": [
+            {"path": ".secrets/", "type": "dir", "secret": true},
+            {"path": "agents/workspace/", "type": "dir", "scratch": true},
+            {"path": "target/", "type": "ignored"}
+        ]}}));
+        assert_eq!(
+            render_gitignore(&c),
+            ".secrets/*\n!.secrets/.gitkeep\nagents/workspace/*\n!agents/workspace/.gitkeep\ntarget/\n"
+        );
+    }
+
+    #[test]
     fn brain_keys_is_a_table_of_the_three_primary_keys() {
         let mut c = json!({});
         for k in BRAIN_KEYS {
@@ -854,10 +1028,33 @@ mod tests {
     }
 
     #[test]
+    fn sections_are_titled_by_the_kind_of_their_category() {
+        let c = json!({"config": {"obligatory": ["primary.x.rules"], "preferential": ["primary.x.prefs"]}});
+        let s = |r: &str| json!({"blocks": [{"type": "list", "ref": r}]});
+        assert_eq!(rule_kind(&c, &s("primary.x.rules.items")), " (obligatory)");
+        assert_eq!(
+            rule_kind(&c, &s("primary.x.prefs.items")),
+            " (preferential)"
+        );
+        assert_eq!(rule_kind(&c, &s("primary.x.rulesets")), "");
+    }
+
+    #[test]
+    fn problems_render_with_their_rules() {
+        let c = json!({"primary": {"problems": {"items": {
+            "p": {"title": "P", "statement": "Things break.", "solved_by": ["A", "B"]}
+        }}}});
+        assert_eq!(
+            problems_block(&c).unwrap(),
+            "## P\n\nThings break.\n\nSolved by: A; B."
+        );
+    }
+
+    #[test]
     fn modes_follow_their_interruptor() {
         let brain = |state: &str| {
             let mut c = cfg(&json!({}));
-            c["params"]["levers"]["mode"] = json!({"careful": state});
+            c["params"]["interruptors"]["primary.mode.careful"] = json!(state);
             c["primary"]["mode"] = json!({"careful": {"title": "Careful", "when": "in doubt", "rules": ["Ask.", "Wait."]}});
             c
         };
@@ -890,7 +1087,10 @@ mod tests {
         let invalid = render(&json!({"a": "maybe", "b": "enabled"})).unwrap_err();
         assert!(invalid.contains("`maybe` is not one of"), "{invalid}");
         let unknown = render(&json!({"a": "enabled", "b": "enabled", "c": "enabled"})).unwrap_err();
-        assert!(unknown.contains("params.levers.doc.c"), "{unknown}");
+        assert!(
+            unknown.contains("primary.docs.content.doc.sections.c"),
+            "{unknown}"
+        );
     }
 
     #[test]
@@ -956,14 +1156,14 @@ mod tests {
 
     #[test]
     fn structure_table_resolves_paths_and_labels() {
-        let c = json!({
+        let c = view(json!({
             "config": {"paths": {"skills": "agents/skills"}},
             "data": {"structure": [
                 {"path_ref": "config.paths.skills", "type": "dir", "label": "{path}<x>/SKILL.md", "table": "Skills"},
                 {"path": "b", "type": "file"},
                 {"path": "src/", "type": "planned", "table": "Code"}
             ]}
-        });
+        }));
         assert_eq!(
             structure_table(&c),
             "Paths are added here as they are created (`src/` is planned, not created yet):\n\n\
@@ -973,11 +1173,11 @@ mod tests {
 
     #[test]
     fn gitignore_covers_secrets_and_ignored_paths() {
-        let c = json!({"data": {"structure": [
+        let c = view(json!({"data": {"structure": [
             {"path": ".secrets/", "type": "dir", "secret": true},
             {"path": "target/", "type": "ignored"},
             {"path": "modules/vault", "type": "symlink", "target": "../../vault", "local": true}
-        ]}});
+        ]}}));
         assert_eq!(
             render_gitignore(&c),
             ".secrets/*\n!.secrets/.gitkeep\ntarget/\nmodules/vault\n"
@@ -989,11 +1189,11 @@ mod tests {
         let root = env::temp_dir().join(format!("pla-local-links-{}", std::process::id()));
         fs::create_dir_all(root.join("modules")).unwrap();
         fs::create_dir_all(root.join("here")).unwrap();
-        let c = json!({"config": {}, "primary": {}, "data": {"structure": [
+        let c = view(json!({"config": {}, "primary": {}, "data": {"structure": [
             {"path": "modules/found", "type": "symlink", "target": "../here", "local": true},
             {"path": "modules/missing", "type": "symlink", "target": "../nowhere", "local": true},
             {"path": "modules/shared", "type": "symlink", "target": "../nowhere"}
-        ]}});
+        ]}}));
         let kinds: Vec<String> = wanted(&root, &c)
             .unwrap()
             .iter()
@@ -1037,6 +1237,15 @@ mod tests {
             .unwrap()
             .contains(MEMORY));
         assert!(guard_decision("src/lib.rs", &generated).is_none());
+        let root = Path::new("/srv/plalast");
+        assert!(outside_root(Path::new("/srv/plalast/memory.json"), root).is_none());
+        assert!(outside_root(Path::new("/srv/other/x.md"), root).is_some());
+        assert!(outside_root(Path::new("/srv/plalast-copy/x.md"), root).is_some());
+        assert!(
+            outside_root(Path::new(&["/ho", "me/someone/.config/x"].concat()), root)
+                .unwrap()
+                .contains("Write only inside the root")
+        );
         assert!(guard_decision("memory.json", &generated).is_none());
     }
 

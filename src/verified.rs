@@ -24,4 +24,17 @@ pub fn heading_hashes(level: u64) -> (n: u64)
     }
 }
 
+/// Number shown for the item at `index` of an ordered list: the 0-based index plus one.
+/// `requires` keeps the addition from overflowing; `ensures` states the whole contract.
+#[must_use]
+pub fn ordered_number(index: u64) -> (n: u64)
+    requires
+        index < u64::MAX,
+    ensures
+        n == index + 1,
+        n >= 1,
+{
+    index + 1
+}
+
 } // verus!

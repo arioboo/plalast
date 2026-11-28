@@ -32,3 +32,9 @@ Rules age. A rule that no longer prevents anything is noise: remove it, so the o
 When a step cannot be undone, or it reaches other people, ask first. When it can be undone, prefer doing it and showing the result over asking.
 
 Say plainly what was done, what was not, and why. A clear partial result is more useful than an unclear complete one.
+
+## Verifying a change
+
+Check a change at several levels before keeping it, from the cheapest to the most demanding: first that it agrees with what is already known, then that it passes the tests that exercise its logic, then, where it is possible, that a proof shows it is right for every case.
+
+A level that could not run is not a level that passed: say which ones ran and which did not. Last, a person looks at the change; the machine checks help that look, they do not replace it.

@@ -1,24 +1,42 @@
-# params.yaml: the agent placeholder (the note on line 2 of every generated doc) and the
-# interruptores (levers) of document sections and modes: enabled, on_demand (the default when
-# unset) or disabled. Everything else is in memory.json, the brain.
-# Documented in memory.json (primary.schema.keys) and agents/BUILD.md.
-agent_placeholder: "note for agent: ..."
-levers:
-  agents_md:
-    premisas-estaticas: enabled
-    premisas-dinamicas: enabled
-    buenas-practicas: enabled
-    preferencias: enabled
-  readme_md:
-    contributing: enabled
-  build_md:
-    build-commands: enabled
-    brain-files: enabled
-    levers: enabled
-    entry-types: enabled
-    content-blocks: enabled
-    adding-module: enabled
-    removing-path: enabled
-    structure: on_demand
-  mode:
-    ultra_conservative: on_demand
+# params.yaml: only the user changes it (Params untouchable, Memory updatable).
+# Each key is the path of a field of memory.json; see agents/BUILD.md.
+primary.docs.agent_placeholder: "note for agent: ..."
+config.branches.integration: develop
+config.branches.stable: main
+config.audit.allow: []
+config.lint.max_lines: 200
+config.hooks.dir: agents/hooks
+config.hooks.claude:
+  PreToolUse:
+    - matcher: "Edit|Write|NotebookEdit"
+      hooks:
+        - type: command
+          command: '"$CLAUDE_PROJECT_DIR"/agents/hooks/protect-generated.sh'
+config.obligatory:
+  - primary.agents-md.static_rules
+  - primary.agents-md.static_premises
+  - primary.agents-md.dynamic_premises
+config.preferential:
+  - primary.agents-md.good_practices
+  - primary.agents-md.preferences
+#---INTERRUPTORS---
+primary.docs.content.agents_md.sections.reglas-estaticas: enabled
+primary.docs.content.agents_md.sections.premisas-estaticas: enabled
+primary.docs.content.agents_md.sections.premisas-dinamicas: enabled
+primary.docs.content.agents_md.sections.buenas-practicas: enabled
+primary.docs.content.agents_md.sections.preferencias: enabled
+primary.docs.content.readme_md.sections.contributing: enabled
+primary.docs.content.build_md.sections.build-commands: enabled
+primary.docs.content.build_md.sections.brain-files: enabled
+primary.docs.content.build_md.sections.levers: enabled
+primary.docs.content.build_md.sections.entry-types: enabled
+primary.docs.content.build_md.sections.content-blocks: enabled
+primary.docs.content.build_md.sections.adding-module: enabled
+primary.docs.content.build_md.sections.removing-path: enabled
+primary.docs.content.build_md.sections.structure: on_demand
+primary.mode.ultra_conservative: on_demand
+primary.docs.content.procedures_md: on_demand
+primary.docs.content.problems_md: on_demand
+primary.docs.content.features_md: on_demand
+primary.docs.content.log_md: on_demand
+primary.docs.content.index_md: on_demand

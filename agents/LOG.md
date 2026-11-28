@@ -5,6 +5,7 @@ Branches, commits and merges of this repo, newest first. Source: `primary.log` i
 
 | Date | Branch | Commit | Kind | Description |
 |---|---|---|---|---|
+| 2026-11-28 | develop | `9ae9dfc` | commit | primary.agents-md grouped by the four AGENTS.md categories; static premise Only one brain; params.agent_placeholder is the note on line 2 of every doc. |
 | 2026-11-28 | develop | `b508c52` | commit | Problem-first premise, primary.procedures (agents/PROCEDURES.md), and the static premises Conservative, in general and Only small diff steps. |
 | 2026-11-28 | develop | `5c96678` | commit | memory.json is the brain with config, primary and data (descr_+ / descr_-); params.yaml holds only the interruptores; Pareto a static premise; brain and write_order premises; mode ultra_conservative; rebuild test. |
 | 2026-11-28 | main | `cffb150` | merge | Fast-forward merge of develop. |

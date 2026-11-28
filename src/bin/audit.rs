@@ -12,14 +12,14 @@
 //! Exact strings listed in `config.audit.allow` are never reported.
 
 use plalast::{
-    arr, cargo, config, data, entry_path, exit, open, primary, repo_files, run, str_of, strings,
-    Findings,
+    arr, cargo, config, entry_path, exit, lexical_target, open, primary, repo_files, run, str_of,
+    strings, Findings,
 };
 use regex::Regex;
 use serde_json::Value;
 use std::env;
 use std::fs;
-use std::path::{Component, Path, PathBuf};
+use std::path::Path;
 use std::process::ExitCode;
 
 const AREAS: [&str; 3] = ["secrets", "deps", "repo"];
@@ -118,7 +118,7 @@ fn audit_secrets(root: &Path, cfg: &Value, f: &mut Findings) -> Result<(), Strin
         }
     }
     // Nothing but .gitkeep may be committed inside a secret folder.
-    for e in arr(data(cfg), "structure") {
+    for e in plalast::structure(cfg) {
         if e.get("secret").and_then(Value::as_bool) != Some(true) {
             continue;
         }
@@ -155,33 +155,6 @@ fn audit_deps(root: &Path, f: &mut Findings) {
 
 // ---------- repo ----------
 
-/// Resolves `target` (a symlink's text) against the link's folder without touching disk.
-fn lexical_target(link: &Path, target: &Path) -> PathBuf {
-    let mut out = PathBuf::new();
-    for c in link
-        .parent()
-        .unwrap_or(Path::new(""))
-        .join(target)
-        .components()
-    {
-        match c {
-            // `..` cancels the last real folder; with none left (or only `..`), it stays.
-            Component::ParentDir => {
-                let last_is_real =
-                    matches!(out.components().next_back(), Some(Component::Normal(_)));
-                if last_is_real {
-                    out.pop();
-                } else {
-                    out.push("..");
-                }
-            }
-            Component::CurDir => {}
-            other => out.push(other),
-        }
-    }
-    out
-}
-
 fn audit_repo(root: &Path, cfg: &Value, f: &mut Findings) -> Result<(), String> {
     const A: &str = "repo";
     let allow = strings(&config(cfg)["audit"], "allow");
@@ -213,6 +186,47 @@ fn audit_repo(root: &Path, cfg: &Value, f: &mut Findings) -> Result<(), String> 
                     ),
                 );
             }
+        }
+    }
+
+    // Links-only folders (the Claude Code adapter): on disk, anything that is not a symlink
+    // (such as a settings file a tool wrote there) breaks "One folder for every assistant".
+    for e in plalast::structure(cfg) {
+        if e.get("links_only").and_then(Value::as_bool) != Some(true) {
+            continue;
+        }
+        let Some(dir) = entry_path(cfg, e) else {
+            continue;
+        };
+        let dir = dir.trim_end_matches('/');
+        for name in plalast::visible_entries(&root.join(dir)) {
+            if !root.join(dir).join(&name).is_symlink() {
+                f.warn(
+                    A,
+                    format!("{dir}/{name}: not a symlink; {dir}/ holds only links into agents/"),
+                );
+            }
+        }
+    }
+
+    // Duplicates: two committed files with the same content (No duplication). Empty files
+    // (.gitkeep) and symlinks are skipped.
+    let mut by_content: Vec<(Vec<u8>, String)> = Vec::new();
+    for file in repo_files(root)? {
+        let p = root.join(&file);
+        if p.is_symlink() || !p.is_file() {
+            continue;
+        }
+        let Ok(bytes) = fs::read(&p) else { continue };
+        if bytes.is_empty() {
+            continue;
+        }
+        match by_content.iter().find(|(b, _)| *b == bytes) {
+            Some((_, first)) => f.warn(
+                A,
+                format!("{file}: same content as {first} (No duplication)"),
+            ),
+            None => by_content.push((bytes, file)),
         }
     }
 
@@ -291,6 +305,7 @@ fn audit_repo(root: &Path, cfg: &Value, f: &mut Findings) -> Result<(), String> 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::PathBuf;
 
     // Sample secrets are assembled at runtime so this file never matches its own patterns.
     fn sample(parts: &[&str]) -> String {

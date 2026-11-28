@@ -5,13 +5,13 @@
 //!
 //! `memory`: memory.json and params.yaml are consistent and fully documented in `primary.schema`.
 //! `modules`: hand-written modules in `agents/` subfolders have the expected shape.
-//! `rust`: `cargo fmt --check`, `cargo clippy -D warnings` and `cargo verus verify` pass.
+//! `rust`: `cargo fmt --check` and `cargo clippy -D warnings` pass (formal verification is in `pla-verify`).
 
 use plalast::{
     arr, block_items, block_text, cargo, config, data, doc_dirs, entry_path, exit,
     external_modules, is_doc_path, lever_set, lookup, modes, module_dir, open, paths, primary, run,
-    str_of, visible_entries, Findings, BRAIN_KEYS, CONFIG_KEYS, DESCR_KEYS, LOG_FIELDS, LOG_KINDS,
-    MEMORY, MODE_GROUP, MODULE_KINDS, PRIMARY_KEYS, SPECIAL_BUILDS,
+    str_of, visible_entries, Findings, BRAIN_KEYS, CONFIG_KEYS, DESCR_KEYS, INTERRUPTORS_MARK,
+    LOG_FIELDS, LOG_KINDS, MEMORY, MODULE_KINDS, PARAMS, PRIMARY_KEYS, SPECIAL_BUILDS,
 };
 use serde_json::Value;
 use std::env;
@@ -72,11 +72,16 @@ fn keys(v: &Value) -> Vec<&str> {
 fn lint_memory(root: &Path, cfg: &Value, f: &mut Findings) {
     lint_schema_coverage(cfg, f);
     lint_brain_keys(cfg, f);
+    lint_migrate_up(cfg, f);
     lint_registries(cfg, f);
     lint_structure(root, cfg, f);
     lint_docs(cfg, f);
     lint_modes(cfg, f);
+    lint_interruptors(root, cfg, f);
     lint_procedures(cfg, f);
+    lint_problems(cfg, f);
+    lint_rule_kinds(cfg, f);
+    lint_texts(root, cfg, f);
     lint_modules_and_paths(root, cfg, f);
     lint_params(root, cfg, f);
     lint_plain_data(root, cfg, f);
@@ -86,6 +91,14 @@ fn lint_memory(root: &Path, cfg: &Value, f: &mut Findings) {
 /// a key with documented children has all of them documented.
 fn lint_schema_coverage(cfg: &Value, f: &mut Findings) {
     let documented = &primary(cfg)["schema"]["keys"];
+    // Every field says what it is (`descr_+`) and is not (`descr_-`), Pareto-short.
+    for (k, v) in documented.as_object().into_iter().flatten() {
+        for d in DESCR_KEYS {
+            if blank(str_of(v, d)) {
+                f.error(M, format!("primary.schema.keys.{k}: missing `{d}`; every field says what it is (descr_+) and is not (descr_-)"));
+            }
+        }
+    }
     for (top, obj) in [
         ("params", &cfg["params"]),
         ("config", config(cfg)),
@@ -127,6 +140,52 @@ fn lint_brain_keys(cfg: &Value, f: &mut Findings) {
     }
 }
 
+/// "Only migrate UP!": `data` is external memory, nearly empty. It holds only its `descr_+` and
+/// `descr_-` and fields the schema marks with `migrates_to` (`config` or `primary`). The structure
+/// keeps tool settings in `config.structure` and its prose in `primary.structure`, path by path.
+fn lint_migrate_up(cfg: &Value, f: &mut Findings) {
+    let schema = &primary(cfg)["schema"]["keys"];
+    for k in keys(data(cfg)) {
+        if DESCR_KEYS.contains(&k) {
+            continue;
+        }
+        let target = str_of(&schema[format!("data.{k}")], "migrates_to");
+        if !matches!(target, Some("config" | "primary")) {
+            f.error(M, format!("data.{k}: data is external memory; a field there needs `migrates_to` (config or primary) in primary.schema.keys, or it moves up now (Only migrate UP!)"));
+        }
+    }
+    let prose = &primary(cfg)["structure"];
+    let mut paths = Vec::new();
+    for e in arr(config(cfg), "structure") {
+        let path = entry_path(cfg, e).unwrap_or_default();
+        for k in ["description", "table", "label"] {
+            if e.get(k).is_some() {
+                f.error(
+                    M,
+                    format!(
+                        "config.structure `{path}`: `{k}` is prose, it goes in primary.structure"
+                    ),
+                );
+            }
+        }
+        if prose.get(&path).is_none() {
+            f.error(
+                M,
+                format!("config.structure `{path}`: no primary.structure entry describes it"),
+            );
+        }
+        paths.push(path);
+    }
+    for p in keys(prose) {
+        if !paths.iter().any(|x| x == p) {
+            f.error(
+                M,
+                format!("primary.structure `{p}`: no config.structure entry has this path"),
+            );
+        }
+    }
+}
+
 /// primary and config hold exactly the keys the tools handle (lib registries), in order.
 fn lint_registries(cfg: &Value, f: &mut Findings) {
     for (name, obj, registry, file) in [
@@ -148,17 +207,46 @@ fn lint_registries(cfg: &Value, f: &mut Findings) {
     }
 }
 
-/// data.structure: resolvable unique paths, descriptions, known types, and per-type fields.
+/// A folder with `links_only: true` (the Claude Code adapter) holds nothing but symlinks into
+/// `agents/` (static premise "One folder for every assistant").
+fn lint_links_only(cfg: &Value, f: &mut Findings) {
+    let entries = plalast::structure(cfg);
+    for dir in entries
+        .iter()
+        .filter(|e| e.get("links_only").and_then(Value::as_bool) == Some(true))
+    {
+        let Some(dir) = entry_path(cfg, dir) else {
+            continue;
+        };
+        let prefix = format!("{}/", dir.trim_end_matches('/'));
+        for e in entries {
+            let Some(path) = entry_path(cfg, e) else {
+                continue;
+            };
+            if !path.starts_with(&prefix) || path == prefix {
+                continue;
+            }
+            let target = str_of(e, "target").unwrap_or("");
+            let resolved = plalast::lexical_target(Path::new(&path), Path::new(target));
+            if str_of(e, "type") != Some("symlink") || !resolved.starts_with("agents") {
+                f.error(M, format!("config.structure `{path}`: {prefix} holds only symlinks into agents/ (One folder for every assistant)"));
+            }
+        }
+    }
+}
+
+/// config.structure: resolvable unique paths, descriptions, known types, and per-type fields.
 fn lint_structure(root: &Path, cfg: &Value, f: &mut Findings) {
+    lint_links_only(cfg, f);
     let mut seen: Vec<String> = Vec::new();
-    for e in arr(data(cfg), "structure") {
+    for e in plalast::structure(cfg) {
         let Some(path) = entry_path(cfg, e) else {
             let r = str_of(e, "path_ref").unwrap_or("?");
-            f.error(M, format!("data.structure: an entry has no `path`, or its path_ref `{r}` does not resolve"));
+            f.error(M, format!("config.structure: an entry has no `path`, or its path_ref `{r}` does not resolve"));
             continue;
         };
         // Messages show the path as written (path_ref entries show the resolved one).
-        let ctx = format!("data.structure `{}`", str_of(e, "path").unwrap_or(&path));
+        let ctx = format!("config.structure `{}`", str_of(e, "path").unwrap_or(&path));
         if seen.contains(&path) {
             f.error(M, format!("{ctx}: duplicate path"));
         }
@@ -194,8 +282,11 @@ fn lint_structure(root: &Path, cfg: &Value, f: &mut Findings) {
             },
             "file" => match str_of(e, "build") {
                 Some(b) if SPECIAL_BUILDS.contains(&b) => {}
-                Some(key) if !data(cfg)["content"][key].is_object() => {
-                    f.error(M, format!("{ctx}: data.content.{key} does not exist"));
+                Some(key) if !plalast::content(cfg)[key].is_object() => {
+                    f.error(
+                        M,
+                        format!("{ctx}: primary.docs.content.{key} does not exist"),
+                    );
                 }
                 Some(_) => {}
                 None => {
@@ -216,22 +307,22 @@ fn lint_structure(root: &Path, cfg: &Value, f: &mut Findings) {
 /// kebab-case section ids with `title` and `when`, a valid lever each, and valid blocks.
 fn lint_docs(cfg: &Value, f: &mut Findings) {
     let schema = &primary(cfg)["schema"];
-    let built: Vec<&str> = arr(data(cfg), "structure")
+    let built: Vec<&str> = plalast::structure(cfg)
         .iter()
         .filter_map(|e| str_of(e, "build"))
         .collect();
     let mut ids: Vec<String> = Vec::new();
-    for (key, doc) in data(cfg)["content"].as_object().into_iter().flatten() {
+    for (key, doc) in plalast::content(cfg).as_object().into_iter().flatten() {
         if !built.contains(&key.as_str()) {
             f.error(
                 M,
-                format!("data.content.{key}: no data.structure entry builds it"),
+                format!("primary.docs.content.{key}: no config.structure entry builds it"),
             );
         }
         check_blocks(
             cfg,
             arr(doc, "head"),
-            &format!("data.content.{key}.head"),
+            &format!("primary.docs.content.{key}.head"),
             f,
         );
         // `"agent_note": false` opts a doc out of the note (adapter files such as CLAUDE.md).
@@ -240,12 +331,12 @@ fn lint_docs(cfg: &Value, f: &mut Findings) {
         if wants_note && second != Some("agent_note") {
             f.error(
                 M,
-                format!("data.content.{key}.head: the second block must be `agent_note`"),
+                format!("primary.docs.content.{key}.head: the second block must be `agent_note`"),
             );
         }
         for s in arr(doc, "sections") {
             let id = str_of(s, "id").unwrap_or("");
-            let ctx = format!("data.content.{key} section `{id}`");
+            let ctx = format!("primary.docs.content.{key} section `{id}`");
             if !is_kebab(id) {
                 f.error(M, format!("{ctx}: id must be kebab-case"));
             }
@@ -275,44 +366,71 @@ fn lint_docs(cfg: &Value, f: &mut Findings) {
             check_blocks(cfg, arr(s, "blocks"), &ctx, f);
         }
     }
-    for (key, m) in cfg["params"]["levers"].as_object().into_iter().flatten() {
-        if key == MODE_GROUP {
-            continue;
+}
+
+/// True when `path` names something an interruptor switches: a doc section by its id
+/// (`primary.docs.content.<doc>.sections.<id>`), a whole doc (`primary.docs.content.<doc>`) or a mode.
+fn switchable(cfg: &Value, path: &str) -> bool {
+    let content = plalast::content(cfg);
+    match path.split('.').collect::<Vec<_>>()[..] {
+        ["primary", "docs", "content", doc, "sections", id] => arr(&content[doc], "sections")
+            .iter()
+            .any(|s| str_of(s, "id") == Some(id)),
+        ["primary", "docs", "content", doc] => content[doc].is_object(),
+        ["primary", "mode", name] => primary(cfg)["mode"].get(name).is_some(),
+        _ => false,
+    }
+}
+
+/// Interruptors of `params.yaml`: each one switches a field that exists (a doc section by its id,
+/// a whole doc, or a mode) with a known value, and every one of them is written after the
+/// `#---INTERRUPTORS---` line, every other param before it.
+fn lint_interruptors(root: &Path, cfg: &Value, f: &mut Findings) {
+    let schema = &primary(cfg)["schema"];
+    let interruptors = cfg["params"]["interruptors"].as_object();
+    for (path, v) in interruptors.into_iter().flatten() {
+        let ctx = format!("{PARAMS} `{path}`");
+        if v.as_str().is_none_or(|v| schema["levers"].get(v).is_none()) {
+            f.error(M, format!("{ctx}: `{v}` is not in primary.schema.levers"));
         }
-        for id in keys(m) {
-            let exists = arr(&data(cfg)["content"][key], "sections")
-                .iter()
-                .any(|s| str_of(s, "id") == Some(id));
-            if !exists {
-                f.error(M, format!("params.levers.{key}.{id}: no such section"));
-            }
+        if !switchable(cfg, path) {
+            f.error(M, format!("{ctx}: not a doc section (primary.docs.content.<doc>.sections.<id>), a doc (primary.docs.content.<doc>) or a mode (primary.mode.<name>) of the memory"));
+        }
+    }
+    let Ok(text) = fs::read_to_string(root.join(PARAMS)) else {
+        return;
+    };
+    let mark = text.lines().position(|l| l.trim() == INTERRUPTORS_MARK);
+    if mark.is_none() {
+        f.error(
+            M,
+            format!("{PARAMS}: missing the `{INTERRUPTORS_MARK}` line before the interruptors"),
+        );
+    }
+    let key_line = regex::Regex::new(r"^([A-Za-z][^:\s]*):").expect("valid pattern");
+    for (n, line) in text.lines().enumerate() {
+        let Some(cap) = key_line.captures(line) else {
+            continue;
+        };
+        let is_interruptor = interruptors.is_some_and(|m| m.contains_key(&cap[1]));
+        let after = mark.is_some_and(|m| n > m);
+        if is_interruptor != after {
+            let place = if is_interruptor { "after" } else { "before" };
+            f.error(
+                M,
+                format!(
+                    "{PARAMS}:{}: `{}` goes {place} the `{INTERRUPTORS_MARK}` line",
+                    n + 1,
+                    &cap[1]
+                ),
+            );
         }
     }
 }
 
-/// Modes: every `params.levers.mode.<name>` names a mode of `primary.mode` and has a known value,
-/// and every mode has a `title`, a `when` and a non-empty `rules` list of strings.
+/// Modes: every mode has a `title`, a `when` and a non-empty `rules` list of strings (its
+/// interruptor is checked with the others, in `lint_interruptors`).
 fn lint_modes(cfg: &Value, f: &mut Findings) {
-    let schema = &primary(cfg)["schema"];
-    let mode = &primary(cfg)["mode"];
-    for name in keys(&cfg["params"]["levers"][MODE_GROUP]) {
-        if mode.get(name).is_none() {
-            f.error(
-                M,
-                format!("params.levers.mode.{name}: no such mode in primary.mode"),
-            );
-        }
-        if let Some(v) = lever_set(cfg, MODE_GROUP, name) {
-            if schema["levers"].get(v).is_none() {
-                f.error(
-                    M,
-                    format!("params.levers.mode.{name}: `{v}` is not in primary.schema.levers"),
-                );
-            }
-        } else {
-            f.error(M, format!("params.levers.mode.{name}: must be a string"));
-        }
-    }
     for (name, m, _) in modes(cfg) {
         let ctx = format!("primary.mode.{name}");
         for k in ["title", "when"] {
@@ -362,6 +480,219 @@ fn lint_procedures(cfg: &Value, f: &mut Findings) {
     }
 }
 
+/// Problems: each has a title, a statement in human language and `solved_by` names that resolve
+/// to exactly one rule of AGENTS.md; and every rule solves at least one problem (the
+/// deterministic form of "Every rule earns its place").
+fn lint_problems(cfg: &Value, f: &mut Findings) {
+    if blank(str_of(&primary(cfg)["problems"], "definition")) {
+        f.error(M, "primary.problems: missing `definition`");
+    }
+    let rules = plalast::rules(cfg);
+    for (i, (_, name)) in rules.iter().enumerate() {
+        if rules[..i].iter().any(|(_, n)| n == name) {
+            f.error(M, format!("rule name `{name}` is used twice in primary.agents-md; problems could not tell them apart"));
+        }
+    }
+    let file_name =
+        regex::Regex::new(r"\b[\w-]+\.(md|json|yaml|yml|rs|toml|sh|py)\b").expect("valid pattern");
+    let mut solved: Vec<&str> = Vec::new();
+    for (id, p) in plalast::problems(cfg) {
+        let ctx = format!("primary.problems.items.{id}");
+        if !is_kebab(id) {
+            f.error(M, format!("{ctx}: id must be kebab-case"));
+        }
+        for k in ["title", "statement"] {
+            if blank(str_of(p, k)) {
+                f.error(M, format!("{ctx}: missing `{k}`"));
+            }
+        }
+        let statement = str_of(p, "statement").unwrap_or("");
+        if statement.contains('`') || file_name.is_match(statement) {
+            f.error(M, format!("{ctx}: a problem is said in human language, with no references to code or to the repo"));
+        }
+        let names = arr(p, "solved_by");
+        if names.is_empty() {
+            f.error(M, format!("{ctx}: `solved_by` must name at least one rule"));
+        }
+        for n in names.iter().filter_map(Value::as_str) {
+            if rules.iter().any(|(_, r)| *r == n) {
+                solved.push(n);
+            } else {
+                f.error(
+                    M,
+                    format!("{ctx}: `{n}` is not the name of a rule in primary.agents-md"),
+                );
+            }
+        }
+    }
+    for (category, name) in &rules {
+        if !solved.contains(name) {
+            f.error(M, format!("primary.agents-md.{category}: `{name}` solves no problem in primary.problems (Every rule earns its place)"));
+        }
+    }
+}
+
+/// `config.obligatory` and `config.preferential` together name every category of AGENTS.md
+/// (`primary.agents-md.<category>`) exactly once.
+fn lint_rule_kinds(cfg: &Value, f: &mut Findings) {
+    let mut seen: Vec<String> = Vec::new();
+    for kind in ["obligatory", "preferential"] {
+        for p in plalast::strings(config(cfg), kind) {
+            let ok = plalast::RULE_CATEGORIES
+                .iter()
+                .any(|c| p == format!("primary.agents-md.{c}"));
+            if !ok {
+                f.error(M, format!("config.{kind}: `{p}` is not a category of AGENTS.md (primary.agents-md.<category>)"));
+            }
+            if seen.contains(&p) {
+                f.error(
+                    M,
+                    format!("config.{kind}: `{p}` is already obligatory or preferential"),
+                );
+            }
+            seen.push(p);
+        }
+    }
+    for c in plalast::RULE_CATEGORIES {
+        let p = format!("primary.agents-md.{c}");
+        if !seen.contains(&p) {
+            f.error(
+                M,
+                format!("`{p}` is neither in config.obligatory nor in config.preferential"),
+            );
+        }
+    }
+}
+
+/// Every string under `v` with its dotted path (list items by index).
+fn texts<'a>(v: &'a Value, path: &str, out: &mut Vec<(String, &'a str)>) {
+    match v {
+        Value::Object(m) => m
+            .iter()
+            .for_each(|(k, x)| texts(x, &format!("{path}.{k}"), out)),
+        Value::Array(a) => a
+            .iter()
+            .enumerate()
+            .for_each(|(i, x)| texts(x, &format!("{path}.{i}"), out)),
+        Value::String(s) => out.push((path.to_string(), s)),
+        _ => {}
+    }
+}
+
+/// A sentence reduced to lowercase words, so that punctuation and case do not hide a repeat.
+fn normalize(sentence: &str) -> String {
+    sentence
+        .to_lowercase()
+        .split(|c: char| !c.is_alphanumeric())
+        .filter(|w| !w.is_empty())
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+/// Sentences of a text: split after `.`, `;` or `:` followed by a space.
+fn sentences(text: &str) -> Vec<&str> {
+    let mut out = Vec::new();
+    let mut start = 0;
+    let bytes = text.as_bytes();
+    for (i, c) in text.char_indices() {
+        if matches!(c, '.' | ';' | ':') && bytes.get(i + 1).is_some_and(u8::is_ascii_whitespace) {
+            out.push(&text[start..=i]);
+            start = i + 1;
+        }
+    }
+    out.push(&text[start..]);
+    out
+}
+
+/// The texts of the memory say each thing once and point at things that exist (deterministic
+/// checks of "No duplication" and of stale references; the log is history, so it is skipped):
+/// - a sentence of 40+ characters repeated in two places (outside the schema, whose rows share
+///   their phrasing on purpose);
+/// - a backticked path whose first folder exists in the repo but the path does not;
+/// - a backticked dotted key (`config.…`, `primary.…`, `data.…`, `params.…`) that does not resolve;
+/// - a `--bin <name>` that is not a binary of Cargo.toml.
+fn lint_texts(root: &Path, cfg: &Value, f: &mut Findings) {
+    let mut all = Vec::new();
+    for key in BRAIN_KEYS {
+        texts(&cfg[key], key, &mut all);
+    }
+    let all: Vec<(String, &str)> = all
+        .into_iter()
+        .filter(|(p, _)| !p.starts_with("primary.log."))
+        .collect();
+
+    let mut seen: Vec<(String, String)> = Vec::new();
+    // The schema shares its phrasing on purpose, and `solved_by` names repeat rule names by design.
+    let prose = |p: &str| !p.starts_with("primary.schema.") && !p.contains(".solved_by.");
+    for (path, text) in all.iter().filter(|(p, _)| prose(p)) {
+        for s in sentences(text) {
+            let n = normalize(s);
+            if n.len() < 40 {
+                continue;
+            }
+            match seen.iter().find(|(m, _)| *m == n) {
+                Some((_, first)) if first != path => f.error(
+                    M,
+                    format!(
+                        "{path}: repeats a sentence of {first} (No duplication): {}",
+                        s.trim()
+                    ),
+                ),
+                Some(_) => {}
+                None => seen.push((n, path.clone())),
+            }
+        }
+    }
+
+    let tick = regex::Regex::new(r"`([^`\s]+)`").expect("valid pattern");
+    let dotted = regex::Regex::new(r"^(config|primary|data|params)\.[A-Za-z0-9_+.-]+$")
+        .expect("valid pattern");
+    let file_ext =
+        regex::Regex::new(r"\.(md|json|yaml|yml|rs|toml|sh|conf|pdf|png)$").expect("valid pattern");
+    let bins = fs::read_to_string(root.join("Cargo.toml")).unwrap_or_default();
+    let bin_re = regex::Regex::new(r"--bin (pla-[a-z]+)").expect("valid pattern");
+    for (path, text) in &all {
+        for cap in tick.captures_iter(text) {
+            let tok = &cap[1];
+            // `../x` and `./x` are link targets relative to a link, not repo paths.
+            if tok.contains(['<', '>', '*', '{', '}', '$', '~'])
+                || tok.contains("://")
+                || tok.starts_with("../")
+                || tok.starts_with("./")
+            {
+                continue;
+            }
+            let first = tok.split('/').next().unwrap_or("");
+            let in_repo = tok.contains('/')
+                && !first.is_empty()
+                && root.join(first).symlink_metadata().is_ok();
+            if in_repo
+                && root
+                    .join(tok.trim_end_matches('/'))
+                    .symlink_metadata()
+                    .is_err()
+            {
+                f.error(M, format!("{path}: `{tok}` does not exist in the repo"));
+            }
+            if dotted.is_match(tok)
+                && !file_ext.is_match(tok)
+                && lookup(cfg, tok).is_none()
+                && !switchable(cfg, tok)
+            {
+                f.error(M, format!("{path}: `{tok}` does not resolve in the brain"));
+            }
+        }
+        for cap in bin_re.captures_iter(text) {
+            if !bins.contains(&format!("name = \"{}\"", &cap[1])) {
+                f.error(
+                    M,
+                    format!("{path}: `--bin {}` is not a binary in Cargo.toml", &cap[1]),
+                );
+            }
+        }
+    }
+}
+
 /// Block types are documented, and every `ref` points at the right kind of value.
 fn check_blocks(cfg: &Value, blocks: &[Value], ctx: &str, f: &mut Findings) {
     for b in blocks {
@@ -375,7 +706,7 @@ fn check_blocks(cfg: &Value, blocks: &[Value], ctx: &str, f: &mut Findings) {
         if let Some(r) = str_of(b, "ref") {
             let resolves = match t {
                 "list" | "ordered_list" => block_items(cfg, b).is_some(),
-                "table" => lookup(cfg, r).is_some_and(Value::is_array),
+                "table" => lookup(cfg, r).is_some_and(|v| v.is_array() || v.is_object()),
                 "image" => lookup(cfg, r).is_some_and(Value::is_string),
                 _ => block_text(cfg, b).is_some(),
             };
@@ -420,7 +751,7 @@ fn lint_modules_and_paths(root: &Path, cfg: &Value, f: &mut Findings) {
             f.error(M, format!("primary.modules.{name}: missing `definition`"));
         }
         let ctx = format!("config.paths.modules.{name}");
-        let link = arr(data(cfg), "structure")
+        let link = plalast::structure(cfg)
             .iter()
             .find(|e| str_of(e, "target_ref") == Some(ctx.as_str()));
         // A `local` link is only built where the module exists, so its absence is expected.
@@ -488,7 +819,16 @@ fn lint_params(root: &Path, cfg: &Value, f: &mut Findings) {
     ) {
         (Some(max), Some(files)) => {
             let mut total = 0;
-            for file in files.iter().filter_map(Value::as_str) {
+            // Docs whose interruptor is `enabled` are read at the start of every session too.
+            let enabled: Vec<String> = plalast::structure(cfg)
+                .iter()
+                .filter_map(|e| Some((entry_path(cfg, e)?, str_of(e, "build")?)))
+                .filter(|(_, key)| plalast::doc_lever(cfg, key) == "enabled")
+                .map(|(path, _)| path)
+                .collect();
+            let listed = files.iter().filter_map(Value::as_str).map(String::from);
+            for file in listed.chain(enabled) {
+                let file = file.as_str();
                 match fs::read_to_string(root.join(file)) {
                     Ok(t) => total += t.lines().count() as u64,
                     Err(_) => f.error(M, format!("config.lint.always_on: `{file}` cannot be read")),
@@ -514,7 +854,16 @@ fn lint_params(root: &Path, cfg: &Value, f: &mut Findings) {
             format!("config.hooks.dir: `{hooks_dir}` is not a folder"),
         );
     }
+    // Hand-written scripts must run; files pla-build generates there (the Claude Code settings) are data.
+    let generated: Vec<String> = plalast::structure(cfg)
+        .iter()
+        .filter(|e| e["build"].is_string())
+        .filter_map(|e| entry_path(cfg, e))
+        .collect();
     for name in visible_entries(&root.join(hooks_dir)) {
+        if generated.contains(&format!("{}/{name}", hooks_dir.trim_end_matches('/'))) {
+            continue;
+        }
         let mode =
             fs::metadata(root.join(hooks_dir).join(&name)).map_or(0, |m| m.permissions().mode());
         if mode & 0o111 == 0 {
@@ -811,22 +1160,7 @@ fn lint_rust(root: &Path, f: &mut Findings) {
             Err(e) => f.error("rust", format!("{label}: {e}")),
         }
     }
-    // Formal verification of the `verus!` code, when Verus is installed.
-    match run(root, &cargo, &["verus", "--help"]) {
-        Ok((true, _)) => match run(root, &cargo, &["verus", "verify"]) {
-            Ok((true, _)) => {}
-            Ok((false, out)) => {
-                let lines: Vec<&str> = out.lines().collect();
-                let tail = lines[lines.len().saturating_sub(30)..].join("\n");
-                f.error("rust", format!("cargo verus verify failed:\n{tail}"));
-            }
-            Err(e) => f.error("rust", format!("cargo verus verify: {e}")),
-        },
-        _ => f.warn(
-            "rust",
-            "cargo-verus is not installed, formal verification skipped (see agents/guides/verus.md)",
-        ),
-    }
+    // Formal verification (`cargo verus verify`) is a level of pla-verify, not of the lint.
 }
 
 // ---------- tests ----------
@@ -835,6 +1169,112 @@ fn lint_rust(root: &Path, f: &mut Findings) {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    /// A fixture written with `data.structure` / `data.content`, as `load` joins it: the derived
+    /// `structure` view and `primary.docs.content`.
+    fn view(mut v: Value) -> Value {
+        if let Some(s) = v
+            .get_mut("data")
+            .and_then(|d| d.as_object_mut())
+            .and_then(|d| d.remove("structure"))
+        {
+            v["structure"] = s;
+        }
+        if let Some(c) = v
+            .get_mut("data")
+            .and_then(|d| d.as_object_mut())
+            .and_then(|d| d.remove("content"))
+        {
+            v["primary"]["docs"]["content"] = c;
+        }
+        v
+    }
+
+    #[test]
+    fn data_stays_nearly_empty_and_structure_pairs_by_path() {
+        let cfg = view(json!({
+            "config": {"structure": [
+                {"path": "a/", "type": "dir"},
+                {"path": "b.md", "type": "file", "description": "prose in config"}
+            ]},
+            "primary": {
+                "structure": {"a/": {"description": "A"}, "ghost/": {"description": "G"}},
+                "schema": {"keys": {"data.staged": {"migrates_to": "primary"}}}
+            },
+            "data": {"descr_+": "x", "descr_-": "y", "staged": 1, "loose": 2}
+        }));
+        let mut f = Findings::default();
+        lint_migrate_up(&cfg, &mut f);
+        let all = messages(&f);
+        for expected in [
+            "data.loose: data is external memory",
+            "config.structure `b.md`: `description` is prose",
+            "config.structure `b.md`: no primary.structure entry",
+            "primary.structure `ghost/`: no config.structure entry",
+        ] {
+            assert!(all.contains(expected), "missing `{expected}` in:\n{all}");
+        }
+        assert!(
+            !all.contains("data.staged") && !all.contains("`a/`"),
+            "{all}"
+        );
+    }
+
+    #[test]
+    fn links_only_folders_hold_only_links_into_agents() {
+        let cfg = view(json!({"config": {}, "primary": {}, "data": {"structure": [
+            {"path": ".claude/", "type": "dir", "links_only": true},
+            {"path": ".claude/CLAUDE.md", "type": "symlink", "target": "../agents/CLAUDE.md"},
+            {"path": ".claude/settings.json", "type": "file", "build": "claude_settings"},
+            {"path": ".claude/x", "type": "symlink", "target": "../src/lib.rs"}
+        ]}}));
+        let mut f = Findings::default();
+        lint_links_only(&cfg, &mut f);
+        let all = messages(&f);
+        assert!(all.contains("`.claude/settings.json`"), "{all}");
+        assert!(all.contains("`.claude/x`"), "{all}");
+        assert!(!all.contains("CLAUDE.md"), "{all}");
+    }
+
+    #[test]
+    fn texts_lint_finds_repeats_stale_paths_keys_and_bins() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+        let long = "This sentence is long enough to count as a repeat of another one.";
+        let cfg = json!({
+            "config": {"a": format!("{long} Then more."), "lint": {}},
+            "primary": {
+                "x": format!("Other text. {}", long.to_uppercase()),
+                "y": "See `src/nowhere.rs`, `src/lib.rs`, `config.lint` and `config.missing`.",
+                "z": "Run `cargo run --bin pla-ghost` or `--bin pla-build`.",
+                "log": [{"descr": "Old `src/gone.rs`."}],
+                "schema": {"keys": {"k": long}}
+            },
+            "data": {}
+        });
+        let mut f = Findings::default();
+        lint_texts(root, &cfg, &mut f);
+        let all = messages(&f);
+        for expected in [
+            "primary.x: repeats a sentence of config.a",
+            "`src/nowhere.rs` does not exist",
+            "`config.missing` does not resolve",
+            "`--bin pla-ghost` is not a binary",
+        ] {
+            assert!(all.contains(expected), "missing `{expected}` in:\n{all}");
+        }
+        for unexpected in [
+            "src/lib.rs",
+            "config.lint`",
+            "gone.rs",
+            "pla-build`",
+            "primary.schema",
+        ] {
+            assert!(
+                !all.contains(unexpected),
+                "unexpected `{unexpected}` in:\n{all}"
+            );
+        }
+    }
 
     fn messages(f: &Findings) -> String {
         f.items
@@ -928,14 +1368,17 @@ mod tests {
     fn memory_lint_finds_each_kind_of_problem() {
         // Assembled at runtime so pla-audit never sees a home path in this file.
         let expanded = ["/", "Users", "/someone/plalast"].concat();
-        let cfg = json!({
+        let cfg = view(json!({
             "config": {"PLALAST_DIR": expanded},
             "params": {
-                "levers": {"doc": {"Bad_Id": "maybe", "ghost": "enabled"}}
+                "interruptors": {
+                    "primary.docs.content.doc.sections.Bad_Id": "maybe",
+                    "primary.docs.content.doc.sections.ghost": "enabled"
+                }
             },
             "primary": {
                 "docs": {"extra": 1},
-                "schema": {"keys": {"primary.docs": "", "primary.docs.definition": "", "primary.schema": "", "data.structure": "", "config": ""},
+                "schema": {"keys": {"primary.docs": "", "primary.docs.definition": "", "primary.schema": "", "config.structure": "", "config": ""},
                            "levers": {"enabled": ""}, "blocks": {"paragraph": ""}}
             },
             "data": {
@@ -949,13 +1392,13 @@ mod tests {
                     {"id": "Bad_Id", "title": "T", "blocks": []}
                 ]}}
             }
-        });
+        }));
         let mut f = Findings::default();
         lint_memory(Path::new("/nonexistent"), &cfg, &mut f);
         let all = messages(&f);
         for expected in [
-            "data.content is not documented",
-            "params.levers is not documented",
+            "primary.docs.content is not documented",
+            "params.interruptors is not documented",
             "config.descr_+: missing",
             "data.descr_-: missing",
             "`a.md`: duplicate path",
@@ -966,7 +1409,7 @@ mod tests {
             "id must be kebab-case",
             "missing `when`",
             "lever `maybe` is not in primary.schema.levers",
-            "params.levers.doc.ghost: no such section",
+            "`primary.docs.content.doc.sections.ghost`: not a doc section",
             "primary.docs.extra is not documented",
             "primary.log must be a list",
             "primary.index must be an object",
@@ -974,7 +1417,7 @@ mod tests {
             "config.repository is missing",
             "config.paths.docs is empty",
             "must be `$PWD`",
-            "data.content.doc.head: the second block must be `agent_note`",
+            "primary.docs.content.doc.head: the second block must be `agent_note`",
             "list block ref `primary.nowhere` does not point",
         ] {
             assert!(all.contains(expected), "missing `{expected}` in:\n{all}");

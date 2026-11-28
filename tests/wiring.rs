@@ -1,4 +1,4 @@
-//! End-to-end wiring: runs the four compiled tools against this repo's real brain (memory.json, params.yaml).
+//! End-to-end wiring: runs the compiled tools against this repo's real brain (memory.json, params.yaml).
 //! If a memory key, a generated file or a tool drifts apart, one of these fails.
 
 use plalast::{entry_path, load, primary, CONFIG_KEYS, MODULE_KINDS, PRIMARY_KEYS};
@@ -21,6 +21,8 @@ const BUILD: &str = env!("CARGO_BIN_EXE_pla-build");
 const RECALL: &str = env!("CARGO_BIN_EXE_pla-recall");
 const LINT: &str = env!("CARGO_BIN_EXE_pla-lint");
 const AUDIT: &str = env!("CARGO_BIN_EXE_pla-audit");
+const VERIFY: &str = env!("CARGO_BIN_EXE_pla-verify");
+const CALC: &str = env!("CARGO_BIN_EXE_pla-calc");
 
 #[test]
 fn repo_is_in_sync_with_the_memory() {
@@ -44,6 +46,13 @@ fn generated_files_rebuild_from_the_brain() {
     let files: Vec<String> = String::from_utf8_lossy(&ls.stdout)
         .lines()
         .filter(|f| root.join(f).symlink_metadata().is_ok())
+        // A path through a linked folder (an old index entry) is reached through the link itself.
+        .filter(|f| {
+            Path::new(f)
+                .ancestors()
+                .skip(1)
+                .all(|a| a.as_os_str().is_empty() || !root.join(a).is_symlink())
+        })
         .map(String::from)
         .collect();
     let cfg = load(root).unwrap();
@@ -53,7 +62,7 @@ fn generated_files_rebuild_from_the_brain() {
         .iter()
         .filter_map(|d| d.as_str())
         .collect();
-    let built: Vec<String> = cfg["data"]["structure"]
+    let built: Vec<String> = cfg["structure"]
         .as_array()
         .unwrap()
         .iter()
@@ -72,7 +81,10 @@ fn generated_files_rebuild_from_the_brain() {
             || (dir == guides && f.ends_with(".pdf"))
     };
 
-    let tmp = std::env::temp_dir().join(format!("plalast-rebuild-{}", std::process::id()));
+    // Inside the repo (target/ is git-ignored): nothing is ever written outside the plalast root.
+    let tmp = root
+        .join("target")
+        .join(format!("plalast-rebuild-{}", std::process::id()));
     let _ = fs::remove_dir_all(&tmp);
     let mut generated = Vec::new();
     for f in &files {
@@ -106,15 +118,18 @@ fn generated_files_rebuild_from_the_brain() {
 fn every_generated_doc_has_the_agent_note_on_line_two() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
     let cfg = load(root).unwrap();
-    let note = cfg["params"]["agent_placeholder"].as_str().unwrap();
+    let note = cfg["primary"]["docs"]["agent_placeholder"]
+        .as_str()
+        .unwrap();
     let mut checked = 0;
-    for e in cfg["data"]["structure"].as_array().unwrap() {
+    for e in cfg["structure"].as_array().unwrap() {
         let (Some(path), Some(key)) = (entry_path(&cfg, e), e["build"].as_str()) else {
             continue;
         };
-        // Only markdown docs carry the note (.gitignore and .claude/settings.json do not),
+        // Only markdown docs carry the note (.gitignore and the Claude Code settings do not),
         // and a doc can opt out with `"agent_note": false` (CLAUDE.md is only `@AGENTS.md`).
-        let opted_out = cfg["data"]["content"][key]["agent_note"].as_bool() == Some(false);
+        let opted_out =
+            cfg["primary"]["docs"]["content"][key]["agent_note"].as_bool() == Some(false);
         if !path.ends_with(".md") || opted_out {
             continue;
         }
@@ -141,7 +156,8 @@ fn the_brain_is_memory_json_and_params_yaml() {
         .map(String::as_str)
         .collect();
     top.sort_unstable();
-    assert_eq!(top, ["config", "data", "params", "primary"]);
+    // `structure` is the derived view (config.structure + primary.structure), not a memory field.
+    assert_eq!(top, ["config", "data", "params", "primary", "structure"]);
 }
 
 #[test]
@@ -176,7 +192,18 @@ fn agents_md_shows_the_three_primary_keys_and_params_holds_only_levers() {
         .keys()
         .map(String::as_str)
         .collect();
-    assert_eq!(params, ["agent_placeholder", "levers"]);
+    assert_eq!(params, ["interruptors"]);
+    // params.yaml: every key is the path of a memory field; interruptors after the mark.
+    let text = std::fs::read_to_string(root.join(plalast::PARAMS)).unwrap();
+    assert!(text.lines().any(|l| l == plalast::INTERRUPTORS_MARK));
+    assert_eq!(
+        cfg["primary"]["docs"]["agent_placeholder"].as_str(),
+        Some("note for agent: ...")
+    );
+    assert!(
+        cfg["config"]["hooks"]["dir"].is_string(),
+        "config.hooks comes from params.yaml"
+    );
 }
 
 #[test]
@@ -221,7 +248,7 @@ fn recall_shows_every_part_of_the_memory() {
         "Config (config)",
         "(primary.modules)",
         "Modes (primary.mode",
-        "params.levers",
+        "#---INTERRUPTORS---",
     ] {
         assert!(out.contains(part), "recall map lacks {part}:\n{out}");
     }
@@ -250,8 +277,24 @@ fn audit_finds_no_secrets() {
 }
 
 #[test]
+fn calc_prints_exact_results_and_refuses_bad_ones() {
+    let o = run(CALC, &["1/3 + 1/6"]);
+    assert!(o.status.success());
+    assert_eq!(stdout(&o), "1/2 = 0.5\n");
+    assert_eq!(stdout(&run(CALC, &["0.1", "+", "0.2"])), "3/10 = 0.3\n");
+    assert_eq!(stdout(&run(CALC, &["2^10"])), "1024\n");
+    assert_eq!(run(CALC, &["1/0"]).status.code(), Some(1));
+    assert_eq!(run(CALC, &[]).status.code(), Some(2));
+}
+
+#[test]
 fn bad_arguments_exit_with_2() {
-    for (bin, arg) in [(BUILD, "--nope"), (LINT, "nope"), (AUDIT, "nope")] {
+    for (bin, arg) in [
+        (BUILD, "--nope"),
+        (LINT, "nope"),
+        (AUDIT, "nope"),
+        (VERIFY, "nope"),
+    ] {
         assert_eq!(run(bin, &[arg]).status.code(), Some(2), "{bin} {arg}");
     }
 }

@@ -1,0 +1,112 @@
+# Problems
+note for agent: ...
+
+Problems: the concrete problems this project solves, each said in human language with no proper names and no references to code or to the repo, and the rules that solve it today (`solved_by`, the names of premises, good practices and preferences, as they start in AGENTS.md). `pla-lint` checks that every name exists and that every rule solves at least one problem.
+
+## Scattered truth
+
+Knowledge about a project ends up spread over many files that drift apart, until nobody knows which version is right.
+
+Solved by: Single source; Only one brain; Brain; No duplication; File changes.
+
+## Limited attention
+
+An agent has limited attention: loading everything every time wastes it, and loading too little leaves it blind.
+
+Solved by: Interruptor; Lean memory; Procedures.
+
+## Rules that bend
+
+Rules that live only as text are forgotten or bent, and nobody notices until the damage is done.
+
+Solved by: Enforce, don't ask; Better deterministic and explained than interpreted.
+
+## Who holds the controls
+
+An agent that changes the controls of a system on its own can steer it away from what its owner wants.
+
+Solved by: Params untouchable, Memory updatable; Conservative, in general.
+
+## Growing without learning
+
+A memory that only grows piles up stale and contradictory rules instead of getting better.
+
+Solved by: Write order; Every rule earns its place; Log.
+
+## Unverified knowledge
+
+What a machine produces by itself can be wrong in ways that look right.
+
+Solved by: Only small diff steps; Verification (precarious, growing); Verification; Formal verification.
+
+## Wasted effort
+
+Effort goes into details that bring little, while the essentials stay undone.
+
+Solved by: Pareto rule; Problem-first.
+
+## Tools by fashion
+
+Tools chosen by their name or by fashion, instead of by the problem they solve, turn into a collection nobody masters.
+
+Solved by: Problem-first; Rust-only; Everything ends in Rust; Specific formats; LLM-friendly languages.
+
+## Wrong numbers
+
+Numbers worked out by guessing, or with rounding nobody sees, are silently wrong.
+
+Solved by: Pure calculator; Calculation isolation.
+
+## Leaked secrets
+
+A public project that is always on can leak keys or personal data.
+
+Solved by: Secrets.
+
+## Noisy sources
+
+Much of what can be read online is of low quality, and notes taken from it pollute what is known.
+
+Solved by: Zettelkasten markdown spirit.
+
+## One-person project
+
+A project only one person can work on stops when that person stops.
+
+Solved by: Open source.
+
+## Misread words
+
+A person names things in their own words; an agent that does not map those words to the right thing acts on the wrong one.
+
+Solved by: Naming.
+
+## Misplaced knowledge
+
+Without a clear edge for each place, new knowledge is stored where it does not belong, and later it is not found or it contradicts what is next to it.
+
+Solved by: Where things go; Pareto rule.
+
+## Writes outside the project
+
+An agent that can write anywhere on a machine can damage what is not its own, and one careless yes from a person is enough for it.
+
+Solved by: Write only inside the root.
+
+## Agent clutter
+
+An agent at work leaves drafts, reports and scripts behind; spread through a project, they blur what is real and what is only a draft.
+
+Solved by: LLM agent has his folder, but one repo brain; One folder for every assistant.
+
+## One copy per assistant
+
+Each assistant expects its own folder layout; copying the knowledge into each one splits it into versions that drift apart.
+
+Solved by: One folder for every assistant; No duplication.
+
+## Sediment
+
+Information dropped in a temporary place stays there for good, and the project slowly runs on material nobody sorted.
+
+Solved by: Only migrate UP!; Where things go.

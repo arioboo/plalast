@@ -5,12 +5,19 @@ This repo is a public and living creature. Turn on your VPS or machine, connect 
 
 The servers will be 24/7 on. This is a personal project on autonomous coding and living information systems, but everyone is welcome in.
 
-## Premisas - estáticas
+## Reglas - estáticas (obligatory)
 
-- Single source: `memory.json` is the brain, with exactly three primary keys (`config`, `primary`, `data`; see the table below), and `params.yaml` holds the interruptores and the agent placeholder. Every `.md` in the repo root and in `agents/` is generated from them: edit only those two files and run `cargo run --release --bin pla-build` (see `agents/BUILD.md`). Modules in `agents/` subfolders are hand-written. Never edit generated files by hand.
-- Only one brain: `memory.json`. There is no second memory, copy or parallel source of truth; everything else is built from it or points at it.
+- Single source: every `.md` in the repo root and in `agents/` is generated from `memory.json` and `params.yaml`: change `memory.json` (and `params.yaml` only as Params untouchable allows), then run `cargo run --release --bin pla-build` (see `agents/BUILD.md`); never edit a generated file by hand. Hand-written: the Rust code, the scripts and the modules in `agents/` subfolders.
+- Write only inside the root: an agent has no write permission outside the plalast root folder (the one that holds `memory.json`). Never write outside it, in any case, even when the user, distracted, says yes to something that would do it implicitly: refuse and say why. The Claude Code hook (`pla-build --guard`) denies such edits.
+- Params untouchable, Memory updatable: the params (`params.yaml`) are touched only by the user; an agent changes or redesigns anything in them only when the user says so explicitly. Every param is named by the path of the field of `memory.json` it sets or switches, nesting its json keys with `.` (such as `config.lint.max_lines` or `primary.docs.content.agents_md.sections.preferencias`). The memory is updatable: it follows those paths, it is switched on through the interruptors after `#---INTERRUPTORS---`, and it is read on demand through the recall library (`pla-recall`).
 - Secrets: they live only in `.secrets/` at the repo root, which git ignores except its `.gitkeep`. Code and configs reference them by environment variable; their values never go into other files, the chat or external services.
-- Specific formats: markdown for information, json for the memory (`memory.json`), yaml for the params (`params.yaml`), bash for system scripts (setup, links, servers) and Rust for everything else (see Premisas - dinámicas).
+
+## Premisas - estáticas (obligatory)
+
+- Only one brain: `memory.json`. There is no second memory, copy or parallel source of truth; everything else is built from it or points at it.
+- Only migrate UP!: information moves in one direction only, up, as it fits a higher field better: `data` > `primary` > `config` (config on top). `data` is external memory, nearly empty, where what is not yet placed lands; nothing moves down. Every move is well delimited (`descr_+`, `descr_-`), follows the Pareto rule and logical and formal rules; `pla-lint` refuses a field in `data` without a planned destination.
+- One folder for every assistant: `agents/` is the folder of any assistant agent. `.claude/` holds only symlinks into `agents/`; any other assistant with its own folders may read `agents/` or link to its files as it suits it. No assistant clutters the other folders, the root included.
+- Specific formats: markdown for information, json for the memory (`memory.json`), yaml for the params (`params.yaml`), Rust for programs and scripts, and bash only for the thin launchers a system calls by path, such as the git and Claude Code hooks (see Premisas - dinámicas).
 - No duplication. Only one way of functional working, one memory file and one params file, symbolic links where matters, only one zettelkasten vault, etc.
 - Open source: everyone can collaborate with it (see `README.md` at the repo root for the contribution flow)
 - Pareto rule: 20% of the effort gives 80% of the result; when unsure, assume a similar split. Propose that 20% first, and more when it is for best practices. It also rules every description: `descr_+` (what a key is, the positive way) and `descr_-` (what it is not, the negative way) each say the essential 20% that carries 80% of the meaning.
@@ -21,25 +28,29 @@ The memory (`memory.json`) has exactly three primary keys, each saying what it i
 
 | Key | Is (descr_+) | Is not (descr_-) |
 |---|---|---|
-| `config` | What the tools need to run the repo: repository, branches, paths, audit, lint and hooks. | Not text for the docs (primary), not what gets built (data), not interruptores or the agent placeholder (`params.yaml`), not secrets (`.secrets/`). |
-| `primary` | What makes the docs: identity, texts, definitions, commands, features, log, index, modes and the schema of the memory itself. | Not paths or tool settings (config), not what gets built on disk (data), not hand-written code or modules. |
-| `data` | What gets built: every path of the repo (`structure`) and the shape of every generated doc (`content`). | Not prose (texts live in primary and are pointed at with `ref`), not settings (config). |
+| `config` | What the tools need to run the repo: repository, paths, the structure of the repo (every path, its type and how it is built), audit, lint and hooks. | Not text for the docs (primary), not the prose about each path (primary.structure), not the settings and interruptors only the user sets (`params.yaml`), not secrets (`.secrets/`). |
+| `primary` | What makes the docs: identity, texts, definitions, the shape of every doc, the descriptions of every path, commands, features, log, index, modes, procedures, problems and the schema of the memory itself. | Not tool settings (config), not path settings such as types and flags (config.structure), not hand-written code or modules, not unplaced information (data). |
+| `data` | External memory: the landing place of what is not yet placed; it migrates up, to `primary` or `config`, as soon as a field there fits it (Only migrate UP!). | Not a permanent home: nothing stays here once a field above fits it; not settings (config), not texts of the docs (primary). |
 
-## Premisas - dinámicas
+## Premisas - dinámicas (obligatory)
 
-Brain: `memory.json` is the brain of plalast, the place everything is read from and written to. Everything in this file, and every other generated file (every `.md` in the root and in `agents/`, `.gitignore`, `.claude/settings.json`), is rebuilt from it byte by byte, with the params of `params.yaml` (interruptores and agent placeholder).
+Dynamic premises are still to be verified: each one is the current state of how we solve a concrete problem (`primary.problems`, in `agents/PROBLEMS.md`), and it changes when a better solution is verified.
 
-Write order: delete > modify/edit > add. Before adding anything, first delete what is no longer needed, then modify or edit what exists, and add only what neither covers. This forces a kind of autonomous retraining of the memory, as long as the Pareto rule holds in each case.
-
-Problem-first: say, in plain human language, the problem that a tool or a set of tools solves, before naming any tool. Do not get carried away by proper names: names change, the problem stays. Follow "All models are wrong, but some are useful": every tool and every description is a model, judged by how useful it is and not by how true it is. This is the pragmatic philosophy the Pareto rule installs in our learning by reinforcement.
-
-Procedures: short instructions in human language for recurring situations, in `agents/PROCEDURES.md` (from `primary.procedures`). Read the one that fits before acting.
+- Brain: everything is read from and written to `memory.json`. This file and every other generated file (every `.md` in the root and in `agents/`, `.gitignore`, the Claude Code settings) are rebuilt from it byte by byte, with the params of `params.yaml`; a test rebuilds them all and compares.
+- LLM agent has his folder, but one repo brain: the agent's folder is `agents/`. Its scripts, reports, `.md` and `.pdf` files go to `agents/workspace/` (git-ignored except `.gitkeep`, never part of the brain), without touching the rest of the repo; everything else follows AGENTS.md.
+- Write order: delete > modify/edit > add. Before adding anything, first delete what is no longer needed, then modify or edit what exists, and add only what neither covers. This forces a kind of autonomous retraining of the memory, as long as the Pareto rule holds in each case.
+- Problem-first: say, in plain human language, the problem that a tool or a set of tools solves, before naming any tool. Do not get carried away by proper names: names change, the problem stays. Follow "All models are wrong, but some are useful": every tool and every description is a model, judged by how useful it is and not by how true it is. This is the pragmatic philosophy the Pareto rule installs in our learning by reinforcement.
+- Better deterministic and explained than interpreted: prefer a rule that a tool checks the same way every time, with its reason written next to it, over one that depends on how someone reads a text. When a rule can be a check, make it one (Enforce, don't ask); when it cannot, explain it well enough to follow it without guessing.
+- Rust-only: Rust for backend and scripts. TypeScript occasionally (web pages and user interfaces). Rust and C/C++ tools allowed.
+- Pure calculator: use it to isolate calculation. `plalast::calc` (the library, `src/calc.rs`) and `pla-calc <expression>` (the command) evaluate arithmetic exactly, as fractions, with no side effects: `+ - * /`, integer `^`, parentheses and decimals; division by zero and overflow are errors, never a wrong number.
+- Procedures: short instructions in human language for recurring situations, in `agents/PROCEDURES.md` (from `primary.procedures`). Read the one that fits before acting.
+- Verification (precarious, growing): `pla-verify` checks a change at several levels: `consistency` (the repo agrees with the brain: `pla-build --check`, `pla-lint memory modules`), `logic` (`pla-lint rust`, that is fmt and clippy, then the logic tests: `cargo test`, with `tests/logic.rs` checking at run time the contracts that `src/verified.rs` proves), `formal` (`cargo verus verify`, skipped with a warning where Verus is not installed) and a last human level (it lists the changed files to review). There are still few proofs and few logic tests.
 
 The current state of the repo: it changes as the repo grows, so check it against the repo when in doubt.
 
 Map: `agents/structure.md` (where each path lives) and `cargo run --release --bin pla-recall -- [term]`.
 
-Modes (`primary.mode`, each with its interruptor in `params.levers.mode`):
+Modes (`primary.mode`, each with its interruptor `primary.mode.<name>` in `params.yaml`):
 
 - Mode `ultra_conservative` (on_demand): read `agents/mode-ultra_conservative.md` when the user turns it on, or a change is risky, irreversible or outward-facing.
 
@@ -47,10 +58,12 @@ Repo tool (details in `agents/BUILD.md`), from anywhere inside the repo:
 
 - `cargo run --release --bin pla-build`: regenerate docs, folders and links from `memory.json` and `params.yaml`
 - `cargo run --release --bin pla-build -- --check`: change nothing, fail if the repo drifted from the memory
-- `cargo run --release --bin pla-build -- --guard`: Claude Code hook: deny hand edits of generated files
+- `cargo run --release --bin pla-build -- --guard`: Claude Code hook: deny hand edits of generated files and writes outside the repo root
 - `cargo run --release --bin pla-recall -- [term]`: print the repo map, or search it for `term`
 - `cargo run --release --bin pla-lint -- [memory] [modules] [rust]`: check that the memory, the hand-written modules and the Rust code are well formed
 - `cargo run --release --bin pla-audit -- [secrets] [deps] [repo]`: look for secrets and personal data, vulnerable dependencies, broken links and branches out of sync
+- `cargo run --release --bin pla-verify -- [consistency] [logic] [formal]`: verify a change at several levels: consistency with the brain, logic tests and formal proofs (Verus), then a human review
+- `cargo run --release --bin pla-calc -- <expression>`: the pure calculator: evaluate an expression exactly, isolated from everything else
 - `git config core.hooksPath agents/hooks`: once per clone, so git's pre-commit hook refuses commits while `pla-build --check` fails
 - `cargo install cargo-audit --locked`: once per machine, so `pla-audit deps` checks `Cargo.lock` against RustSec instead of skipping it
 
@@ -65,24 +78,28 @@ Tools and languages in use:
 
 - Programs that must be fast, safe with memory and easy for an LLM to read and write, some of them proven correct: Rust, the default for every program and tool, with Verus for the proofs.
 - Proving that a statement is true, and keeping a growing base of checked facts: Lean 4.
-- Writing software together with the proof that it does what it says, in a form LLMs program well: Dafny, the default for LLM-programming.
 
 Candidates (possible, not in use yet):
 
+- Writing software together with the proof that it does what it says, in a form LLMs program well: Dafny (not a Rust or C/C++ tool, so not in use while Rust-only holds).
 - Building web pages and user interfaces, and scripting or crawling the web: TypeScript.
 
-## Buenas prácticas
+## Buenas prácticas (preferential)
 
-- Interruptor: every document section and every mode has one in `params.levers` (also called a memory lever), with three values: `enabled` (always in the agent's memory), `on_demand` (its own file, read when needed; the default when none is set) or `disabled` (not built). Every new section or mode gets one when its default is not the right one.
-- File changes: when the user asks to touch any file, make the change in its section of `memory.json` (or `params.yaml` for interruptores) and rebuild with `pla-build` (the Rust build tool); never edit the output directly. Only the hand-written Rust code and the modules in `agents/` subfolders are edited in place.
+- Interruptor: every doc section, every whole doc and every mode can have one in `params.yaml`, after `#---INTERRUPTORS---`, named by the path of its field (`primary.docs.content.<doc>.sections.<id>`, `primary.docs.content.<doc>`, `primary.mode.<name>`), with three values: `enabled` (always in the agent's memory), `on_demand` (its own file, read when needed; the default when none is set) or `disabled` (not built). A new section, doc or mode works with the default; when another value fits better, propose it to the user, who sets it.
+- File changes: when the user asks to touch any file, find the part of `memory.json` that builds it, change it there and rebuild with `pla-build`.
 - Log: after every commit, merge or new branch, add an entry `{date, branch, commit, kind, descr}` to `primary.log` (a commit cannot hold its own hash, so it goes in the next commit) and rebuild; `agents/LOG.md` shows it.
 - Zettelkasten markdown spirit. A lot of things in the web are garbage, so notes in the agent-zettelkasten use CDU (Universal Decimal Classification) notation: the file name starts with the CDU code, then a kebab-case title, e.g. `004.8-llm-agents.md` (004.8 = artificial intelligence). The infrastructure will be up.
 - Lean memory: always-on docs hold only what an agent cannot learn by reading the repo; maps, overviews and reference material are `on_demand`.
 - Every rule earns its place: add one only when an agent repeats a mistake, and only if the agent could not find it in the repo; `pla-lint` keeps always-on docs under `config.lint.max_lines`.
 - Enforce, don't ask: rules that must never bend (never edit generated files, docs in sync with `memory.json`) are hooks or checks, not just instructions.
+- Verification: run `pla-verify` before every commit and report what each level said; a skipped level is said, never hidden. A new pure function with a clear contract goes in `src/verified.rs` with `requires`/`ensures`, and gets a logic test in `tests/logic.rs` checking the same contract. When a test or a proof fails, fix the code or the contract, never weaken the check to make it pass.
+- Everything ends in Rust: something done in another language (a Python prototype, a one-off script) is ported to Rust before it stays in the repo.
+- Calculation isolation: do not compute numbers in your head or in a free-form script; pass the expression to `pla-calc` (or call `plalast::calc` from Rust) and use its exact result.
+- Where things go: before saving anything in the memory, find the field whose `descr_+` fits it and whose `descr_-` does not exclude it (`primary.schema.keys`, or the three primary keys); if none fits, propose a new field with both, Pareto-short.
 
-## Preferencias
+## Preferencias (preferential)
 
-- Naming: when the user says "la memoria", "el contexto" or "el json" (memory, context, the json), they mean `memory.json`.
-- Using languages LLM-friendly like Rust, Python or Go is desirable. Also, using LLM programming-specific languages is a tool to proceed with caution, but desirable at some point.
-- Formal verification is desirable, but very expensive. Watch out and connect to others' ideas instead of reinventing the wheel
+- Naming: when the user says "la memoria", "el contexto" or "el json" (memory, context, the json), they mean `memory.json`. "Los 4 fantásticos" are the sections of AGENTS.md (Reglas - estáticas, Premisas - estáticas, Premisas - dinámicas, Buenas prácticas, Preferencias): there are more than four, the name stays.
+- LLM-friendly languages: desirable, Rust first (see Rust-only). Languages made for LLM programming are a tool to use with caution, but desirable at some point.
+- Formal verification: desirable, but very expensive. Watch out and connect to others' ideas instead of reinventing the wheel.
