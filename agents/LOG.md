@@ -5,6 +5,8 @@ Branches, commits and merges of this repo, newest first. Source: `primary.log` i
 
 | Date | Branch | Commit | Kind | Description |
 |---|---|---|---|---|
+| 2026-11-26 | main | `5c85bd5` | merge | Fast-forward merge of develop. |
+| 2026-11-26 | develop | `5c85bd5` | commit | The agent-zettelkasten link is no longer built; modules/ only documents the external module. |
 | 2026-11-26 | main | `5ba4b92` | merge | Fast-forward merge of develop. |
 | 2026-11-26 | develop | `5ba4b92` | commit | modules/agent-zettelkasten made a local link: git-ignored and built only where the vault exists. |
 | 2026-11-26 | main | `1dbd6f9` | merge | Fast-forward merge of develop. |

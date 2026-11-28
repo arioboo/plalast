@@ -18,24 +18,20 @@
         "This repo is a public and living creature. Turn on your VPS or machine, connect your agents, code it, teach it something, and make a pull request on Github.",
         "The servers will be 24/7 on. This is a personal project on autonomous coding and living information systems, but everyone is welcome in."
       ],
-      "good_practices": [
+      "static_premises": [
         "Single source: `memory.json` (texts, structure, content) and `params.yaml` (settings, paths, levers) are the brain. Every `.md` in the repo root and in `agents/` is generated from them: edit only those two files and run `cargo run --release --bin pla-build` (see `agents/BUILD.md`). Modules in `agents/` subfolders are hand-written. Never edit generated files by hand.",
-        "Naming: when the user says \"la memoria\", \"el contexto\" or \"el json\" (memory, context, the json), they mean `memory.json`.",
-        "File changes: when the user asks to touch any file, make the change in its section of `memory.json` (or `params.yaml` for settings and levers) and rebuild with `pla-build` (the Rust build tool); never edit the output directly. Only the hand-written Rust code and the modules in `agents/` subfolders are edited in place.",
         "Secrets: they live only in `.secrets/` at the repo root, which git ignores except its `.gitkeep`. Code and configs reference them by environment variable; their values never go into other files, the chat or external services.",
         "Memory levers: every document section has a lever in `params.levers`: `enabled` (always in the agent's memory), `on_demand` (its own file, read when needed) or `disabled` (not built). Every new section gets one.",
-        "Log: after every commit, merge or new branch, add an entry `{date, branch, commit, kind, descr}` to `primary.log` (a commit cannot hold its own hash, so it goes in the next commit) and rebuild; `agents/LOG.md` shows it.",
-        "Zettelkasten markdown spirit. A lot of things in the web are garbage, so notes in the agent-zettelkasten use CDU (Universal Decimal Classification) notation: the file name starts with the CDU code, then a kebab-case title, e.g. `004.8-llm-agents.md` (004.8 = artificial intelligence). The infrastructure will be up.",
-        "Specific formats: markdown for information, json for the memory (`memory.json`), yaml for parameters (`params.yaml`), bash for system scripts (setup, links, servers) and Rust for everything else (see Tools and languages).",
+        "Specific formats: markdown for information, json for the memory (`memory.json`), yaml for parameters (`params.yaml`), bash for system scripts (setup, links, servers) and Rust for everything else (see Premisas - dinámicas).",
         "No duplication. Only one way of functional working, one memory file and one params file, symbolic links where matters, only one zettelkasten vault, etc.",
-        "Using languages LLM-friendly like Rust, Python or Go is desirable. Also, using LLM programming-specific languages is a tool to proceed with caution, but desirable at some point.",
-        "Formal verification is desirable, but very expensive. Watch out and connect to others' ideas instead of reinventing the wheel",
-        "Open source: everyone can collaborate with it (see `README.md` at the repo root for the contribution flow)",
-        "Pareto rule: The 20% of effort in an issue makes the 80% of results, and if not, assume a similar proportion. You'll propose it, and more if it is for best practices",
-        "Lean memory: always-on docs hold only what an agent cannot learn by reading the repo; maps, overviews and reference material are `on_demand`.",
-        "Every rule earns its place: add one only when an agent repeats a mistake, and only if the agent could not find it in the repo; `pla-lint` keeps always-on docs under `params.config.lint.max_lines`.",
-        "Enforce, don't ask: rules that must never bend (never edit generated files, docs in sync with `memory.json`) are hooks or checks, not just instructions."
+        "Open source: everyone can collaborate with it (see `README.md` at the repo root for the contribution flow)"
       ],
+      "dynamic_premises": {
+        "intro": "The current state of the repo: it changes as the repo grows, so check it against the repo when in doubt.",
+        "map": "Map: `agents/structure.md` (where each path lives) and `cargo run --release --bin pla-recall -- [term]`.",
+        "tools_intro": "Tools and languages in use:",
+        "candidates_intro": "Candidates (possible, not in use yet):"
+      },
       "commands": {
         "tool_intro": "Repo tool (details in `agents/BUILD.md`), from anywhere inside the repo:",
         "code_intro": "Code:",
@@ -53,6 +49,20 @@
       ],
       "candidates": [
         "Typescript: Best for web, UI and web scripting/crawling"
+      ],
+      "good_practices": [
+        "File changes: when the user asks to touch any file, make the change in its section of `memory.json` (or `params.yaml` for settings and levers) and rebuild with `pla-build` (the Rust build tool); never edit the output directly. Only the hand-written Rust code and the modules in `agents/` subfolders are edited in place.",
+        "Log: after every commit, merge or new branch, add an entry `{date, branch, commit, kind, descr}` to `primary.log` (a commit cannot hold its own hash, so it goes in the next commit) and rebuild; `agents/LOG.md` shows it.",
+        "Zettelkasten markdown spirit. A lot of things in the web are garbage, so notes in the agent-zettelkasten use CDU (Universal Decimal Classification) notation: the file name starts with the CDU code, then a kebab-case title, e.g. `004.8-llm-agents.md` (004.8 = artificial intelligence). The infrastructure will be up.",
+        "Pareto rule: The 20% of effort in an issue makes the 80% of results, and if not, assume a similar proportion. You'll propose it, and more if it is for best practices",
+        "Lean memory: always-on docs hold only what an agent cannot learn by reading the repo; maps, overviews and reference material are `on_demand`.",
+        "Every rule earns its place: add one only when an agent repeats a mistake, and only if the agent could not find it in the repo; `pla-lint` keeps always-on docs under `params.config.lint.max_lines`.",
+        "Enforce, don't ask: rules that must never bend (never edit generated files, docs in sync with `memory.json`) are hooks or checks, not just instructions."
+      ],
+      "preferences": [
+        "Naming: when the user says \"la memoria\", \"el contexto\" or \"el json\" (memory, context, the json), they mean `memory.json`.",
+        "Using languages LLM-friendly like Rust, Python or Go is desirable. Also, using LLM programming-specific languages is a tool to proceed with caution, but desirable at some point.",
+        "Formal verification is desirable, but very expensive. Watch out and connect to others' ideas instead of reinventing the wheel"
       ]
     },
     "commands": [
@@ -349,6 +359,20 @@
         "commit": "5ba4b92",
         "kind": "merge",
         "descr": "Fast-forward merge of develop."
+      },
+      {
+        "date": "2026-11-26",
+        "branch": "develop",
+        "commit": "5c85bd5",
+        "kind": "commit",
+        "descr": "The agent-zettelkasten link is no longer built; modules/ only documents the external module."
+      },
+      {
+        "date": "2026-11-26",
+        "branch": "main",
+        "commit": "5c85bd5",
+        "kind": "merge",
+        "descr": "Fast-forward merge of develop."
       }
     ],
     "index": {},
@@ -396,10 +420,13 @@
         "primary.docs.on_demand": "How `on_demand` sections are pointed at: the heading of the pointer list (`heading`) and the pointer line (`pointer`, with `{path}`, `{title}` and `{when}`). Their folder is `params.config.paths.on_demand`.",
         "primary.agents-md": "The AGENTS.md text that no other key holds, split into fields; `data.content.agents_md` gives the doc its shape and points at them with `ref`.",
         "primary.agents-md.intro": "Paragraphs under the title.",
-        "primary.agents-md.good_practices": "Rules every agent follows (the Best practices section).",
-        "primary.agents-md.commands": "Intros of the Commands section (`tool_intro`, `code_intro`) and the `code` commands; the tool commands come from `primary.commands`.",
+        "primary.agents-md.static_premises": "Fixed premises: what the repo is and how it is built (the Premisas - estáticas section).",
+        "primary.agents-md.dynamic_premises": "Texts of the Premisas - dinámicas section (`intro`, `map`, `tools_intro`, `candidates_intro`); its lists are `commands`, `tools_and_languages` and `candidates`.",
+        "primary.agents-md.commands": "Commands of the Premisas - dinámicas section: intros (`tool_intro`, `code_intro`) and the `code` commands; the tool commands come from `primary.commands`.",
         "primary.agents-md.tools_and_languages": "Languages and verifiers in use.",
         "primary.agents-md.candidates": "Languages that may be used later.",
+        "primary.agents-md.good_practices": "How every agent works in the repo (the Buenas prácticas section).",
+        "primary.agents-md.preferences": "Preferences of the project owner (the Preferencias section).",
         "primary.features": "Features of the project, as `feature_<n>` -> `{descr, status}` (both strings).",
         "primary.log": "Project log: entries `{date, branch, commit, kind, descr}` in the order they happened; `kind` is `commit`, `merge` or `branch`. A commit cannot hold its own hash, so each one is logged in the next commit. LOG.md shows them newest first; `pla-audit` warns about commits missing from it.",
         "primary.index": "Project index (empty for now; its format is not defined yet).",
@@ -660,6 +687,7 @@
       {
         "path": "modules/",
         "type": "dir",
+        "gitkeep": true,
         "table": "Folder for links to the external modules of `primary.modules` (none is built now)",
         "description": "External modules, one symlink each."
       },
@@ -693,31 +721,29 @@
         ],
         "sections": [
           {
-            "id": "best-practices",
-            "title": "Best practices",
-            "when": "deciding how to write, format or place anything in the repo",
+            "id": "premisas-estaticas",
+            "title": "Premisas - estáticas",
+            "when": "deciding what the repo is, where its source lives and what never changes",
             "blocks": [
               {
                 "type": "list",
-                "ref": "primary.agents-md.good_practices"
+                "ref": "primary.agents-md.static_premises"
               }
             ]
           },
           {
-            "id": "structure",
-            "title": "Structure",
-            "when": "looking for where something lives or adding a path",
+            "id": "premisas-dinamicas",
+            "title": "Premisas - dinámicas",
+            "when": "building, testing or checking the repo, or choosing a language or tool",
             "blocks": [
               {
-                "type": "structure_table"
-              }
-            ]
-          },
-          {
-            "id": "commands",
-            "title": "Commands",
-            "when": "building, testing or checking the repo",
-            "blocks": [
+                "type": "paragraph",
+                "ref": "primary.agents-md.dynamic_premises.intro"
+              },
+              {
+                "type": "paragraph",
+                "ref": "primary.agents-md.dynamic_premises.map"
+              },
               {
                 "type": "paragraph",
                 "ref": "primary.agents-md.commands.tool_intro"
@@ -734,28 +760,44 @@
               {
                 "type": "list",
                 "ref": "primary.agents-md.commands.code"
-              }
-            ]
-          },
-          {
-            "id": "tools",
-            "title": "Tools and languages",
-            "when": "choosing a language or a verification tool",
-            "blocks": [
+              },
+              {
+                "type": "paragraph",
+                "ref": "primary.agents-md.dynamic_premises.tools_intro"
+              },
               {
                 "type": "list",
                 "ref": "primary.agents-md.tools_and_languages"
+              },
+              {
+                "type": "paragraph",
+                "ref": "primary.agents-md.dynamic_premises.candidates_intro"
+              },
+              {
+                "type": "list",
+                "ref": "primary.agents-md.candidates"
               }
             ]
           },
           {
-            "id": "candidates",
-            "title": "Candidates (possible, not in use yet)",
-            "when": "considering a language that is not in use yet",
+            "id": "buenas-practicas",
+            "title": "Buenas prácticas",
+            "when": "deciding how to write, format, log or place anything in the repo",
             "blocks": [
               {
                 "type": "list",
-                "ref": "primary.agents-md.candidates"
+                "ref": "primary.agents-md.good_practices"
+              }
+            ]
+          },
+          {
+            "id": "preferencias",
+            "title": "Preferencias",
+            "when": "choosing between options the rules leave open",
+            "blocks": [
+              {
+                "type": "list",
+                "ref": "primary.agents-md.preferences"
               }
             ]
           }
@@ -813,7 +855,7 @@
                 "items": [
                   "Fork the repo and create a branch from `develop` (`feat/<topic>`, `fix/<topic>`, `docs/<topic>`).",
                   "Change only `memory.json` or `params.yaml` (or a hand-written module in an `agents/` subfolder), run `cargo run --release --bin pla-build`, and keep each change small: no duplication, Rust by default, markdown/json/yaml/bash formats.",
-                  "Run `pla-lint` and `pla-audit` (see *Commands* in agents/AGENTS.md): both must finish with no errors.",
+                  "Run `pla-lint` and `pla-audit` (see *Premisas - dinámicas* in agents/AGENTS.md): both must finish with no errors.",
                   "Open a pull request against `develop` describing what changed and why. `main` only receives merges from `develop`."
                 ]
               }
@@ -833,7 +875,7 @@
           },
           {
             "type": "paragraph",
-            "ref": "primary.agents-md.good_practices.0"
+            "ref": "primary.agents-md.static_premises.0"
           }
         ],
         "sections": [
@@ -959,6 +1001,16 @@
               {
                 "type": "paragraph",
                 "text": "Deleting an entry from `memory.json` does not delete it from disk. `pla-build --check` reports leftover `.md` files in the root and `agents/`; delete them once you have confirmed they are no longer needed."
+              }
+            ]
+          },
+          {
+            "id": "structure",
+            "title": "Structure",
+            "when": "looking for where something lives or adding a path",
+            "blocks": [
+              {
+                "type": "structure_table"
               }
             ]
           }

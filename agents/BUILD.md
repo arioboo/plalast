@@ -45,10 +45,13 @@ The brain is two files. `memory.json` has exactly `primary` (what makes the docs
 | `primary.docs.on_demand` | How `on_demand` sections are pointed at: the heading of the pointer list (`heading`) and the pointer line (`pointer`, with `{path}`, `{title}` and `{when}`). Their folder is `params.config.paths.on_demand`. |
 | `primary.agents-md` | The AGENTS.md text that no other key holds, split into fields; `data.content.agents_md` gives the doc its shape and points at them with `ref`. |
 | `primary.agents-md.intro` | Paragraphs under the title. |
-| `primary.agents-md.good_practices` | Rules every agent follows (the Best practices section). |
-| `primary.agents-md.commands` | Intros of the Commands section (`tool_intro`, `code_intro`) and the `code` commands; the tool commands come from `primary.commands`. |
+| `primary.agents-md.static_premises` | Fixed premises: what the repo is and how it is built (the Premisas - estáticas section). |
+| `primary.agents-md.dynamic_premises` | Texts of the Premisas - dinámicas section (`intro`, `map`, `tools_intro`, `candidates_intro`); its lists are `commands`, `tools_and_languages` and `candidates`. |
+| `primary.agents-md.commands` | Commands of the Premisas - dinámicas section: intros (`tool_intro`, `code_intro`) and the `code` commands; the tool commands come from `primary.commands`. |
 | `primary.agents-md.tools_and_languages` | Languages and verifiers in use. |
 | `primary.agents-md.candidates` | Languages that may be used later. |
+| `primary.agents-md.good_practices` | How every agent works in the repo (the Buenas prácticas section). |
+| `primary.agents-md.preferences` | Preferences of the project owner (the Preferencias section). |
 | `primary.features` | Features of the project, as `feature_<n>` -> `{descr, status}` (both strings). |
 | `primary.log` | Project log: entries `{date, branch, commit, kind, descr}` in the order they happened; `kind` is `commit`, `merge` or `branch`. A commit cannot hold its own hash, so each one is logged in the next commit. LOG.md shows them newest first; `pla-audit` warns about commits missing from it. |
 | `primary.index` | Project index (empty for now; its format is not defined yet). |
@@ -113,3 +116,7 @@ Guides are modules too: write `agents/guides/<name>.md` and run `pla-build`, whi
 ## Removing a path
 
 Deleting an entry from `memory.json` does not delete it from disk. `pla-build --check` reports leftover `.md` files in the root and `agents/`; delete them once you have confirmed they are no longer needed.
+
+## On demand
+
+- `agents/structure.md`: Structure. Read it when looking for where something lives or adding a path.

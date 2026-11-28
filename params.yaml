@@ -49,11 +49,10 @@ config:
               command: "\"$CLAUDE_PROJECT_DIR\"/agents/hooks/protect-generated.sh"
 levers:
   agents_md:
-    best-practices: enabled
-    structure: on_demand
-    commands: enabled
-    tools: enabled
-    candidates: enabled
+    premisas-estaticas: enabled
+    premisas-dinamicas: enabled
+    buenas-practicas: enabled
+    preferencias: enabled
   readme_md:
     contributing: enabled
   build_md:
@@ -64,3 +63,4 @@ levers:
     content-blocks: enabled
     adding-module: enabled
     removing-path: enabled
+    structure: on_demand
