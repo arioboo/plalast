@@ -1,7 +1,8 @@
-//! Shared helpers for the plalast tools. The brain of the repo is two files at its root:
-//! `memory.json` (`primary`, `data`) and `params.yaml` (`config`, `levers`). [`open`] joins them
-//! as one value, `{params, primary, data}`, so a dotted path such as
-//! `params.config.paths.modules.agent_zettelkasten` works the same everywhere.
+//! Shared helpers for the plalast tools. The brain of the repo is `memory.json` at its root, with
+//! exactly three primary keys (`config`, `primary`, `data`); `params.yaml` holds only the
+//! interruptores (`levers`). [`open`] joins them as one value, `{config, primary, data, params}`,
+//! so a dotted path such as `config.paths.modules.agent_zettelkasten` or
+//! `params.levers.agents_md.preferencias` works the same everywhere.
 
 pub mod pdf;
 pub mod verified;
@@ -12,10 +13,17 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-/// The memory: what makes the docs (`primary`) and what gets built (`data`).
+/// The memory, the brain: what the tools need to run (`config`), what makes the docs (`primary`)
+/// and what gets built (`data`).
 pub const MEMORY: &str = "memory.json";
-/// The parameters: what the tools need to run (`config`) and the memory levers (`levers`).
+/// The parameters: only the interruptores (`levers`).
 pub const PARAMS: &str = "params.yaml";
+
+/// The primary keys of the memory, in file order; each one has a `descr_+` and a `descr_-`.
+pub const BRAIN_KEYS: [&str; 3] = ["config", "primary", "data"];
+
+/// What a primary key is (`descr_+`, the positive way) and is not (`descr_-`, the negative way).
+pub const DESCR_KEYS: [&str; 2] = ["descr_+", "descr_-"];
 
 pub type Res<T> = Result<T, String>;
 
@@ -48,8 +56,8 @@ pub fn load(root: &Path) -> Res<Value> {
         serde_json::from_str(&read(MEMORY)?).map_err(|e| format!("{MEMORY}: {e}"))?;
     let params: Value =
         serde_norway::from_str(&read(PARAMS)?).map_err(|e| format!("{PARAMS}: {e}"))?;
-    check_keys(&memory, MEMORY, &["data", "primary"])?;
-    check_keys(&params, PARAMS, &["config", "levers"])?;
+    check_keys(&memory, MEMORY, &["config", "data", "primary"])?;
+    check_keys(&params, PARAMS, &["levers"])?;
     let mut joined = memory;
     joined["params"] = params;
     Ok(joined)
@@ -72,13 +80,13 @@ pub fn check_keys(v: &Value, file: &str, expected: &[&str]) -> Res<()> {
 
 // ---------- sections of the brain ----------
 
-/// `params.config`: what the tools need to run the repo (git, settings, paths).
+/// `config`: what the tools need to run the repo (git, settings, paths).
 #[must_use]
 pub fn config(cfg: &Value) -> &Value {
-    &cfg["params"]["config"]
+    &cfg["config"]
 }
 
-/// `params.config.paths`: every path the tools use.
+/// `config.paths`: every path the tools use.
 #[must_use]
 pub fn paths(cfg: &Value) -> &Value {
     &config(cfg)["paths"]
@@ -102,13 +110,44 @@ pub fn data(cfg: &Value) -> &Value {
     &cfg["data"]
 }
 
-/// Memory lever of one document section (`params.levers.<doc>.<id>`), if set.
+/// Value of an interruptor that is not set in `params.levers`.
+pub const DEFAULT_LEVER: &str = "on_demand";
+
+/// Group of `params.levers` that holds the modes (`params.levers.mode.<name>`), not a document.
+pub const MODE_GROUP: &str = "mode";
+
+/// Interruptor (memory lever) of one document section (`params.levers.<doc>.<id>`) or one mode
+/// (`params.levers.mode.<name>`), only if it is set.
 #[must_use]
-pub fn lever<'a>(cfg: &'a Value, doc: &str, id: &str) -> Option<&'a str> {
-    cfg["params"]["levers"][doc][id].as_str()
+pub fn lever_set<'a>(cfg: &'a Value, group: &str, id: &str) -> Option<&'a str> {
+    cfg["params"]["levers"][group][id].as_str()
 }
 
-/// The value at a dotted path such as `params.config.paths.modules.agent_zettelkasten` (list items by index).
+/// Interruptor of one document section or mode: its value, or [`DEFAULT_LEVER`] when unset.
+#[must_use]
+pub fn lever<'a>(cfg: &'a Value, group: &str, id: &str) -> &'a str {
+    lever_set(cfg, group, id).unwrap_or(DEFAULT_LEVER)
+}
+
+/// Modes of `primary.mode`, in file order, with their interruptor value.
+#[must_use]
+pub fn modes(cfg: &Value) -> Vec<(&str, &Value, &str)> {
+    primary(cfg)["mode"]
+        .as_object()
+        .into_iter()
+        .flatten()
+        .map(|(name, m)| (name.as_str(), m, lever(cfg, MODE_GROUP, name)))
+        .collect()
+}
+
+/// Path of the file an `on_demand` mode is rendered to: `<config.paths.on_demand>/mode-<name>.md`.
+#[must_use]
+pub fn mode_path(cfg: &Value, name: &str) -> Option<String> {
+    let dir = str_of(paths(cfg), "on_demand")?.trim_end_matches('/');
+    Some(format!("{dir}/mode-{name}.md"))
+}
+
+/// The value at a dotted path such as `config.paths.modules.agent_zettelkasten` (list items by index).
 #[must_use]
 pub fn lookup<'a>(cfg: &'a Value, dotted: &str) -> Option<&'a Value> {
     cfg.pointer(&format!("/{}", dotted.replace('.', "/")))
@@ -116,8 +155,10 @@ pub fn lookup<'a>(cfg: &'a Value, dotted: &str) -> Option<&'a Value> {
 
 // ---------- registries: pla-lint fails when the brain and these drift apart ----------
 
-/// Keys of `params.config`, in file order, and the tools that handle each.
-pub const CONFIG_KEYS: [(&str, &str); 7] = [
+/// Keys of `config`, in file order, and the tools that handle each.
+pub const CONFIG_KEYS: [(&str, &str); 9] = [
+    ("descr_+", "build (brain_keys), recall, lint"),
+    ("descr_-", "build (brain_keys), recall, lint"),
     (
         "PLALAST_DIR",
         "recall (resolved to the repo root), lint (must be $PWD)",
@@ -134,7 +175,9 @@ pub const CONFIG_KEYS: [(&str, &str); 7] = [
 ];
 
 /// Keys of `primary`, in file order, and the tools that handle each.
-pub const PRIMARY_KEYS: [(&str, &str); 14] = [
+pub const PRIMARY_KEYS: [(&str, &str); 17] = [
+    ("descr_+", "build (brain_keys), recall, lint"),
+    ("descr_-", "build (brain_keys), recall, lint"),
     ("project", "build (title, logo), recall"),
     ("docs", "build (render, on_demand, strays), recall, lint"),
     ("agents-md", "build (AGENTS.md text via refs), recall, lint"),
@@ -151,6 +194,7 @@ pub const PRIMARY_KEYS: [(&str, &str); 14] = [
     ("connectors", "build (links), recall, lint (format)"),
     ("guides", "build (links, pdf), recall, lint"),
     ("modules", "build (link target), recall, lint"),
+    ("mode", "build (modes block, on_demand files), recall, lint"),
     (
         "schema",
         "build (schema blocks, lever values), lint (coverage)",
@@ -158,7 +202,7 @@ pub const PRIMARY_KEYS: [(&str, &str); 14] = [
 ];
 
 /// `build` values rendered from the brain itself rather than from `data.content`:
-/// `.gitignore` (from structure) and `.claude/settings.json` (from `params.config.hooks.claude`).
+/// `.gitignore` (from structure) and `.claude/settings.json` (from `config.hooks.claude`).
 pub const SPECIAL_BUILDS: [&str; 2] = ["gitignore", "claude_settings"];
 
 /// Kinds of log entry in `primary.log`.
@@ -168,11 +212,11 @@ pub const LOG_KINDS: [&str; 3] = ["commit", "merge", "branch"];
 pub const LOG_FIELDS: [&str; 5] = ["date", "branch", "commit", "kind", "descr"];
 
 /// Kinds of hand-written module: `primary.<kind>` holds the definition,
-/// `params.config.paths.modules.<kind>` the folder and the provider links.
+/// `config.paths.modules.<kind>` the folder and the provider links.
 pub const MODULE_KINDS: [&str; 5] = ["skills", "agents", "rules", "connectors", "guides"];
 
 /// External modules (`primary.modules.<name>`), in file order: name, path
-/// (`params.config.paths.modules.<name>`, relative to the folder of its link) and definition.
+/// (`config.paths.modules.<name>`, relative to the folder of its link) and definition.
 #[must_use]
 pub fn external_modules(cfg: &Value) -> Vec<(&str, Option<&str>, Option<&str>)> {
     primary(cfg)["modules"]
@@ -216,7 +260,7 @@ pub fn module_links(cfg: &Value) -> Vec<(String, String)> {
     out
 }
 
-/// Folders whose `.md` files are docs (`params.config.paths.docs`); `.` is the root.
+/// Folders whose `.md` files are docs (`config.paths.docs`); `.` is the root.
 #[must_use]
 pub fn doc_dirs(cfg: &Value) -> Vec<String> {
     strings(paths(cfg), "docs")
@@ -465,8 +509,8 @@ mod tests {
 
     #[test]
     fn structure_paths_can_point_into_the_brain() {
-        let cfg = json!({"params": {"config": {"paths": {"x": "agents/skills"}}}});
-        let e = json!({"path_ref": "params.config.paths.x", "type": "dir"});
+        let cfg = json!({"config": {"paths": {"x": "agents/skills"}}});
+        let e = json!({"path_ref": "config.paths.x", "type": "dir"});
         assert_eq!(entry_path(&cfg, &e).as_deref(), Some("agents/skills/"));
         assert_eq!(
             entry_path(&cfg, &json!({"path": "a.md", "type": "file"})).as_deref(),

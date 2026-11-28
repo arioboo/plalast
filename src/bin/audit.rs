@@ -9,7 +9,7 @@
 //! `repo`:    broken symlinks, links leaving the repo, large files, uncommitted changes and
 //!            branches out of sync (against the last fetch; it does not fetch).
 //!
-//! Exact strings listed in `params.config.audit.allow` are never reported.
+//! Exact strings listed in `config.audit.allow` are never reported.
 
 use plalast::{
     arr, cargo, config, data, entry_path, exit, open, primary, repo_files, run, str_of, strings,
@@ -208,7 +208,7 @@ fn audit_repo(root: &Path, cfg: &Value, f: &mut Findings) -> Result<(), String> 
                 f.warn(
                     A,
                     format!(
-                        "{file}: {} KB, larger than params.config.audit.max_file_kb ({max_kb} KB)",
+                        "{file}: {} KB, larger than config.audit.max_file_kb ({max_kb} KB)",
                         meta.len() / 1024
                     ),
                 );

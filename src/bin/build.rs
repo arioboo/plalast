@@ -6,13 +6,15 @@
 //! - `pla-build --guard`   Claude Code `PreToolUse` hook: reads the payload on stdin and denies
 //!   Edit/Write on any file this build generates (see agents/hooks/protect-generated.sh).
 //!
-//! Each document section is rendered according to its memory lever
-//! (`params.levers.<doc>.<section id>`): `enabled`, `on_demand` or `disabled`.
+//! Each document section is rendered according to its interruptor (memory lever,
+//! `params.levers.<doc>.<section id>`): `enabled`, `on_demand` (the default) or `disabled`.
+//! Each mode of `primary.mode` has one too (`params.levers.mode.<name>`): `enabled` puts its rules
+//! in the `modes` block, `on_demand` writes them to their own file, `disabled` drops them.
 
 use plalast::{
     arr, block_items, block_text, config, data, doc_dirs, docs, entry_path, exit, fill, lever,
-    lookup, module_dir, module_links, open, paths, primary, rel, req, str_of, strings,
-    visible_entries, Res, MEMORY, SPECIAL_BUILDS,
+    lookup, mode_path, modes, module_dir, module_links, open, paths, primary, rel, req, str_of,
+    strings, visible_entries, Res, BRAIN_KEYS, MEMORY, SPECIAL_BUILDS,
 };
 use serde_json::{json, Value};
 use std::env;
@@ -175,6 +177,81 @@ fn agent_note(cfg: &Value) -> Res<&str> {
         .ok_or_else(|| "primary.docs.agent_note is missing".to_string())
 }
 
+/// The `brain_keys` block: one row per primary key of the memory with what it is (`descr_+`)
+/// and what it is not (`descr_-`).
+fn brain_keys(cfg: &Value) -> Res<String> {
+    let header = ["Key", "Is (descr_+)", "Is not (descr_-)"].map(String::from);
+    let mut rows = Vec::new();
+    for key in BRAIN_KEYS {
+        let is = req(&cfg[key], "descr_+", key)?;
+        let is_not = req(&cfg[key], "descr_-", key)?;
+        rows.push(vec![format!("`{key}`"), is.to_string(), is_not.to_string()]);
+    }
+    Ok(md_table(&header, &rows))
+}
+
+/// Rules of a mode (`primary.mode.<name>.rules`), or an error naming the mode.
+fn mode_rules<'a>(name: &str, m: &'a Value) -> Res<Vec<&'a str>> {
+    let rules: Vec<&str> = arr(m, "rules").iter().filter_map(Value::as_str).collect();
+    if rules.is_empty() {
+        return Err(format!(
+            "primary.mode.{name}: needs a non-empty `rules` list"
+        ));
+    }
+    Ok(rules)
+}
+
+/// The `modes` block: one line per mode that is not `disabled`: its rules when `enabled`,
+/// a pointer to its own file when `on_demand`.
+fn modes_block(cfg: &Value) -> Res<String> {
+    let mut lines = Vec::new();
+    for (name, m, state) in modes(cfg) {
+        match state {
+            "enabled" => lines.push(format!(
+                "- Mode `{name}` (enabled): {}",
+                mode_rules(name, m)?.join(" ")
+            )),
+            "on_demand" => {
+                let path = mode_path(cfg, name)
+                    .ok_or_else(|| "config.paths.on_demand is missing".to_string())?;
+                let when = req(m, "when", &format!("primary.mode.{name}"))?;
+                lines.push(format!(
+                    "- Mode `{name}` (on_demand): read `{path}` when {when}."
+                ));
+            }
+            "disabled" => {}
+            other => {
+                return Err(format!(
+                    "params.levers.mode.{name}: `{other}` is not enabled, on_demand or disabled"
+                ))
+            }
+        }
+    }
+    Ok(lines.join("\n"))
+}
+
+/// `(path, text)` of the file of every `on_demand` mode: its title, the agent note and its rules.
+fn mode_files(cfg: &Value) -> Res<Vec<(String, String)>> {
+    let mut out = Vec::new();
+    for (name, m, state) in modes(cfg) {
+        if state != "on_demand" {
+            continue;
+        }
+        let path =
+            mode_path(cfg, name).ok_or_else(|| "config.paths.on_demand is missing".to_string())?;
+        let title = req(m, "title", &format!("primary.mode.{name}"))?;
+        let rules: Vec<String> = mode_rules(name, m)?
+            .iter()
+            .map(|r| format!("- {r}"))
+            .collect();
+        out.push((
+            path,
+            format!("# {title}\n{}\n\n{}\n", agent_note(cfg)?, rules.join("\n")),
+        ));
+    }
+    Ok(out)
+}
+
 /// Markdown for a list of blocks, separated by one blank line, without a trailing newline.
 fn render_blocks(blocks: &[Value], cfg: &Value) -> Res<String> {
     let mut out = String::new();
@@ -209,10 +286,16 @@ fn render_blocks(blocks: &[Value], cfg: &Value) -> Res<String> {
             "schema" => schema_table(cfg, b)?,
             "image" => image(cfg, b)?,
             "agent_note" => agent_note(cfg)?.to_string(),
+            "modes" => modes_block(cfg)?,
+            "brain_keys" => brain_keys(cfg)?,
             other => return Err(format!("unknown content block type `{other}`")),
         };
+        // A block with nothing to show (such as `modes` with every mode disabled) adds no lines.
+        if part.is_empty() {
+            continue;
+        }
         // One blank line between blocks; the agent note sits right under the first line.
-        if i > 0 {
+        if i > 0 && !out.is_empty() {
             out.push_str(if kind == "agent_note" { "\n" } else { "\n\n" });
         }
         out.push_str(&part);
@@ -251,9 +334,7 @@ fn render_doc(key: &str, doc: &Value, cfg: &Value) -> Res<(String, Vec<(String, 
     for s in sections {
         let id = req(s, "id", &format!("data.content.{key} section"))?;
         let title = req(s, "title", id)?;
-        let state = lever(cfg, key, id).ok_or_else(|| {
-            format!("data.content.{key}: section `{id}` has no lever in params.levers.{key}")
-        })?;
+        let state = lever(cfg, key, id);
         if !allowed.contains(&state) {
             return Err(format!(
                 "params.levers.{key}.{id}: `{state}` is not one of {allowed:?}"
@@ -270,8 +351,7 @@ fn render_doc(key: &str, doc: &Value, cfg: &Value) -> Res<(String, Vec<(String, 
         match state {
             "enabled" => parts.push(with_body(format!("## {title}"))),
             "on_demand" => {
-                let dir =
-                    req(paths(cfg), "on_demand", "params.config.paths")?.trim_end_matches('/');
+                let dir = req(paths(cfg), "on_demand", "config.paths")?.trim_end_matches('/');
                 let path = format!("{dir}/{id}.md");
                 let when = req(s, "when", id)?;
                 pointers.push(
@@ -301,11 +381,11 @@ fn render_doc(key: &str, doc: &Value, cfg: &Value) -> Res<(String, Vec<(String, 
     Ok((main, files))
 }
 
-/// `.claude/settings.json`: the Claude Code hooks of `params.config.hooks.claude`.
+/// `.claude/settings.json`: the Claude Code hooks of `config.hooks.claude`.
 fn render_claude_settings(cfg: &Value) -> Res<String> {
     let hooks = &config(cfg)["hooks"]["claude"];
     if !hooks.is_object() {
-        return Err("params.config.hooks.claude is missing".to_string());
+        return Err("config.hooks.claude is missing".to_string());
     }
     let text =
         serde_json::to_string_pretty(&json!({ "hooks": hooks })).map_err(|e| e.to_string())?;
@@ -409,6 +489,10 @@ fn wanted(root: &Path, cfg: &Value) -> Res<Vec<Want>> {
             "planned" | "ignored" => {}
             other => return Err(format!("{path}: unknown type `{other}`")),
         }
+    }
+    // Modes switched to `on_demand` get their own file.
+    for (p, text) in mode_files(cfg)? {
+        add_file(&mut out, &p, text)?;
     }
     // Guides: with `render: "pdf"`, every hand-written .md gets a .pdf next to it
     // (src/pdf.rs; deterministic, so --check compares it like any other file).
@@ -536,7 +620,7 @@ fn build(root: &Path, cfg: &Value, check: bool) -> Res<bool> {
         println!("{verb}: {d}");
     }
     for s in &strays {
-        println!("not in {MEMORY}: {s} (it is a doc, an .md in params.config.paths.docs, so it must be generated; add it to {MEMORY} or delete it)");
+        println!("not in {MEMORY}: {s} (it is a doc, an .md in config.paths.docs, so it must be generated; add it to {MEMORY} or delete it)");
     }
     if drift.is_empty() && strays.is_empty() {
         println!("in sync with the brain ({MEMORY}, {})", plalast::PARAMS);
@@ -562,7 +646,7 @@ fn prune_module_links(root: &Path, cfg: &Value, check: bool) -> Res<Vec<String>>
     Ok(out)
 }
 
-/// Docs (`.md` files directly in `params.config.paths.docs`) that this build does not generate.
+/// Docs (`.md` files directly in `config.paths.docs`) that this build does not generate.
 fn stray_docs(root: &Path, cfg: &Value, generated: &[String]) -> Vec<String> {
     let mut out: Vec<String> = doc_dirs(cfg)
         .iter()
@@ -642,7 +726,8 @@ mod tests {
     /// A brain with one document `doc` holding sections `a` and `b` with the given levers.
     fn cfg(levers: &Value) -> Value {
         json!({
-            "params": {"config": {"paths": {"on_demand": "agents"}}, "levers": {"doc": levers}},
+            "config": {"paths": {"on_demand": "agents"}},
+            "params": {"levers": {"doc": levers}},
             "primary": {
                 "docs": {
                     "agent_note": "NOTE",
@@ -710,9 +795,68 @@ mod tests {
     }
 
     #[test]
+    fn a_missing_lever_defaults_to_on_demand() {
+        let (main, files) = render(&json!({"a": "enabled"})).unwrap();
+        assert!(
+            main.contains("## A") && main.contains("`agents/b.md`"),
+            "{main}"
+        );
+        assert_eq!(files.len(), 1);
+    }
+
+    #[test]
+    fn brain_keys_is_a_table_of_the_three_primary_keys() {
+        let mut c = json!({});
+        for k in BRAIN_KEYS {
+            c[k] = json!({"descr_+": format!("{k} is"), "descr_-": format!("{k} is not")});
+        }
+        let t = brain_keys(&c).unwrap();
+        assert!(
+            t.starts_with("| Key | Is (descr_+) | Is not (descr_-) |"),
+            "{t}"
+        );
+        assert!(
+            t.contains("| `primary` | primary is | primary is not |"),
+            "{t}"
+        );
+        c["data"] = json!({"descr_+": "only half"});
+        assert!(brain_keys(&c).unwrap_err().contains("descr_-"));
+    }
+
+    #[test]
+    fn modes_follow_their_interruptor() {
+        let brain = |state: &str| {
+            let mut c = cfg(&json!({}));
+            c["params"]["levers"]["mode"] = json!({"careful": state});
+            c["primary"]["mode"] = json!({"careful": {"title": "Careful", "when": "in doubt", "rules": ["Ask.", "Wait."]}});
+            c
+        };
+        let c = brain("enabled");
+        assert_eq!(
+            modes_block(&c).unwrap(),
+            "- Mode `careful` (enabled): Ask. Wait."
+        );
+        assert!(mode_files(&c).unwrap().is_empty());
+        let c = brain("on_demand");
+        assert_eq!(
+            modes_block(&c).unwrap(),
+            "- Mode `careful` (on_demand): read `agents/mode-careful.md` when in doubt."
+        );
+        assert_eq!(
+            mode_files(&c).unwrap(),
+            vec![(
+                "agents/mode-careful.md".to_string(),
+                "# Careful\nNOTE\n\n- Ask.\n- Wait.\n".to_string()
+            )]
+        );
+        let c = brain("disabled");
+        assert_eq!(modes_block(&c).unwrap(), "");
+        assert!(mode_files(&c).unwrap().is_empty());
+        assert!(modes_block(&brain("maybe")).is_err());
+    }
+
+    #[test]
     fn lever_problems_are_errors() {
-        let missing = render(&json!({"a": "enabled"})).unwrap_err();
-        assert!(missing.contains("`b` has no lever"), "{missing}");
         let invalid = render(&json!({"a": "maybe", "b": "enabled"})).unwrap_err();
         assert!(invalid.contains("`maybe` is not one of"), "{invalid}");
         let unknown = render(&json!({"a": "enabled", "b": "enabled", "c": "enabled"})).unwrap_err();
@@ -783,9 +927,9 @@ mod tests {
     #[test]
     fn structure_table_resolves_paths_and_labels() {
         let c = json!({
-            "params": {"config": {"paths": {"skills": "agents/skills"}}},
+            "config": {"paths": {"skills": "agents/skills"}},
             "data": {"structure": [
-                {"path_ref": "params.config.paths.skills", "type": "dir", "label": "{path}<x>/SKILL.md", "table": "Skills"},
+                {"path_ref": "config.paths.skills", "type": "dir", "label": "{path}<x>/SKILL.md", "table": "Skills"},
                 {"path": "b", "type": "file"},
                 {"path": "src/", "type": "planned", "table": "Code"}
             ]}
@@ -815,7 +959,7 @@ mod tests {
         let root = env::temp_dir().join(format!("pla-local-links-{}", std::process::id()));
         fs::create_dir_all(root.join("modules")).unwrap();
         fs::create_dir_all(root.join("here")).unwrap();
-        let c = json!({"params": {"config": {}}, "primary": {}, "data": {"structure": [
+        let c = json!({"config": {}, "primary": {}, "data": {"structure": [
             {"path": "modules/found", "type": "symlink", "target": "../here", "local": true},
             {"path": "modules/missing", "type": "symlink", "target": "../nowhere", "local": true},
             {"path": "modules/shared", "type": "symlink", "target": "../nowhere"}
@@ -848,7 +992,7 @@ mod tests {
 
     #[test]
     fn claude_settings_wrap_the_configured_hooks() {
-        let c = json!({"params": {"config": {"hooks": {"claude": {"PreToolUse": []}}}}});
+        let c = json!({"config": {"hooks": {"claude": {"PreToolUse": []}}}});
         assert_eq!(
             render_claude_settings(&c).unwrap(),
             "{\n  \"hooks\": {\n    \"PreToolUse\": []\n  }\n}\n"
@@ -868,7 +1012,7 @@ mod tests {
 
     #[test]
     fn doc_paths_come_from_params() {
-        let c = json!({"params": {"config": {"paths": {"docs": [".", "agents/"]}}}});
+        let c = json!({"config": {"paths": {"docs": [".", "agents/"]}}});
         assert!(plalast::is_doc_path(&c, "README.md"));
         assert!(plalast::is_doc_path(&c, "agents/BUILD.md"));
         assert!(!plalast::is_doc_path(&c, "agents/skills/x/SKILL.md"));

@@ -9,9 +9,9 @@
 
 use plalast::{
     arr, block_items, block_text, cargo, config, data, doc_dirs, entry_path, exit,
-    external_modules, is_doc_path, lever, lookup, module_dir, open, paths, primary, run, str_of,
-    visible_entries, Findings, CONFIG_KEYS, LOG_FIELDS, LOG_KINDS, MEMORY, MODULE_KINDS, PARAMS,
-    PRIMARY_KEYS, SPECIAL_BUILDS,
+    external_modules, is_doc_path, lever_set, lookup, modes, module_dir, open, paths, primary, run,
+    str_of, visible_entries, Findings, BRAIN_KEYS, CONFIG_KEYS, DESCR_KEYS, LOG_FIELDS, LOG_KINDS,
+    MEMORY, MODE_GROUP, MODULE_KINDS, PRIMARY_KEYS, SPECIAL_BUILDS,
 };
 use serde_json::Value;
 use std::env;
@@ -71,21 +71,23 @@ fn keys(v: &Value) -> Vec<&str> {
 
 fn lint_memory(root: &Path, cfg: &Value, f: &mut Findings) {
     lint_schema_coverage(cfg, f);
+    lint_brain_keys(cfg, f);
     lint_registries(cfg, f);
     lint_structure(root, cfg, f);
     lint_docs(cfg, f);
+    lint_modes(cfg, f);
     lint_modules_and_paths(root, cfg, f);
     lint_params(root, cfg, f);
     lint_plain_data(root, cfg, f);
 }
 
-/// Every key of params, params.config, primary and data is documented in primary.schema.keys;
+/// Every key of params, config, primary and data is documented in primary.schema.keys;
 /// a key with documented children has all of them documented.
 fn lint_schema_coverage(cfg: &Value, f: &mut Findings) {
     let documented = &primary(cfg)["schema"]["keys"];
     for (top, obj) in [
         ("params", &cfg["params"]),
-        ("params.config", config(cfg)),
+        ("config", config(cfg)),
         ("primary", primary(cfg)),
         ("data", data(cfg)),
     ] {
@@ -113,11 +115,22 @@ fn lint_schema_coverage(cfg: &Value, f: &mut Findings) {
     }
 }
 
-/// primary and params.config hold exactly the keys the tools handle (lib registries), in order.
+/// Every primary key of the memory says what it is (`descr_+`) and is not (`descr_-`).
+fn lint_brain_keys(cfg: &Value, f: &mut Findings) {
+    for key in BRAIN_KEYS {
+        for d in DESCR_KEYS {
+            if blank(str_of(&cfg[key], d)) {
+                f.error(M, format!("{key}.{d}: missing; every primary key says what it is (descr_+) and is not (descr_-)"));
+            }
+        }
+    }
+}
+
+/// primary and config hold exactly the keys the tools handle (lib registries), in order.
 fn lint_registries(cfg: &Value, f: &mut Findings) {
     for (name, obj, registry, file) in [
         ("primary", primary(cfg), &PRIMARY_KEYS[..], MEMORY),
-        ("params.config", config(cfg), &CONFIG_KEYS[..], PARAMS),
+        ("config", config(cfg), &CONFIG_KEYS[..], MEMORY),
     ] {
         let known: Vec<&str> = registry.iter().map(|(k, _)| *k).collect();
         let present = keys(obj);
@@ -189,7 +202,7 @@ fn lint_structure(root: &Path, cfg: &Value, f: &mut Findings) {
                         f.error(M, format!("{ctx}: hand-written file is missing on disk"));
                     }
                     if is_doc_path(cfg, &path) {
-                        f.error(M, format!("{ctx}: it is a doc (an .md in params.config.paths.docs), so it must be generated (set `build`)"));
+                        f.error(M, format!("{ctx}: it is a doc (an .md in config.paths.docs), so it must be generated (set `build`)"));
                     }
                 }
             },
@@ -247,8 +260,9 @@ fn lint_docs(cfg: &Value, f: &mut Findings) {
                     f.error(M, format!("{ctx}: missing `{k}`"));
                 }
             }
-            match lever(cfg, key, id) {
-                None => f.error(M, format!("{ctx}: no lever in params.levers.{key}")),
+            // An unset interruptor is `on_demand` (DEFAULT_LEVER); only a wrong value is an error.
+            match lever_set(cfg, key, id) {
+                None => {}
                 Some(v) if schema["levers"].get(v).is_none() => {
                     f.error(
                         M,
@@ -261,6 +275,9 @@ fn lint_docs(cfg: &Value, f: &mut Findings) {
         }
     }
     for (key, m) in cfg["params"]["levers"].as_object().into_iter().flatten() {
+        if key == MODE_GROUP {
+            continue;
+        }
         for id in keys(m) {
             let exists = arr(&data(cfg)["content"][key], "sections")
                 .iter()
@@ -268,6 +285,46 @@ fn lint_docs(cfg: &Value, f: &mut Findings) {
             if !exists {
                 f.error(M, format!("params.levers.{key}.{id}: no such section"));
             }
+        }
+    }
+}
+
+/// Modes: every `params.levers.mode.<name>` names a mode of `primary.mode` and has a known value,
+/// and every mode has a `title`, a `when` and a non-empty `rules` list of strings.
+fn lint_modes(cfg: &Value, f: &mut Findings) {
+    let schema = &primary(cfg)["schema"];
+    let mode = &primary(cfg)["mode"];
+    for name in keys(&cfg["params"]["levers"][MODE_GROUP]) {
+        if mode.get(name).is_none() {
+            f.error(
+                M,
+                format!("params.levers.mode.{name}: no such mode in primary.mode"),
+            );
+        }
+        if let Some(v) = lever_set(cfg, MODE_GROUP, name) {
+            if schema["levers"].get(v).is_none() {
+                f.error(
+                    M,
+                    format!("params.levers.mode.{name}: `{v}` is not in primary.schema.levers"),
+                );
+            }
+        } else {
+            f.error(M, format!("params.levers.mode.{name}: must be a string"));
+        }
+    }
+    for (name, m, _) in modes(cfg) {
+        let ctx = format!("primary.mode.{name}");
+        for k in ["title", "when"] {
+            if blank(str_of(m, k)) {
+                f.error(M, format!("{ctx}: missing `{k}`"));
+            }
+        }
+        let rules = arr(m, "rules");
+        if rules.is_empty() || !rules.iter().all(Value::is_string) {
+            f.error(
+                M,
+                format!("{ctx}: `rules` must be a non-empty list of strings"),
+            );
         }
     }
 }
@@ -305,7 +362,7 @@ fn lint_modules_and_paths(root: &Path, cfg: &Value, f: &mut Findings) {
         if blank(str_of(&primary(cfg)[kind], "definition")) {
             f.error(M, format!("primary.{kind}: missing `definition`"));
         }
-        let ctx = format!("params.config.paths.modules.{kind}");
+        let ctx = format!("config.paths.modules.{kind}");
         match module_dir(cfg, kind) {
             Some(d) if root.join(&d).is_dir() => {}
             Some(d) => f.error(M, format!("{ctx}.dir: `{d}` is not a folder")),
@@ -329,7 +386,7 @@ fn lint_modules_and_paths(root: &Path, cfg: &Value, f: &mut Findings) {
         if blank(definition) {
             f.error(M, format!("primary.modules.{name}: missing `definition`"));
         }
-        let ctx = format!("params.config.paths.modules.{name}");
+        let ctx = format!("config.paths.modules.{name}");
         let link = arr(data(cfg), "structure")
             .iter()
             .find(|e| str_of(e, "target_ref") == Some(ctx.as_str()));
@@ -355,20 +412,14 @@ fn lint_modules_and_paths(root: &Path, cfg: &Value, f: &mut Findings) {
         }
     }
     if blank(str_of(paths(cfg), "on_demand")) {
-        f.error(M, "params.config.paths: missing `on_demand`");
+        f.error(M, "config.paths: missing `on_demand`");
     }
     if doc_dirs(cfg).is_empty() {
-        f.error(
-            M,
-            "params.config.paths.docs is empty: no folder holds the docs",
-        );
+        f.error(M, "config.paths.docs is empty: no folder holds the docs");
     }
     for d in doc_dirs(cfg) {
         if !root.join(&d).is_dir() {
-            f.error(
-                M,
-                format!("params.config.paths.docs: `{d}` is not a folder"),
-            );
+            f.error(M, format!("config.paths.docs: `{d}` is not a folder"));
         }
     }
     if let Some(logo) = primary(cfg)["project"]["plalast_logo"].as_str() {
@@ -381,23 +432,20 @@ fn lint_modules_and_paths(root: &Path, cfg: &Value, f: &mut Findings) {
     }
 }
 
-/// params.config settings: branches, `PLALAST_DIR`, lint budget, hooks and audit.
+/// config settings: branches, `PLALAST_DIR`, lint budget, hooks and audit.
 fn lint_params(root: &Path, cfg: &Value, f: &mut Findings) {
     let c = config(cfg);
     for b in ["integration", "stable"] {
         if blank(str_of(&c["branches"], b)) {
-            f.error(M, format!("params.config.branches: missing `{b}`"));
+            f.error(M, format!("config.branches: missing `{b}`"));
         }
     }
     // PLALAST_DIR is `$PWD`: the tools resolve it to the repo root they find, on any machine
     // (a written path works on one machine only, and an expanded one leaks the user name).
     match str_of(c, "PLALAST_DIR") {
         Some("$PWD" | "${PWD}") => {}
-        Some(d) => f.error(
-            M,
-            format!("params.config.PLALAST_DIR: `{d}` must be `$PWD`"),
-        ),
-        None => f.error(M, "params.config: missing `PLALAST_DIR`"),
+        Some(d) => f.error(M, format!("config.PLALAST_DIR: `{d}` must be `$PWD`")),
+        None => f.error(M, "config: missing `PLALAST_DIR`"),
     }
     // Context budget: the docs an agent loads every session stay under lint.max_lines.
     let lint_cfg = &c["lint"];
@@ -410,19 +458,16 @@ fn lint_params(root: &Path, cfg: &Value, f: &mut Findings) {
             for file in files.iter().filter_map(Value::as_str) {
                 match fs::read_to_string(root.join(file)) {
                     Ok(t) => total += t.lines().count() as u64,
-                    Err(_) => f.error(
-                        M,
-                        format!("params.config.lint.always_on: `{file}` cannot be read"),
-                    ),
+                    Err(_) => f.error(M, format!("config.lint.always_on: `{file}` cannot be read")),
                 }
             }
             if total > max {
-                f.error(M, format!("always-on docs have {total} lines, over params.config.lint.max_lines ({max}): move sections to on_demand"));
+                f.error(M, format!("always-on docs have {total} lines, over config.lint.max_lines ({max}): move sections to on_demand"));
             }
         }
         _ => f.error(
             M,
-            "params.config.lint needs `always_on` (list of docs) and `max_lines` (number)",
+            "config.lint needs `always_on` (list of docs) and `max_lines` (number)",
         ),
     }
     // Hooks: every script is executable, and every Claude Code hook command exists.
@@ -433,7 +478,7 @@ fn lint_params(root: &Path, cfg: &Value, f: &mut Findings) {
     if !root.join(hooks_dir).is_dir() {
         f.error(
             M,
-            format!("params.config.hooks.dir: `{hooks_dir}` is not a folder"),
+            format!("config.hooks.dir: `{hooks_dir}` is not a folder"),
         );
     }
     for name in visible_entries(&root.join(hooks_dir)) {
@@ -460,7 +505,7 @@ fn lint_params(root: &Path, cfg: &Value, f: &mut Findings) {
         if !root.join(&rel).is_file() {
             f.error(
                 M,
-                format!("params.config.hooks.claude: command `{cmd}` points at a missing script"),
+                format!("config.hooks.claude: command `{cmd}` points at a missing script"),
             );
         }
     }
@@ -470,13 +515,13 @@ fn lint_params(root: &Path, cfg: &Value, f: &mut Findings) {
             .as_array()
             .is_some_and(|a| a.iter().all(Value::is_string))
         {
-            f.error(M, "params.config.audit.allow must be a list of strings");
+            f.error(M, "config.audit.allow must be a list of strings");
         }
         if !audit["max_file_kb"].is_u64() {
-            f.error(M, "params.config.audit.max_file_kb must be a whole number");
+            f.error(M, "config.audit.max_file_kb must be a whole number");
         }
     } else {
-        f.error(M, "params.config.audit is missing (settings of pla-audit)");
+        f.error(M, "config.audit is missing (settings of pla-audit)");
     }
 }
 
@@ -851,13 +896,13 @@ mod tests {
         // Assembled at runtime so pla-audit never sees a home path in this file.
         let expanded = ["/", "Users", "/someone/plalast"].concat();
         let cfg = json!({
+            "config": {"PLALAST_DIR": expanded},
             "params": {
-                "config": {"PLALAST_DIR": expanded},
                 "levers": {"doc": {"Bad_Id": "maybe", "ghost": "enabled"}}
             },
             "primary": {
                 "docs": {"extra": 1},
-                "schema": {"keys": {"primary.docs": "", "primary.docs.definition": "", "primary.schema": "", "data.structure": "", "params.config": ""},
+                "schema": {"keys": {"primary.docs": "", "primary.docs.definition": "", "primary.schema": "", "data.structure": "", "config": ""},
                            "levers": {"enabled": ""}, "blocks": {"paragraph": ""}}
             },
             "data": {
@@ -878,6 +923,8 @@ mod tests {
         for expected in [
             "data.content is not documented",
             "params.levers is not documented",
+            "config.descr_+: missing",
+            "data.descr_-: missing",
             "`a.md`: duplicate path",
             "`a.md`: missing description",
             "`dir`: only folders end with `/`",
@@ -891,8 +938,8 @@ mod tests {
             "primary.log must be a list",
             "primary.index must be an object",
             "primary.modules is missing",
-            "params.config.repository is missing",
-            "params.config.paths.docs is empty",
+            "config.repository is missing",
+            "config.paths.docs is empty",
             "must be `$PWD`",
             "data.content.doc.head: the second block must be `agent_note`",
             "list block ref `primary.nowhere` does not point",

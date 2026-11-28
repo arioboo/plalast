@@ -28,6 +28,80 @@ fn repo_is_in_sync_with_the_memory() {
     assert!(o.status.success(), "pla-build --check:\n{}", stdout(&o));
 }
 
+/// The brain premise: every generated file is rebuilt from memory.json + params.yaml byte by byte.
+/// Copies the repo (what git would commit) to a temp folder, deletes everything pla-build
+/// generates (every .md in the doc folders, `build` entries and guide PDFs), rebuilds there and
+/// compares each file with the original.
+#[test]
+fn generated_files_rebuild_from_the_brain() {
+    use std::fs;
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let ls = Command::new("git")
+        .args(["ls-files", "--cached", "--others", "--exclude-standard"])
+        .current_dir(root)
+        .output()
+        .expect("git runs");
+    let files: Vec<String> = String::from_utf8_lossy(&ls.stdout)
+        .lines()
+        .filter(|f| root.join(f).symlink_metadata().is_ok())
+        .map(String::from)
+        .collect();
+    let cfg = load(root).unwrap();
+    let doc_dirs: Vec<&str> = cfg["config"]["paths"]["docs"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|d| d.as_str())
+        .collect();
+    let built: Vec<String> = cfg["data"]["structure"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|e| e["build"].is_string())
+        .filter_map(|e| entry_path(&cfg, e))
+        .collect();
+    let guides = cfg["config"]["paths"]["modules"]["guides"]["dir"]
+        .as_str()
+        .unwrap();
+    let is_generated = |f: &str| {
+        let p = Path::new(f);
+        let dir = p.parent().and_then(Path::to_str).unwrap_or("");
+        let dir = if dir.is_empty() { "." } else { dir };
+        (f.ends_with(".md") && doc_dirs.contains(&dir) && !p.is_symlink())
+            || built.iter().any(|b| b == f)
+            || (dir == guides && f.ends_with(".pdf"))
+    };
+
+    let tmp = std::env::temp_dir().join(format!("plalast-rebuild-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&tmp);
+    let mut generated = Vec::new();
+    for f in &files {
+        let (src, dst) = (root.join(f), tmp.join(f));
+        fs::create_dir_all(dst.parent().unwrap()).unwrap();
+        if is_generated(f) {
+            generated.push(f.clone());
+        } else if src.is_symlink() {
+            std::os::unix::fs::symlink(fs::read_link(&src).unwrap(), &dst).unwrap();
+        } else {
+            fs::copy(&src, &dst).unwrap();
+        }
+    }
+    assert!(
+        generated.len() >= 10,
+        "only {generated:?} counted as generated"
+    );
+    let o = Command::new(BUILD).current_dir(&tmp).output().unwrap();
+    assert!(o.status.success(), "pla-build in the copy:\n{}", stdout(&o));
+    for f in &generated {
+        let rebuilt = fs::read(tmp.join(f)).unwrap_or_default();
+        assert!(
+            rebuilt == fs::read(root.join(f)).unwrap(),
+            "{f} is not rebuilt byte by byte from the brain"
+        );
+    }
+    fs::remove_dir_all(&tmp).unwrap();
+}
+
 #[test]
 fn every_generated_doc_has_the_agent_note_on_line_two() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
@@ -67,7 +141,42 @@ fn the_brain_is_memory_json_and_params_yaml() {
         .map(String::as_str)
         .collect();
     top.sort_unstable();
-    assert_eq!(top, ["data", "params", "primary"]);
+    assert_eq!(top, ["config", "data", "params", "primary"]);
+}
+
+#[test]
+fn agents_md_shows_the_three_primary_keys_and_params_holds_only_levers() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let agents = std::fs::read_to_string(root.join("agents/AGENTS.md")).unwrap();
+    assert!(agents.contains("| Key | Is (descr_+) | Is not (descr_-) |"));
+    for key in plalast::BRAIN_KEYS {
+        assert!(
+            agents.contains(&format!("| `{key}` |")),
+            "AGENTS.md lacks {key}"
+        );
+    }
+    let memory: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(root.join(plalast::MEMORY)).unwrap())
+            .unwrap();
+    let top: Vec<&str> = memory
+        .as_object()
+        .unwrap()
+        .keys()
+        .map(String::as_str)
+        .collect();
+    assert_eq!(
+        top,
+        plalast::BRAIN_KEYS,
+        "memory.json primary keys, in order"
+    );
+    let cfg = load(root).unwrap();
+    let params: Vec<&str> = cfg["params"]
+        .as_object()
+        .unwrap()
+        .keys()
+        .map(String::as_str)
+        .collect();
+    assert_eq!(params, ["levers"]);
 }
 
 #[test]
@@ -89,7 +198,7 @@ fn memory_keys_match_the_tools_registry() {
 #[test]
 fn config_keys_match_the_tools_registry() {
     let cfg = load(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
-    let present: Vec<&str> = cfg["params"]["config"]
+    let present: Vec<&str> = cfg["config"]
         .as_object()
         .unwrap()
         .keys()
@@ -109,8 +218,9 @@ fn recall_shows_every_part_of_the_memory() {
         "primary.features",
         "primary.log",
         "primary.index",
-        "Config (params.config)",
+        "Config (config)",
         "(primary.modules)",
+        "Modes (primary.mode",
         "params.levers",
     ] {
         assert!(out.contains(part), "recall map lacks {part}:\n{out}");

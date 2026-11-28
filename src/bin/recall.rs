@@ -5,8 +5,8 @@
 
 use plalast::{
     arr, block_items, block_text, config, data, doc_dirs, docs, entry_path, exit, external_modules,
-    fill, lever, module_dir, open, paths, primary, str_of, visible_entries, LOG_FIELDS, MEMORY,
-    MODULE_KINDS,
+    fill, lever_set, modes, module_dir, open, paths, primary, str_of, visible_entries, BRAIN_KEYS,
+    DEFAULT_LEVER, DESCR_KEYS, LOG_FIELDS, MEMORY, MODE_GROUP, MODULE_KINDS,
 };
 use serde_json::Value;
 use std::env;
@@ -113,6 +113,11 @@ fn recall(root: &Path, cfg: &Value, query: &str) -> bool {
     }
 }
 
+/// Interruptor value shown for a section or mode, marking the default when it is not set.
+fn state_of(cfg: &Value, group: &str, id: &str) -> String {
+    lever_set(cfg, group, id).map_or_else(|| format!("{DEFAULT_LEVER} (default)"), String::from)
+}
+
 /// Type shown for a structure entry: generated or manual files, else its type.
 fn entry_kind(e: &Value) -> &str {
     match (str_of(e, "type").unwrap_or("?"), str_of(e, "build")) {
@@ -127,6 +132,16 @@ fn print_map(root: &Path, cfg: &Value) {
     if let Some(t) = str_of(&primary(cfg)["project"], "title") {
         println!("{t}\n");
     }
+    println!("Memory ({MEMORY}): three primary keys");
+    for key in BRAIN_KEYS {
+        for (d, sign) in DESCR_KEYS.iter().zip(["+", "-"]) {
+            println!(
+                "  {key:<8} {sign} {}",
+                str_of(&cfg[key], d).unwrap_or("(missing)")
+            );
+        }
+    }
+    println!();
     let definition = str_of(docs(cfg), "definition").unwrap_or("");
     println!(
         "Docs (primary.docs): {definition} Folders: {}\n",
@@ -160,6 +175,14 @@ fn print_map(root: &Path, cfg: &Value) {
             "external"
         );
     }
+    println!("\nModes (primary.mode, interruptor in params.levers.mode):");
+    for (name, m, _) in modes(cfg) {
+        println!(
+            "  {name:<28} {:<20} {}",
+            state_of(cfg, MODE_GROUP, name),
+            str_of(m, "title").unwrap_or("")
+        );
+    }
     println!("\nFeatures (primary.features):");
     for (_, text) in plain_data(cfg)
         .iter()
@@ -175,7 +198,7 @@ fn print_map(root: &Path, cfg: &Value) {
     );
     let c = config(cfg);
     println!(
-        "Config (params.config): PLALAST_DIR {} = {}, repository {}, branches {} -> {}, audit allows {} string(s) and reports files over {} KB\n",
+        "Config (config): PLALAST_DIR {} = {}, repository {}, branches {} -> {}, audit allows {} string(s) and reports files over {} KB\n",
         str_of(c, "PLALAST_DIR").unwrap_or("?"),
         root.display(),
         str_of(c, "repository").unwrap_or("?"),
@@ -197,7 +220,7 @@ fn print_map(root: &Path, cfg: &Value) {
         for s in arr(&data(cfg)["content"][key], "sections") {
             let id = str_of(s, "id").unwrap_or("?");
             let title = str_of(s, "title").unwrap_or(id);
-            let state = lever(cfg, key, id).unwrap_or("MISSING");
+            let state = state_of(cfg, key, id);
             println!("{:<40} {state:<10} {title}", format!("{path} › {id}"));
         }
     }
@@ -211,6 +234,14 @@ fn search(cfg: &Value, q: &str) -> bool {
         found = true;
         println!("{line}");
     };
+    for key in BRAIN_KEYS {
+        for d in DESCR_KEYS {
+            let text = str_of(&cfg[key], d).unwrap_or("");
+            if (hit(key) && d == "descr_+") || hit(text) {
+                show(format!("{key}.{d}: {text}"));
+            }
+        }
+    }
     let definition = str_of(docs(cfg), "definition").unwrap_or("");
     if hit(definition) {
         show(format!("primary.docs: {definition}"));
@@ -227,11 +258,26 @@ fn search(cfg: &Value, q: &str) -> bool {
             show(format!("primary.modules.{name}: {d}"));
         }
     }
+    for (name, m, _) in modes(cfg) {
+        let state = state_of(cfg, MODE_GROUP, name);
+        let mut texts: Vec<&str> = ["title", "when"]
+            .iter()
+            .filter_map(|k| str_of(m, k))
+            .collect();
+        texts.extend(arr(m, "rules").iter().filter_map(Value::as_str));
+        if hit(name) {
+            show(format!("primary.mode.{name} [{state}]"));
+        }
+        for t in texts.iter().filter(|t| hit(t)) {
+            show(format!("primary.mode.{name} [{state}]: {t}"));
+        }
+    }
     for (source, text) in plain_data(cfg).iter().filter(|(_, t)| hit(t)) {
         show(format!("{source}: {text}"));
     }
     // Settings and levers: every scalar of params, with its dotted path.
     let mut params = Vec::new();
+    scalars(&cfg["config"], "config", &mut params);
     scalars(&cfg["params"], "params", &mut params);
     for (path, value) in params.iter().filter(|(p, v)| hit(p) || hit(v)) {
         show(format!("{path}: {value}"));
@@ -259,7 +305,7 @@ fn search(cfg: &Value, q: &str) -> bool {
         for s in arr(doc, "sections") {
             let id = str_of(s, "id").unwrap_or("?");
             let title = str_of(s, "title").unwrap_or(id);
-            let state = lever(cfg, key, id).unwrap_or("MISSING");
+            let state = state_of(cfg, key, id);
             let mut texts: Vec<String> = ["title", "when"]
                 .iter()
                 .filter_map(|k| str_of(s, k).map(String::from))

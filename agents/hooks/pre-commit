@@ -1,5 +1,5 @@
 #!/bin/bash
-# git pre-commit hook (core.hooksPath = params.config.hooks.dir): refuses the commit while the
+# git pre-commit hook (core.hooksPath = config.hooks.dir): refuses the commit while the
 # generated files drift from memory.json and params.yaml, so docs and brain are committed in sync.
 root="$(git rev-parse --show-toplevel)"
 bin="$root/target/release/pla-build"
