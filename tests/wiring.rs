@@ -192,13 +192,17 @@ fn agents_md_shows_the_three_primary_keys_and_params_holds_only_levers() {
         .keys()
         .map(String::as_str)
         .collect();
-    assert_eq!(params, ["interruptors"]);
+    assert_eq!(params, ["interruptors", "by_level"]);
     // params.yaml: every key is the path of a memory field; interruptors after the mark.
     let text = std::fs::read_to_string(root.join(plalast::PARAMS)).unwrap();
     assert!(text.lines().any(|l| l == plalast::INTERRUPTORS_MARK));
-    assert_eq!(
-        cfg["primary"]["docs"]["agent_placeholder"].as_str(),
-        Some("note for agent: ...")
+    assert!(cfg["primary"]["docs"]["agent_placeholder"]
+        .as_str()
+        .is_some_and(|n| n.starts_with("note for agent:")));
+    let level = cfg["config"]["mem_level"].as_str().unwrap();
+    assert!(
+        plalast::MEM_LEVELS.contains(&level),
+        "config.mem_level is {level}"
     );
     assert!(
         cfg["config"]["hooks"]["dir"].is_string(),

@@ -53,6 +53,21 @@ pub fn find_root() -> Res<PathBuf> {
 /// The values an interruptor can take; a param with one of them is an interruptor.
 pub const LEVER_VALUES: [&str; 3] = ["enabled", "on_demand", "disabled"];
 
+/// The memory levels of `config.mem_level`, from the least to the most memory in context.
+pub const MEM_LEVELS: [&str; 3] = ["low", "mid", "hard"];
+
+/// The param that chooses the memory level.
+pub const MEM_LEVEL: &str = "config.mem_level";
+
+/// A param written as `{low: …, mid: …, hard: …}`: its value at `level` (None if it is not one).
+fn by_level<'a>(v: &'a Value, level: &str) -> Option<&'a Value> {
+    let m = v.as_object()?;
+    if m.is_empty() || !m.keys().all(|k| MEM_LEVELS.contains(&k.as_str())) {
+        return None;
+    }
+    Some(m.get(level).unwrap_or(&Value::Null))
+}
+
 /// The line of `params.yaml` after which only interruptors are written.
 pub const INTERRUPTORS_MARK: &str = "#---INTERRUPTORS---";
 
@@ -72,7 +87,27 @@ pub fn load(root: &Path) -> Res<Value> {
         .ok_or_else(|| format!("{PARAMS}: the top level must be a mapping"))?;
     let mut joined = memory;
     let mut interruptors = serde_json::Map::new();
-    for (path, v) in params {
+    // `config.mem_level` (low, mid or hard) picks the value of every param written by level.
+    let level = params
+        .get(MEM_LEVEL)
+        .and_then(Value::as_str)
+        .unwrap_or("mid")
+        .to_string();
+    if !MEM_LEVELS.contains(&level.as_str()) {
+        return Err(format!(
+            "{PARAMS}: `{MEM_LEVEL}` must be one of {MEM_LEVELS:?}"
+        ));
+    }
+    let mut levelled = serde_json::Map::new();
+    for (path, raw) in params {
+        let v = match by_level(raw, &level) {
+            Some(Value::Null) => continue, // not set at this level: the default applies
+            Some(v) => {
+                levelled.insert(path.clone(), raw.clone());
+                v
+            }
+            None => raw,
+        };
         if !BRAIN_KEYS
             .iter()
             .any(|b| path.starts_with(&format!("{b}.")))
@@ -87,7 +122,7 @@ pub fn load(root: &Path) -> Res<Value> {
             set_path(&mut joined, path, v.clone())?;
         }
     }
-    joined["params"] = serde_json::json!({ "interruptors": interruptors });
+    joined["params"] = serde_json::json!({ "interruptors": interruptors, "by_level": levelled });
     // The derived view `structure`: each entry of `config.structure` (path, type, flags) with its
     // prose from `primary.structure.<path>` (description, table, label). Not a field of the memory.
     let mut view = Vec::new();
@@ -318,7 +353,7 @@ pub fn lookup<'a>(cfg: &'a Value, dotted: &str) -> Option<&'a Value> {
 // ---------- registries: pla-lint fails when the brain and these drift apart ----------
 
 /// Keys of `config`, in file order, and the tools that handle each.
-pub const CONFIG_KEYS: [(&str, &str); 12] = [
+pub const CONFIG_KEYS: [(&str, &str); 13] = [
     ("descr_+", "build (brain_keys), recall, lint"),
     ("descr_-", "build (brain_keys), recall, lint"),
     (
@@ -332,6 +367,10 @@ pub const CONFIG_KEYS: [(&str, &str); 12] = [
     (
         "structure",
         "build (every path), lint (pairing with primary.structure), recall, audit",
+    ),
+    (
+        "mem_level",
+        "load (params by level), recall (--session), lint",
     ),
     ("branches", "audit (sync), recall"),
     (
@@ -705,6 +744,15 @@ mod tests {
         )
         .is_err());
         assert!(check_keys(&json!([1]), "m", &["data", "primary"]).is_err());
+    }
+
+    #[test]
+    fn params_by_level_take_the_value_of_the_current_level() {
+        let v = json!({"low": "disabled", "hard": "enabled"});
+        assert_eq!(by_level(&v, "hard"), Some(&json!("enabled")));
+        assert_eq!(by_level(&v, "mid"), Some(&Value::Null));
+        assert_eq!(by_level(&json!({"PreToolUse": []}), "mid"), None);
+        assert_eq!(by_level(&json!("enabled"), "mid"), None);
     }
 
     #[test]

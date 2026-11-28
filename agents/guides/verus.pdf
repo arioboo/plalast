@@ -67,7 +67,7 @@ endobj
 << /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 9 0 R >>
 endobj
 9 0 obj
-<< /Length 3780 >>
+<< /Length 3785 >>
 stream
 BT /F2 15.0 Tf 56.0 765.0 Td (How this repo uses it) Tj ET
 BT /F1 11.0 Tf 78.0 745.6 Td (Cargo.toml depends on vstd, the Verus standard library, pinned to the version that matches) Tj ET
@@ -80,7 +80,7 @@ BT /F1 11.0 Tf 62.0 693.4 Td (\225) Tj ET
 BT /F1 11.0 Tf 78.0 675.0 Td (src/verified.rs holds verified code. heading_hashes proves that a markdown heading always) Tj ET
 BT /F1 11.0 Tf 62.0 675.0 Td (\225) Tj ET
 BT /F1 11.0 Tf 78.0 659.6 Td (gets 1 to 6 #; pla-build and the PDF renderer use it.) Tj ET
-BT /F1 11.0 Tf 78.0 641.2 Td (pla-lint runs cargo verus verify in its rust area when cargo-verus is installed, and warns) Tj ET
+BT /F1 11.0 Tf 78.0 641.2 Td (pla-verify runs cargo verus verify in its formal level when cargo-verus is installed, and warns) Tj ET
 BT /F1 11.0 Tf 62.0 641.2 Td (\225) Tj ET
 BT /F1 11.0 Tf 78.0 625.8 Td (when it is not.) Tj ET
 BT /F2 15.0 Tf 56.0 592.8 Td (Commands) Tj ET
@@ -155,10 +155,10 @@ xref
 0000000568 00000 n 
 0000004857 00000 n 
 0000005003 00000 n 
-0000008834 00000 n 
-0000008982 00000 n 
+0000008839 00000 n 
+0000008987 00000 n 
 trailer
 << /Size 12 /Root 1 0 R >>
 startxref
-10008
+10013
 %%EOF

@@ -412,7 +412,15 @@ fn lint_interruptors(root: &Path, cfg: &Value, f: &mut Findings) {
         let Some(cap) = key_line.captures(line) else {
             continue;
         };
-        let is_interruptor = interruptors.is_some_and(|m| m.contains_key(&cap[1]));
+        // A param by level counts as an interruptor when every level holds an interruptor value.
+        let by_level = cfg["params"]["by_level"][&cap[1]].as_object();
+        let levelled = by_level.is_some_and(|m| {
+            m.values().all(|v| {
+                v.as_str()
+                    .is_some_and(|s| plalast::LEVER_VALUES.contains(&s))
+            })
+        });
+        let is_interruptor = interruptors.is_some_and(|m| m.contains_key(&cap[1])) || levelled;
         let after = mark.is_some_and(|m| n > m);
         if is_interruptor != after {
             let place = if is_interruptor { "after" } else { "before" };

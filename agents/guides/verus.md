@@ -54,7 +54,7 @@ The release must match the `vstd` pin in `Cargo.toml`: `cargo build` fails while
 - `[package.metadata.verus] verify = true` tells `cargo verus` to verify this crate.
 - `[lints.rust]` declares `cfg(verus_only)`, a flag Verus turns on while verifying.
 - `src/verified.rs` holds verified code. `heading_hashes` proves that a markdown heading always gets 1 to 6 `#`; `pla-build` and the PDF renderer use it.
-- `pla-lint` runs `cargo verus verify` in its `rust` area when `cargo-verus` is installed, and warns when it is not.
+- `pla-verify` runs `cargo verus verify` in its `formal` level when `cargo-verus` is installed, and warns when it is not.
 
 ## Commands
 

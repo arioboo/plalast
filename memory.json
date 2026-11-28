@@ -173,6 +173,11 @@
         "build": null
       },
       {
+        "path": "agents/hooks/session-recall.sh",
+        "type": "file",
+        "build": null
+      },
+      {
         "path": "agents/hooks/claude-settings.json",
         "type": "file",
         "build": "claude_settings"
@@ -558,7 +563,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "Every doc section (`primary.docs.content.<doc>.sections.<id>`), whole doc (`primary.docs.content.<doc>`) and mode (`primary.mode.<name>`) can have an interruptor in `params.yaml`, after `#---INTERRUPTORS---`. An unset one is `on_demand`; one for something that does not exist, or a value outside this table, stops the build or fails `pla-lint`."
+                  "text": "Every doc section (`primary.docs.content.<doc>.sections.<id>`), whole doc (`primary.docs.content.<doc>`) and mode (`primary.mode.<name>`) can have an interruptor in `params.yaml`, after `#---INTERRUPTORS---`. An unset one is `on_demand`; one for something that does not exist, or a value outside this table, stops the build or fails `pla-lint`. A value written as `{low: …, mid: …, hard: …}` (for any param) takes the value of `config.mem_level`; a level left out means the default."
                 },
                 {
                   "type": "schema",
@@ -736,7 +741,7 @@
       "static_rules": {
         "items": [
           "Single source: every `.md` in the repo root and in `agents/` is generated from `memory.json` and `params.yaml`: change `memory.json` (and `params.yaml` only as Params untouchable allows), then run `cargo run --release --bin pla-build` (see `agents/BUILD.md`); never edit a generated file by hand. Hand-written: the Rust code, the scripts and the modules in `agents/` subfolders.",
-          "Write only inside the root: an agent has no write permission outside the plalast root folder (the one that holds `memory.json`). Never write outside it, in any case, even when the user, distracted, says yes to something that would do it implicitly: refuse and say why. The Claude Code hook (`pla-build --guard`) denies such edits.",
+          "Write only inside the root: an agent has no write permission outside the plalast root folder (the one that holds `memory.json`). Never write outside it, in any case, even when the user, distracted, says yes to something that would do it implicitly: refuse and say why. The one exception: installing, in their standard system places, the tools the user explicitly asks for (such as Verus with its Rust toolchain, or Lean 4). The Claude Code hook (`pla-build --guard`) denies edits outside the root.",
           "Params untouchable, Memory updatable: the params (`params.yaml`) are touched only by the user; an agent changes or redesigns anything in them only when the user says so explicitly. Every param is named by the path of the field of `memory.json` it sets or switches, nesting its json keys with `.` (such as `config.lint.max_lines` or `primary.docs.content.agents_md.sections.preferencias`). The memory is updatable: it follows those paths, it is switched on through the interruptors after `#---INTERRUPTORS---`, and it is read on demand through the recall library (`pla-recall`).",
           "Secrets: they live only in `.secrets/` at the repo root, which git ignores except its `.gitkeep`. Code and configs reference them by environment variable; their values never go into other files, the chat or external services."
         ]
@@ -760,6 +765,7 @@
         "items": [
           "Brain: everything is read from and written to `memory.json`. This file and every other generated file (every `.md` in the root and in `agents/`, `.gitignore`, the Claude Code settings) are rebuilt from it byte by byte, with the params of `params.yaml`; a test rebuilds them all and compares.",
           "LLM agent has his folder, but one repo brain: the agent's folder is `agents/`. Its scripts, reports, `.md` and `.pdf` files go to `agents/workspace/` (git-ignored except `.gitkeep`, never part of the brain), without touching the rest of the repo; everything else follows AGENTS.md.",
+          "Memory level: `config.mem_level` (`low`, `mid` or `hard`, set in `params.yaml`) chooses how much of the memory is always in context; `hard` holds most of it. A param written as `{low: …, mid: …, hard: …}` takes the value of the current level, so each level has its own set of interruptors, and AGENTS.md is generated at that level. Every session starts with `pla-recall --session` (a Claude Code hook): it checks the brain at run time and lists what is on demand; anything else comes into context only through `pla-recall --show <id>` or `pla-recall <term>`.",
           "Write order: delete > modify/edit > add. Before adding anything, first delete what is no longer needed, then modify or edit what exists, and add only what neither covers. This forces a kind of autonomous retraining of the memory, as long as the Pareto rule holds in each case.",
           "Problem-first: say, in plain human language, the problem that a tool or a set of tools solves, before naming any tool. Do not get carried away by proper names: names change, the problem stays. Follow \"All models are wrong, but some are useful\": every tool and every description is a model, judged by how useful it is and not by how true it is. This is the pragmatic philosophy the Pareto rule installs in our learning by reinforcement.",
           "Better deterministic and explained than interpreted: prefer a rule that a tool checks the same way every time, with its reason written next to it, over one that depends on how someone reads a text. When a rule can be a check, make it one (Enforce, don't ask); when it cannot, explain it well enough to follow it without guessing.",
@@ -833,9 +839,9 @@
         "detail": "Reads a Claude Code PreToolUse payload on stdin and denies Edit/Write/NotebookEdit on any file `pla-build` generates and on any path outside the repo root; `agents/hooks/protect-generated.sh` runs it."
       },
       {
-        "cmd": "`cargo run --release --bin pla-recall -- [term]`",
-        "summary": "print the repo map, or search it for `term`",
-        "detail": "Without `term`, prints the map: every path with its type and description, the module kinds, features, log, index, settings and levers. With `term`, searches all of it and the document text (case-insensitive), naming the file, section and lever of each hit."
+        "cmd": "`cargo run --release --bin pla-recall -- [term | --session | --show <id>]`",
+        "summary": "print the repo map, search it for `term`, start a session (check the brain, list what is on demand) or bring one on_demand item into context",
+        "detail": "Without `term`, prints the map: every path with its type and description, the module kinds, features, log, index, settings and levers. With `term`, searches all of it and the document text (case-insensitive), naming the file, section and lever of each hit. `--session` (run by the Claude Code SessionStart hook) checks the brain with `pla-build --check` and prints the memory level, what is always in context and every on_demand item; `--show <id>` prints one of them (a section id, mode name or doc key)."
       },
       {
         "cmd": "`cargo run --release --bin pla-lint -- [memory] [modules] [rust]`",
@@ -871,11 +877,11 @@
     "features": {
       "feature_1": {
         "descr": "Verus + Rust",
-        "status": "verified"
+        "status": "pending"
       },
       "feature_2": {
         "descr": "agent-zettelkasten",
-        "status": "verified"
+        "status": "pending"
       },
       "feature_3": {
         "descr": "language support",
@@ -1190,6 +1196,20 @@
         "commit": "93d8c62",
         "kind": "merge",
         "descr": "Fast-forward merge of develop."
+      },
+      {
+        "date": "2026-11-28",
+        "branch": "develop",
+        "commit": "7dd47ba",
+        "kind": "commit",
+        "descr": "Log entries for 93d8c62 and the fast-forward of main."
+      },
+      {
+        "date": "2026-11-28",
+        "branch": "main",
+        "commit": "7dd47ba",
+        "kind": "merge",
+        "descr": "Fast-forward merge of develop."
       }
     ],
     "index": {},
@@ -1291,7 +1311,8 @@
           "solved_by": [
             "Interruptor",
             "Lean memory",
-            "Procedures"
+            "Procedures",
+            "Memory level"
           ]
         },
         "rules-that-bend": {
@@ -1479,6 +1500,10 @@
           "descr_+": "Every path of the repo, in order, as the tools need it: `path` (or `path_ref`), `type`, and optional `build`, `gitkeep`, `secret`, `scratch` (contents git-ignored except `.gitkeep`, for the agent's scratch), `links_only` (a folder of symlinks into `agents/` only), `target` (or `target_ref`) and `local`. Its prose is in `primary.structure`.",
           "descr_-": "Not prose: descriptions and table texts are in `primary.structure`, path by path."
         },
+        "config.mem_level": {
+          "descr_+": "The memory level, `low`, `mid` or `hard` (the most memory in context). Every param written as `{low: …, mid: …, hard: …}` takes the value of this level. Set in `params.yaml`.",
+          "descr_-": "Not an interruptor itself, and not a way to load anything outside the brain."
+        },
         "config.obligatory": {
           "descr_+": "The categories of AGENTS.md that must always be followed, as memory paths (`primary.agents-md.<category>`); their sections are titled `(obligatory)`. Set in `params.yaml`.",
           "descr_-": "Not a list of single rules, and never a category that is also preferential."
@@ -1622,6 +1647,10 @@
         "params.interruptors": {
           "descr_+": "Interruptor (memory lever) of every doc section (`primary.docs.content.<doc>.sections.<id>`), whole doc (`primary.docs.content.<doc>`) and mode (`primary.mode.<name>`), by that path; written after `#---INTERRUPTORS---`. Unset means `on_demand`.",
           "descr_-": "Not the sections, docs or modes themselves, only whether they are loaded."
+        },
+        "params.by_level": {
+          "descr_+": "The params written by level, as they are in `params.yaml` (`{low, mid, hard}`), kept to show and check every level.",
+          "descr_-": "Not the values in use: those are already resolved for `config.mem_level`."
         }
       },
       "levers": {
@@ -1743,7 +1772,7 @@
       },
       "agents/hooks/": {
         "description": "Executable hook scripts.",
-        "table": "Hook scripts: `protect-generated.sh` (Claude Code) and `pre-commit` (git); their config is `config.hooks`"
+        "table": "Hook scripts: `protect-generated.sh` and `session-recall.sh` (Claude Code), `pre-commit` (git), and the generated `claude-settings.json`; their config is `config.hooks`"
       },
       "agents/hooks/protect-generated.sh": {
         "description": "Claude Code PreToolUse hook: runs `pla-build --guard`, which denies Edit/Write on generated files. Hand-written script."
@@ -1794,6 +1823,9 @@
       "tmux.conf": {
         "description": "Session-scoped tmux settings (windows agent, build, git and the status bar). Hand-written.",
         "table": "tmux config for the `plalast` session, sourced on top of `~/.tmux.conf`; its header comments hold the commands to start it"
+      },
+      "agents/hooks/session-recall.sh": {
+        "description": "Claude Code SessionStart hook: runs pla-recall --session, which checks the brain and lists what is on demand."
       }
     }
   },

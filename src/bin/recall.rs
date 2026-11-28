@@ -2,6 +2,9 @@
 //!
 //! - `pla-recall`          the map: docs, module kinds, plain data, settings, paths and levers.
 //! - `pla-recall <term>`   everything matching `term`, naming its file, section and lever.
+//! - `pla-recall --session`    the session start (Claude Code SessionStart hook): checks the brain
+//!   at run time and prints the memory level and what can be recalled on demand.
+//! - `pla-recall --show <id>`  prints one on_demand section, mode or doc, to bring it into context.
 
 use plalast::{
     arr, block_items, block_text, config, doc_dirs, docs, entry_path, exit, external_modules, fill,
@@ -14,8 +17,111 @@ use std::path::Path;
 use std::process::ExitCode;
 
 fn main() -> ExitCode {
-    let query = env::args().skip(1).collect::<Vec<_>>().join(" ");
-    exit(open().map(|(root, cfg)| recall(&root, &cfg, &query)))
+    let args: Vec<String> = env::args().skip(1).collect();
+    exit(
+        open().map(|(root, cfg)| match args.first().map(String::as_str) {
+            Some("--session") => session(&root, &cfg),
+            Some("--show") => show(&root, &cfg, &args[1..].join(" ")),
+            _ => recall(&root, &cfg, &args.join(" ")),
+        }),
+    )
+}
+
+/// What can be brought into context on demand: `(id, file, title, when)` for every `on_demand`
+/// section and mode, and every generated doc that is not always in context.
+fn on_demand(cfg: &Value) -> Vec<(String, String, String, String)> {
+    let dir = str_of(paths(cfg), "on_demand")
+        .unwrap_or("agents")
+        .trim_end_matches('/');
+    let always: Vec<String> = plalast::strings(&config(cfg)["lint"], "always_on");
+    let mut out = Vec::new();
+    for (path, key) in documents(cfg) {
+        for s in arr(&plalast::content(cfg)[key], "sections") {
+            let id = str_of(s, "id").unwrap_or("?");
+            if plalast::lever(cfg, key, id) == "on_demand" {
+                let title = str_of(s, "title").unwrap_or(id).to_string();
+                let when = str_of(s, "when").unwrap_or("").to_string();
+                out.push((id.to_string(), format!("{dir}/{id}.md"), title, when));
+            }
+        }
+        if !always.contains(&path) && plalast::doc_lever(cfg, key) == "on_demand" {
+            out.push((key.to_string(), path.clone(), path, String::new()));
+        }
+    }
+    for (name, m, state) in modes(cfg) {
+        if state == "on_demand" {
+            let file = plalast::mode_path(cfg, name).unwrap_or_default();
+            let title = str_of(m, "title").unwrap_or(name).to_string();
+            let when = str_of(m, "when").unwrap_or("").to_string();
+            out.push((name.to_string(), file, title, when));
+        }
+    }
+    out
+}
+
+/// The session start: the brain checked at run time (`pla-build --check`), the memory level, what
+/// is always in context and what comes only through `pla-recall --show <id>`. Never fails the
+/// session: a drift is reported so the agent rebuilds before working.
+fn session(root: &Path, cfg: &Value) -> bool {
+    let build = env::current_exe()
+        .map(|me| me.with_file_name("pla-build"))
+        .unwrap_or_default();
+    let check = std::process::Command::new(&build)
+        .arg("--check")
+        .current_dir(root)
+        .output();
+    match check {
+        Ok(o) if o.status.success() => println!("brain: in sync with {MEMORY} and params.yaml"),
+        Ok(o) => {
+            println!(
+                "brain: OUT OF SYNC; run `cargo run --release --bin pla-build` before working:"
+            );
+            print!("{}", String::from_utf8_lossy(&o.stdout));
+        }
+        Err(e) => println!("brain: not checked ({}: {e})", build.display()),
+    }
+    let level = str_of(config(cfg), "mem_level").unwrap_or("mid");
+    println!("memory level: {level} (config.mem_level in params.yaml: low, mid or hard)");
+    let mut always = plalast::strings(&config(cfg)["lint"], "always_on");
+    always.extend(
+        documents(cfg)
+            .into_iter()
+            .filter(|(_, key)| plalast::doc_lever(cfg, key) == "enabled")
+            .map(|(path, _)| path),
+    );
+    println!("always in context: {}", always.join(", "));
+    println!("on demand (bring one into context with `pla-recall --show <id>`, search with `pla-recall <term>`):");
+    for (id, file, title, when) in on_demand(cfg) {
+        let when = if when.is_empty() {
+            String::new()
+        } else {
+            format!(": {when}")
+        };
+        println!("- {id} ({file}) {title}{when}");
+    }
+    true
+}
+
+/// Prints the file of one on_demand item (section id, mode name, doc key or doc path).
+fn show(root: &Path, cfg: &Value, id: &str) -> bool {
+    let id = id.trim();
+    let Some((_, file, _, _)) = on_demand(cfg)
+        .into_iter()
+        .find(|(i, f, _, _)| i == id || f == id)
+    else {
+        println!("`{id}` is not on demand; `pla-recall --session` lists what is");
+        return false;
+    };
+    match std::fs::read_to_string(root.join(&file)) {
+        Ok(text) => {
+            print!("{text}");
+            true
+        }
+        Err(e) => {
+            println!("{file}: {e} (run pla-build)");
+            false
+        }
+    }
 }
 
 /// `(path, content key)` of every generated document, in structure order.
