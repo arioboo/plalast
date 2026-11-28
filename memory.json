@@ -1176,6 +1176,20 @@
         "commit": "9ae9dfc",
         "kind": "commit",
         "descr": "primary.agents-md grouped by the four AGENTS.md categories; static premise Only one brain; params.agent_placeholder is the note on line 2 of every doc."
+      },
+      {
+        "date": "2026-11-28",
+        "branch": "develop",
+        "commit": "93d8c62",
+        "kind": "commit",
+        "descr": "Only migrate UP! (data nearly empty: content to primary.docs.content, structure split into config.structure and primary.structure); params by memory path with #---INTERRUPTORS---; Reglas - estáticas and obligatory/preferential; problems; pla-verify, pla-calc; .claude only links; writes only inside the root."
+      },
+      {
+        "date": "2026-11-28",
+        "branch": "main",
+        "commit": "93d8c62",
+        "kind": "merge",
+        "descr": "Fast-forward merge of develop."
       }
     ],
     "index": {},
